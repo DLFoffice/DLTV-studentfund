@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ย้ายข้อมูลนักเรียนเข้า Firestore — ใช้ครั้งเดียว</title>
+<style>
+  body{font-family:'Sarabun',sans-serif;background:#F0F2F8;max-width:640px;margin:40px auto;padding:0 16px;color:#1A1D2E}
+  .card{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px}
+  h1{font-size:20px} h2{font-size:16px;margin-top:0}
+  input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin:6px 0;box-sizing:border-box}
+  button{background:#2563EB;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:15px}
+  button:disabled{background:#9BA3BC;cursor:not-allowed}
+  #log{background:#1A1D2E;color:#9fefb0;font-family:monospace;font-size:13px;padding:12px;border-radius:8px;height:220px;overflow:auto;white-space:pre-wrap}
+  .warn{background:#FEF3C7;border:1px solid #f0d47a;border-radius:8px;padding:12px;font-size:14px}
+</style>
+</head>
+<body>
+<h1>🔄 ย้ายข้อมูลนักเรียน 72 คน เข้า Cloud Firestore</h1>
+
+<div class="warn">
+  ⚠️ ก่อนกด "เริ่มย้ายข้อมูล" ต้องทำสิ่งเหล่านี้ก่อน (ดูขั้นตอนเต็มใน README.md):
+  <ol style="margin:8px 0 0;padding-left:20px">
+    <li>ใส่ค่า config ใน <code>firebase-config.js</code></li>
+    <li>เปิด Firestore + Authentication (Email/Password) ใน Firebase Console</li>
+    <li>สร้างบัญชีผู้ใช้ใน Authentication → Users → Add user</li>
+    <li>ตั้งค่า Security Rules ตามไฟล์ <code>firestore.rules</code></li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>1) ล็อกอิน</h2>
+  <input id="email" type="email" placeholder="adipong@dltv.ac.th ">
+  <input id="password" type="password" placeholder="Dukedikk01">
+  <button id="btn-login">เข้าสู่ระบบ</button>
+  <span id="auth-status" style="margin-left:10px;font-size:14px;color:#5A6178">ยังไม่ได้ล็อกอิน</span>
+</div>
+
+<div class="card">
+  <h2>2) เริ่มย้ายข้อมูล</h2>
+  <p style="font-size:14px;color:#5A6178">
+    ระบบจะอ่านข้อมูลจาก <code>js/01-data.js</code> (RAW ทั้ง 72 คน)
+    แล้วเขียนเข้า collection <code>students</code> โดยใช้เลขบัตร ปชช. เป็น document id
+    — รันซ้ำได้ ไม่สร้างข้อมูลซ้ำ (merge)
+  </p>
+  <button id="btn-migrate" disabled>🚀 เริ่มย้ายข้อมูล</button>
+</div>
+
+<div class="card">
+  <h2>บันทึกการทำงาน</h2>
+  <div id="log">รอเริ่มงาน...</div>
+</div>
+
+<!-- ลำดับสำคัญ: data → config → service(module) -->
+<script src="../js/01-data.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="firestore-service.js"></script>
+
+<script type="module">
+const log = (m) => {
+  const el = document.getElementById('log');
+  el.textContent += '\n' + m;
+  el.scrollTop = el.scrollHeight;
+};
+
+// รอให้ window.fb พร้อม (module โหลดแบบ async)
+const waitFb = () => new Promise(res => {
+  const t = setInterval(() => { if (window.fb) { clearInterval(t); res(); } }, 50);
+});
+await waitFb();
+
+const btnLogin = document.getElementById('btn-login');
+const btnMig   = document.getElementById('btn-migrate');
+const status   = document.getElementById('auth-status');
+
+fb.onAuth(user => {
+  if (user) {
+    status.textContent = '✅ ล็อกอินแล้ว: ' + user.email;
+    btnMig.disabled = false;
+  } else {
+    status.textContent = 'ยังไม่ได้ล็อกอิน';
+    btnMig.disabled = true;
+  }
+});
+
+btnLogin.onclick = async () => {
+  try {
+    btnLogin.disabled = true;
+    await fb.signIn(
+      document.getElementById('email').value.trim(),
+      document.getElementById('password').value
+    );
+    log('✅ ล็อกอินสำเร็จ');
+  } catch (e) {
+    log('❌ ล็อกอินไม่สำเร็จ: ' + e.message);
+  } finally {
+    btnLogin.disabled = false;
+  }
+};
+
+btnMig.onclick = async () => {
+  if (typeof RAW === 'undefined' || !Array.isArray(RAW)) {
+    log('❌ ไม่พบตัวแปร RAW — ตรวจว่า ../js/01-data.js ยังอยู่');
+    return;
+  }
+  btnMig.disabled = true;
+  log(`พบข้อมูลนักเรียน ${RAW.length} คน — เริ่มอัปโหลด...`);
+  try {
+    let done = 0;
+    for (const s of RAW) {
+      await fb.saveStudent(s);
+      done++;
+      log(`  (${done}/${RAW.length}) ${s.name}`);
+    }
+    log('🎉 ย้ายข้อมูลครบทุกคนแล้ว!');
+    log('ขั้นถัดไป: เปิดแอปหลักให้โหลดจาก Firestore และลบข้อมูลใน js/01-data.js (ดู README.md ขั้นที่ 4)');
+  } catch (e) {
+    log('❌ เกิดข้อผิดพลาด: ' + e.message);
+    log('ตรวจว่า Security Rules อนุญาตให้ผู้ใช้ที่ล็อกอินเขียนได้ และ Firestore เปิดใช้งานแล้ว');
+  } finally {
+    btnMig.disabled = false;
+  }
+};
+log('พร้อมทำงาน — กรุณาล็อกอินก่อน');
+</script>
+</body>
+</html>
