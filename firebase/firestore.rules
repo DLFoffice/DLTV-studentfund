@@ -1,0 +1,64 @@
+rules_version = '2';
+
+// ============================================================
+// Security Rules — DLTV Fund (เวอร์ชัน 3: รองรับสมัครสมาชิกด้วยตนเอง)
+// ติดตั้ง: Firebase Console → Firestore Database → Rules → วางทั้งหมด → Publish
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    // ข้อมูลนักเรียน: เฉพาะผู้ล็อกอิน
+    match /students/{studentId} {
+      allow read, write: if signedIn();
+    }
+
+    // ตารางแปลง username → email (ใช้ตอนล็อกอิน/สมัคร ก่อนยืนยันตัวตน)
+    // get รายตัวได้แบบสาธารณะ (ห้าม list) | สร้างได้เฉพาะ mapping ของอีเมลตัวเอง
+    match /usernames/{username} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isAdmin()
+        || (signedIn() && request.resource.data.email == request.auth.token.email);
+      allow update, delete: if isAdmin();
+    }
+
+    // การจองลำดับนักเรียน (กันสมัครซ้ำ) — get สาธารณะเพื่อเช็คก่อนสมัคร
+    match /registered/{noKey} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // ระเบียนบัญชีผู้ใช้ (ลำดับ ชื่อ โรงเรียน username รหัสเริ่มต้น)
+    match /accounts/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if isAdmin();
+    }
+
+    // ประวัติการเข้าระบบ: ใครล็อกอินก็บันทึกได้ ดูได้เฉพาะแอดมิน แก้/ลบไม่ได้
+    match /loginLogs/{logId} {
+      allow create: if signedIn();
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // รายชื่อแอดมิน (doc id = อีเมล) — เพิ่มผ่าน Firebase Console เท่านั้น
+    match /admins/{email} {
+      allow get: if signedIn() && request.auth.token.email == email;
+      allow list, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
