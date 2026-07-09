@@ -81,10 +81,14 @@
 
   async function pushAllToCloud() {
     const students = DB.students.filter(s => s.id);
+    // โหมดนักเรียน: เขียนไปที่เอกสารตาม studentId ของบัญชีเสมอ
+    // (กันกรณีฟิลด์เลขบัตรในข้อมูลถูกแก้จนไม่ตรงกับรหัสเอกสาร → สิทธิ์จะไม่ผ่าน)
+    const docIdFor = (s) => (studentMode && window.STUDENT_MODE)
+      ? String(window.STUDENT_MODE.studentId) : String(s.id);
     for (let i = 0; i < students.length; i += 450) {
       const batch = fsdb.batch();
       students.slice(i, i + 450).forEach(s => {
-        batch.set(fsdb.collection(COL).doc(String(s.id)), cleanForCloud(s), { merge: false });
+        batch.set(fsdb.collection(COL).doc(docIdFor(s)), cleanForCloud(s), { merge: false });
       });
       await batch.commit();
     }
@@ -137,8 +141,16 @@
         await pushAllToCloud();
         if (typeof setSyncDot === 'function') setSyncDot('online');
       } catch (e) {
-        console.warn('☁️ push ไป Firestore ไม่สำเร็จ:', e.message);
-        if (typeof showStatus === 'function') showStatus('⚠️ บันทึกขึ้นคลาวด์ไม่สำเร็จ: ' + e.message, 'error');
+        console.warn('☁️ push ไป Firestore ไม่สำเร็จ:', e.code, e.message,
+          '| uid:', auth.currentUser && auth.currentUser.uid,
+          '| studentMode:', studentMode,
+          '| studentId:', window.STUDENT_MODE && window.STUDENT_MODE.studentId);
+        if (typeof showStatus === 'function') {
+          const hint = e.code === 'permission-denied'
+            ? ' — เปิดหน้า check.html เพื่อวินิจฉัยสิทธิ์ หรือตรวจว่า Publish Rules เวอร์ชันล่าสุดแล้ว'
+            : '';
+          showStatus('⚠️ บันทึกขึ้นคลาวด์ไม่สำเร็จ: ' + e.message + hint, 'error');
+        }
       } finally {
         pushPending = false;
       }
