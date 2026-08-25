@@ -6,7 +6,7 @@
 <title>ระบบดูแลนักเรียนทุนการศึกษาพระราชทานฯ DLTV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -239,7 +239,7 @@
 <div id="page-payment" class="page">
   <div class="toolbar">
     <div class="toolbar-title">การจ่ายเงินทุน ปีการศึกษา 2568</div>
-    <select id="pay-filter-term" onchange="renderPayment()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)">
+    <select id="pay-filter-term" onchange="renderPayment()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
       <option value="">ทุกภาคเรียน</option>
     </select>
   </div>
@@ -258,7 +258,7 @@
 <div id="page-academic" class="page">
   <div class="toolbar">
     <div class="toolbar-title">ผลการเรียน / GPA</div>
-    <select id="gpa-term-select" onchange="renderAcademic()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)">
+    <select id="gpa-term-select" onchange="renderAcademic()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
       <option value="">ทุกภาคเรียน</option>
     </select>
   </div>
@@ -284,18 +284,18 @@
     <div class="toolbar-title">GPA Sheet <span id="gpa-sheet-count" style="font-size:14px;font-weight:500;color:var(--text2)"></span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto">
       <select id="gps-filter-grade" onchange="renderGpaSheet()"
-        style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)">
+        style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
         <option value="">ทุกชั้น</option>
         <option value="ม.1">ม.1</option>
         <option value="ม.2">ม.2</option>
         <option value="ม.3">ม.3</option>
       </select>
       <select id="gps-filter-term" onchange="renderGpaSheet()"
-        style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)">
+        style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
         <option value="">ทุกภาคเรียน</option>
       </select>
       <input type="text" id="gps-search" placeholder="🔍 ค้นหาชื่อ / โรงเรียน..." oninput="renderGpaSheet()"
-        style="padding:7px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;min-width:200px">
+        style="padding:7px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;min-width:200px">
       <button class="btn btn-primary" onclick="openAddGpaRecord()" style="white-space:nowrap">+ เพิ่มข้อมูล GPA</button>
       <button class="btn" onclick="exportGpaSheet()" style="white-space:nowrap">📥 Export CSV</button>
     </div>
@@ -375,10 +375,10 @@
     </div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
       <input type="text" id="map-search" placeholder="🔍 ค้นหาชื่อโรงเรียน / จังหวัด / นักเรียน..." 
-        style="flex:1;min-width:220px;padding:8px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px"
+        style="flex:1;min-width:220px;padding:8px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px"
         oninput="filterMapMarkers()">
       <select id="map-filter-risk" onchange="filterMapMarkers()"
-        style="padding:8px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)">
+        style="padding:8px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
         <option value="">ความเสี่ยง (ทั้งหมด)</option>
         <option>สูงมาก</option><option>สูง</option><option>ปานกลาง</option><option>ต่ำ</option>
       </select>
@@ -405,7 +405,7 @@
   <div class="toolbar">
     <div class="toolbar-title">รายงานรายภาคเรียน</div>
     <div style="display:flex;gap:8px;align-items:center">
-      <select id="tr-term" onchange="renderTermReport()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Sarabun',sans-serif;font-size:13px;background:var(--bg4)"></select>
+      <select id="tr-term" onchange="renderTermReport()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)"></select>
       <button class="btn btn-sm" onclick="exportTermReport()">⬇️ ส่งออก CSV</button>
     </div>
   </div>
