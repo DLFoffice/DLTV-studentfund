@@ -14,6 +14,7 @@ function openStudentDetail(idx){
   const photoHtml=s.photoUrl
     ?`<img class="modal-photo-big" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" title="คลิกดูรูปเต็ม" onclick="openLightbox('${escapedPhotoUrl}','${escapedName}')" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="modal-avatar-big" style="display:none">${initials(s.name)}</div>`
     :`<div class="modal-avatar-big">${initials(s.name)}</div>`;
+  const cgHeader=CareGroup.compute(s);
   document.getElementById('student-modal-header-info').innerHTML=`
     ${photoHtml}
     <div class="modal-student-info">
@@ -22,8 +23,8 @@ function openStudentDetail(idx){
       <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${maskId(s.id)}</div>
       <div class="modal-student-badges">
         ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${g.gpa}</span>`:''}
-        ${g.riskLevel?`<span class="${riskBadge(g.riskLevel)}">${g.riskLevel}</span>`:''}
-        ${g.hasObstacle?`<span class="badge b-amber">มีอุปสรรค</span>`:''}
+        <span class="${cgHeader.badgeClass}" title="${cgHeader.note}">${cgHeader.label}</span>
+        ${cgHeader.hasSdq?`<span class="badge ${sdqGroupBadge(cgHeader.sdqGroup)}">SDQ: ${cgHeader.sdqGroup}</span>`:''}
         <span class="badge b-gray">${s.province||'-'}</span>
       </div>
     </div>`;
@@ -273,32 +274,30 @@ function renderGpaPanel(idx){
   const recs=s.semGpa||[];
   let html=`<div class="sem-records">`;
   recs.forEach((g,gi)=>{
+    // ผล SDQ ของภาคเรียนนี้ (ถ้ามี) — แสดงแทนป้าย "ความเสี่ยง" แบบเลือกเองเดิม
+    const sdqBucketTerm=s.sdq&&s.sdq[g.term];
+    const sdqResTerm=(sdqBucketTerm&&typeof window.SDQ==='object')?SDQ.compute(sdqBucketTerm):null;
+    const sdqBadgeTerm=(sdqResTerm&&sdqResTerm.complete)
+      ?`<span class="badge ${sdqGroupBadge(sdqResTerm.totalGroup)}" style="margin-left:6px" title="ผลประเมิน SDQ ภาคเรียนนี้">SDQ: ${sdqResTerm.totalGroup}</span>`
+      :'<span class="badge b-gray" style="margin-left:6px">ยังไม่ประเมิน SDQ</span>';
     html+=`<div class="sem-record">
       <div class="sem-record-header" onclick="toggleSemRecord(this)">
         <div class="sem-record-term">📅 ภาคเรียน ${g.term}</div>
         ${g.gpa>0?`<span style="font-size:15px;font-weight:700;color:${gpaColor(g.gpa)}">${g.gpa}</span>`:'<span style="color:var(--text3);font-size:12px">ยังไม่มี GPA</span>'}
-        <span class="${riskBadge(g.riskLevel)}" style="margin-left:6px">${g.riskLevel||'-'}</span>
+        ${sdqBadgeTerm}
         <div style="font-size:18px;color:var(--text3);margin-left:auto">▾</div>
       </div>
       <div class="sem-record-body">
         <div class="form-grid" style="padding:14px">
           <div class="fg"><label>ภาคเรียน</label><input value="${g.term||''}" onchange="DB.students[${idx}].semGpa[${gi}].term=this.value;debouncedSave(${idx})"></div>
-          <div class="fg"><label>GPA</label><input type="number" step="0.01" min="0" max="4" value="${g.gpa||''}" onchange="DB.students[${idx}].semGpa[${gi}].gpa=parseFloat(this.value)||0;renderGpaPanel(${idx});debouncedSave(${idx})"></div>
-          <div class="fg"><label>ระดับความเสี่ยง</label>
-            <select onchange="DB.students[${idx}].semGpa[${gi}].riskLevel=this.value;renderGpaPanel(${idx});debouncedSave(${idx})">
-              ${['สูงมาก','สูง','ปานกลาง','ต่ำ'].map(v=>`<option ${g.riskLevel===v?'selected':''}>${v}</option>`).join('')}
-            </select>
-          </div>
-          <div class="fg"><label>มีอุปสรรค</label>
-            <select onchange="DB.students[${idx}].semGpa[${gi}].hasObstacle=this.value==='true';debouncedSave(${idx})">
-              <option value="true" ${g.hasObstacle?'selected':''}>มี</option>
-              <option value="false" ${!g.hasObstacle?'selected':''}>ไม่มี</option>
-            </select>
-          </div>
-          <div class="fg"><label>ประเภทอุปสรรค</label><input value="${g.obstacleType||''}" onchange="DB.students[${idx}].semGpa[${gi}].obstacleType=this.value;debouncedSave(${idx})"></div>
+          <div class="fg"><label>GPA</label><input type="number" step="0.01" min="0" max="4" value="${g.gpa||''}" onchange="DB.students[${idx}].semGpa[${gi}].gpa=parseFloat(this.value)||0;renderGpaPanel(${idx});renderDashboard();debouncedSave(${idx})"></div>
           <div class="fg"><label>วิชาที่อ่อน</label><input value="${g.weakSubjects||''}" onchange="DB.students[${idx}].semGpa[${gi}].weakSubjects=this.value;debouncedSave(${idx})"></div>
           <div class="fg fg-full"><label>การช่วยเหลือของโรงเรียน</label><input value="${g.schoolSupport||''}" onchange="DB.students[${idx}].semGpa[${gi}].schoolSupport=this.value;debouncedSave(${idx})"></div>
-          <div class="fg"><button class="btn btn-danger btn-sm" onclick="if(confirm('ลบข้อมูลภาคเรียนนี้?')){DB.students[${idx}].semGpa.splice(${gi},1);renderGpaPanel(${idx});debouncedSave(${idx})}">🗑 ลบ</button></div>
+          <div class="fg fg-full" style="font-size:12px;color:var(--text3)">
+            ℹ️ กลุ่มการดูแล (ปกติ/เฝ้าระวัง/ต้องดูแลเป็นพิเศษ) วิเคราะห์อัตโนมัติจาก GPA ล่าสุด + ผลประเมิน SDQ ล่าสุดที่กรอกครบ
+            — ไม่ต้องเลือกเอง ถ้าต้องการปรับกลุ่ม ให้ไปกรอก/แก้แบบประเมิน SDQ ของภาคเรียนนี้แทน
+          </div>
+          <div class="fg"><button class="btn btn-danger btn-sm" onclick="if(confirm('ลบข้อมูลภาคเรียนนี้?')){DB.students[${idx}].semGpa.splice(${gi},1);renderGpaPanel(${idx});renderDashboard();debouncedSave(${idx})}">🗑 ลบ</button></div>
         </div>
       </div>
     </div>`;
@@ -340,7 +339,7 @@ function addSemGpa(idx){
   if(!DB.students[idx].semGpa) DB.students[idx].semGpa=[];
   const existingTerms=DB.students[idx].semGpa.map(g=>g.term).filter(Boolean);
   const newTerm=nextTermAfter(existingTerms);
-  DB.students[idx].semGpa.push({term:newTerm,gpa:0,riskLevel:'ปานกลาง',hasObstacle:false,obstacleType:'',weakSubjects:'',schoolSupport:''});
+  DB.students[idx].semGpa.push({term:newTerm,gpa:0,weakSubjects:'',schoolSupport:''});
   renderGpaPanel(idx);
   saveToStorage();
   saveStudentToSheet(idx);
@@ -443,7 +442,9 @@ function refreshModalHeader(idx){
   const photoHtml=s.photoUrl
     ?`<img class="modal-photo-big" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" title="คลิกดูรูปเต็ม" onclick="openLightbox('${_ep2}','${_en2}')" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="modal-avatar-big" style="display:none">${initials(s.name)}</div>`
     :`<div class="modal-avatar-big">${initials(s.name)}</div>`;
-  document.getElementById('student-modal-header-info').innerHTML=`
+  {
+    const cg=CareGroup.compute(s);
+    document.getElementById('student-modal-header-info').innerHTML=`
     ${photoHtml}
     <div class="modal-student-info">
       <div class="modal-student-name">${s.name||'-'}</div>
@@ -451,11 +452,12 @@ function refreshModalHeader(idx){
       <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${maskId(s.id)}</div>
       <div class="modal-student-badges">
         ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${g.gpa}</span>`:''}
-        ${g.riskLevel?`<span class="${riskBadge(g.riskLevel)}">${g.riskLevel}</span>`:''}
-        ${g.hasObstacle?`<span class="badge b-amber">มีอุปสรรค</span>`:''}
+        <span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span>
+        ${cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}">SDQ: ${cg.sdqGroup}</span>`:''}
         <span class="badge b-gray">${s.province||'-'}</span>
       </div>
     </div>`;
+  }
 }
 
 function switchTab(prefix,idx,btn){

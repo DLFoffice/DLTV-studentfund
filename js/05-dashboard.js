@@ -11,12 +11,14 @@ function renderDashboard(){
     if(s.semPayments) return a+s.semPayments.reduce((b,p)=>b+(p.p1||0)+(p.p2||0),0);
     return a+(s.payment.p1||0)+(s.payment.p2||0);
   },0);
-  const highRisk=DB.students.filter(s=>{const g=getLatestGpa(s);return g.riskLevel==='สูง'||g.riskLevel==='สูงมาก';}).length;
-  const withObs=DB.students.filter(s=>getLatestGpa(s).hasObstacle).length;
+  // กลุ่มการดูแล วิเคราะห์อัตโนมัติจาก GPA + ผลประเมิน SDQ (แทนการเลือกความเสี่ยง/อุปสรรคด้วยมือ)
+  const careGroups=DB.students.map(s=>({s,cg:CareGroup.compute(s)}));
+  const needCare=careGroups.filter(x=>x.cg.severity===2).length;
+  const watching=careGroups.filter(x=>x.cg.severity===1).length;
   const terms=new Set();
   DB.students.forEach(s=>s.semGpa&&s.semGpa.forEach(g=>terms.add(g.term)));
 
-  const riskPct = total>0?Math.round(highRisk/total*100):0;
+  const needCarePct = total>0?Math.round(needCare/total*100):0;
   document.getElementById('dash-metrics').innerHTML=`
     <div class="metric mv-blue">
       <div class="metric-icon">🎓</div>
@@ -38,15 +40,15 @@ function renderDashboard(){
     </div>
     <div class="metric mv-red">
       <div class="metric-icon">🔴</div>
-      <div class="metric-lbl">ความเสี่ยงสูง</div>
-      <div class="metric-val">${highRisk}</div>
-      <div class="metric-sub">${riskPct}% ของนักเรียนทั้งหมด</div>
+      <div class="metric-lbl">ต้องดูแลเป็นพิเศษ</div>
+      <div class="metric-val">${needCare}</div>
+      <div class="metric-sub">${needCarePct}% ของนักเรียนทั้งหมด · จาก GPA+SDQ</div>
     </div>
-    <div class="metric mv-red">
-      <div class="metric-icon">🚧</div>
-      <div class="metric-lbl">มีอุปสรรค</div>
-      <div class="metric-val">${withObs}</div>
-      <div class="metric-sub">คน รายงานอุปสรรค</div>
+    <div class="metric mv-amber">
+      <div class="metric-icon">🟠</div>
+      <div class="metric-lbl">กลุ่มเฝ้าระวัง</div>
+      <div class="metric-val">${watching}</div>
+      <div class="metric-sub">คน · วิเคราะห์จาก GPA+SDQ</div>
     </div>
     <div class="metric mv-green">
       <div class="metric-icon">📅</div>
@@ -72,27 +74,25 @@ function renderDashboard(){
   });
   document.getElementById('legend-gpa').innerHTML=Object.entries(gBuckets).map(([k,v],i)=>`<span class="legend-item"><span class="legend-sq" style="background:${['#9E2B2B','#D85A30','#1A5FA8','#3A6A10'][i]}"></span>${k}: ${v}</span>`).join('');
 
-  // Risk
-  const riskCount={};
-  DB.students.forEach(s=>{const r=getLatestGpa(s).riskLevel||'-';riskCount[r]=(riskCount[r]||0)+1;});
-  const rColors={'สูงมาก':'#DC143C','สูง':'#FFB4B4','ปานกลาง':'#F7AD45','ต่ำ':'#41A67E','-':'#888'};
+  // กลุ่มการดูแล (แทนกราฟ "ระดับความเสี่ยง" แบบเลือกเองเดิม)
+  const careCount={};
+  careGroups.forEach(x=>{const l=x.cg.label;careCount[l]=(careCount[l]||0)+1;});
+  const careColors={'ปกติ':'#41A67E','เฝ้าระวัง':'#F7AD45','ต้องดูแลเป็นพิเศษ':'#DC143C','รอข้อมูล':'#9CA3AF'};
+  const careOrder=['ปกติ','เฝ้าระวัง','ต้องดูแลเป็นพิเศษ','รอข้อมูล'].filter(k=>careCount[k]);
   destroyChart('chartRisk');
   charts['chartRisk']=new Chart(document.getElementById('chartRisk'),{
     type:'doughnut',
-    data:{labels:Object.keys(riskCount),datasets:[{data:Object.values(riskCount),backgroundColor:Object.keys(riskCount).map(k=>rColors[k]||'#888'),borderWidth:0}]},
+    data:{labels:careOrder,datasets:[{data:careOrder.map(k=>careCount[k]),backgroundColor:careOrder.map(k=>careColors[k]),borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
   });
-  document.getElementById('legend-risk').innerHTML=Object.entries(riskCount).map(([k,v])=>`<span class="legend-item"><span class="legend-sq" style="background:${rColors[k]||'#888'}"></span>${k}: ${v}</span>`).join('');
+  document.getElementById('legend-risk').innerHTML=careOrder.map(k=>`<span class="legend-item"><span class="legend-sq" style="background:${careColors[k]}"></span>${k}: ${careCount[k]}</span>`).join('');
 
-  // Obstacles
-  const obsTypes={};
-  DB.students.forEach(s=>{
-    s.semGpa&&s.semGpa.forEach(g=>{if(g.hasObstacle&&g.obstacleType){obsTypes[g.obstacleType]=(obsTypes[g.obstacleType]||0)+1;}});
-  });
+  // SDQ: ด้านที่พบปัญหามากที่สุด (แทนกราฟ "อุปสรรคที่พบ" แบบกรอกเองเดิม)
+  const domainStats=(window.CareGroup?CareGroup.domainProblemCounts():[]);
   destroyChart('chartObstacle');
   charts['chartObstacle']=new Chart(document.getElementById('chartObstacle'),{
     type:'bar',
-    data:{labels:Object.keys(obsTypes),datasets:[{data:Object.values(obsTypes),backgroundColor:'rgba(37,99,235,0.6)',borderColor:'rgba(37,99,235,0.5)',borderWidth:1,borderRadius:6}]},
+    data:{labels:domainStats.map(d=>d.label),datasets:[{data:domainStats.map(d=>d.count),backgroundColor:'rgba(37,99,235,0.6)',borderColor:'rgba(37,99,235,0.5)',borderWidth:1,borderRadius:6}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(15,17,35,0.04)'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:10},color:'#5A6178'}}}}
   });
 
@@ -116,21 +116,21 @@ function renderDashboard(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`GPA: ${ctx.parsed.y}`}}},scales:{y:{min:2,max:4,grid:{color:'rgba(15,17,35,0.04)'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:9},maxRotation:60,autoSkip:true,color:'#9BA3BC'}}}}
   });
 
-  // Watch list
-  const watchList=DB.students.filter(s=>{const g=getLatestGpa(s);return (g.gpa>0&&g.gpa<3.0)||g.riskLevel==='สูงมาก'||g.riskLevel==='สูง';}).sort((a,b)=>(getLatestGpa(a).gpa||0)-(getLatestGpa(b).gpa||0));
+  // Watch list — ใช้กลุ่มการดูแลที่วิเคราะห์แล้ว (เฝ้าระวังขึ้นไป)
+  const watchList=careGroups.filter(x=>x.cg.severity>=1).map(x=>x.s).sort((a,b)=>(getLatestGpa(a).gpa||0)-(getLatestGpa(b).gpa||0));
   const wc=document.getElementById('watch-count');
   if(wc) wc.textContent=watchList.length+' คน';
   const gb=document.getElementById('gpa-bar-count');
   if(gb) gb.textContent=gpaStudents.length+' คน';
-  document.getElementById('watch-tbody').innerHTML=watchList.map(s=>{const g=getLatestGpa(s);return`<tr>
+  document.getElementById('watch-tbody').innerHTML=watchList.map(s=>{const g=getLatestGpa(s);const cg=CareGroup.compute(s);return`<tr>
     <td>${s.no}</td>
     <td style="width:46px">${photoEl(s)}</td>
     <td style="font-weight:600">${s.name}<br><span style="font-size:11px;color:var(--text3)">${s.nickname}</span></td>
     <td style="font-size:12px">${s.school_m1}</td>
     <td><span class="badge b-blue">${s.province}</span></td>
     <td><span style="font-weight:700;font-size:15px;color:${gpaColor(g.gpa)}">${g.gpa||'-'}</span></td>
-    <td><span class="${riskBadge(g.riskLevel)}">${g.riskLevel||'-'}</span></td>
-    <td style="font-size:12px">${g.obstacleType||'-'}</td>
+    <td><span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span></td>
+    <td style="font-size:12px">${cg.sdqGroup?('SDQ ('+cg.sdqTerm+'): '+cg.sdqGroup):'ยังไม่ประเมิน SDQ'}</td>
   </tr>`;}).join('');
 }
 

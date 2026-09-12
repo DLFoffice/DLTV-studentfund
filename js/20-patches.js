@@ -189,14 +189,20 @@
       rows.push({ s, g, grade });
     }));
     const header = ['ลำดับ', 'ชื่อ-สกุล', 'ชั้น', 'โรงเรียน', 'จังหวัด', 'ภาคเรียน', 'GPA', 'GPA ป.6',
-      'Δ vs ป.6', 'ความเสี่ยง', 'มีอุปสรรค', 'ประเภทอุปสรรค', 'วิชาที่อ่อน', 'การช่วยเหลือโรงเรียน'];
+      'Δ vs ป.6', 'กลุ่มการดูแล (วิเคราะห์อัตโนมัติ)', 'ผล SDQ ภาคเรียนนี้', 'วิชาที่อ่อน', 'การช่วยเหลือโรงเรียน'];
     const csv = '\uFEFF' + [header.map(csvCell).join(','),
-      ...rows.map(({ s, g, grade }, i) => [
-        i + 1, s.name, grade, s.school_m1 || '', s.province || '', g.term || '', g.gpa || '',
-        s.gpa_p6 || '', (s.gpa_p6 && g.gpa) ? (g.gpa - s.gpa_p6).toFixed(2) : '',
-        g.riskLevel || '', g.hasObstacle ? 'มี' : 'ไม่มี', g.obstacleType || '',
-        g.weakSubjects || '', g.schoolSupport || ''
-      ].map(csvCell).join(','))].join('\r\n');
+      ...rows.map(({ s, g, grade }, i) => {
+        const cg = (typeof CareGroup !== 'undefined') ? CareGroup.compute(s) : null;
+        const sb = s.sdq && s.sdq[g.term];
+        let sr = null; try { sr = (sb && typeof window.SDQ !== 'undefined') ? SDQ.compute(sb) : null; } catch (e) {}
+        const sdqTxt = (sr && sr.complete) ? sr.totalGroup : 'ยังไม่ประเมิน';
+        return [
+          i + 1, s.name, grade, s.school_m1 || '', s.province || '', g.term || '', g.gpa || '',
+          s.gpa_p6 || '', (s.gpa_p6 && g.gpa) ? (g.gpa - s.gpa_p6).toFixed(2) : '',
+          cg ? cg.label : '', sdqTxt,
+          g.weakSubjects || '', g.schoolSupport || ''
+        ].map(csvCell).join(',');
+      })].join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = `GPA_Sheet_${new Date().toISOString().slice(0, 10)}.csv`;

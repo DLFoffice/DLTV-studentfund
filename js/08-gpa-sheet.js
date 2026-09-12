@@ -65,8 +65,9 @@ function renderGpaSheet(){
   const avg  = gpas.length ? (gpas.reduce((a,b)=>a+b,0)/gpas.length).toFixed(2) : '-';
   const mx   = gpas.length ? Math.max(...gpas).toFixed(2) : '-';
   const mn   = gpas.length ? Math.min(...gpas).toFixed(2) : '-';
-  const highRisk = rows.filter(r=>r.g.riskLevel==='สูง'||r.g.riskLevel==='สูงมาก').length;
-  const withObs  = rows.filter(r=>r.g.hasObstacle).length;
+  const uniqStudents = [...new Set(rows.map(r=>r.s))];
+  const needCare = uniqStudents.filter(s=>CareGroup.compute(s).severity===2).length;
+  const watching = uniqStudents.filter(s=>CareGroup.compute(s).severity===1).length;
   document.getElementById('gps-kpi').innerHTML = `
     <div class="metric mv-blue" style="--metric-accent:var(--blue)">
       <div class="metric-icon">📊</div>
@@ -94,15 +95,15 @@ function renderGpaSheet(){
     </div>
     <div class="metric mv-red">
       <div class="metric-icon">🔴</div>
-      <div class="metric-lbl">ความเสี่ยงสูง</div>
-      <div class="metric-val">${highRisk}</div>
-      <div class="metric-sub">รายการ</div>
+      <div class="metric-lbl">ต้องดูแลเป็นพิเศษ</div>
+      <div class="metric-val">${needCare}</div>
+      <div class="metric-sub">คน · จาก GPA+SDQ</div>
     </div>
     <div class="metric mv-amber">
-      <div class="metric-icon">🚧</div>
-      <div class="metric-lbl">มีอุปสรรค</div>
-      <div class="metric-val">${withObs}</div>
-      <div class="metric-sub">รายการ</div>
+      <div class="metric-icon">🟠</div>
+      <div class="metric-lbl">กลุ่มเฝ้าระวัง</div>
+      <div class="metric-val">${watching}</div>
+      <div class="metric-sub">คน · จาก GPA+SDQ</div>
     </div>`;
 
   // ── Summary Table: Grade × Term ──
@@ -221,8 +222,8 @@ function renderGpaSheet(){
       </td>
       <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${s.gpa_p6||'-'}</td>
       <td>${deltaHtml}</td>
-      <td><span class="${riskBadge(g.riskLevel)}">${g.riskLevel||'-'}</span></td>
-      <td>${g.hasObstacle?'<span class="badge b-amber">มี</span>':'<span class="badge b-teal">ไม่มี</span>'}</td>
+      <td><span class="${CareGroup.compute(s).badgeClass}" title="${CareGroup.compute(s).note}">${CareGroup.compute(s).label}</span></td>
+      <td>${(()=>{const sb=s.sdq&&s.sdq[g.term];const sr=(sb&&typeof window.SDQ==='object')?SDQ.compute(sb):null;return (sr&&sr.complete)?`<span class="badge ${sdqGroupBadge(sr.totalGroup)}">${sr.totalGroup}</span>`:'<span class="badge b-gray">ยังไม่ประเมิน</span>';})()}</td>
       <td style="font-size:12px;color:var(--red);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.weakSubjects||'-'}</td>
       <td>
         <button class="btn btn-sm" onclick="openStudentDetail(${idx});setTimeout(()=>switchTabByName('📊 ประวัติ GPA'),200)">✏️ แก้ไข</button>
@@ -253,22 +254,14 @@ function openAddGpaRecord(){
       <div class="fg"><label>GPA</label>
         <input type="number" id="add-gpa-val" step="0.01" min="0" max="4" placeholder="0.00–4.00">
       </div>
-      <div class="fg"><label>ระดับความเสี่ยง</label>
-        <select id="add-gpa-risk">
-          <option>ต่ำ</option><option selected>ปานกลาง</option><option>สูง</option><option>สูงมาก</option>
-        </select>
-      </div>
-      <div class="fg"><label>มีอุปสรรค</label>
-        <select id="add-gpa-obs"><option value="false">ไม่มี</option><option value="true">มี</option></select>
-      </div>
-      <div class="fg"><label>ประเภทอุปสรรค</label>
-        <input id="add-gpa-obs-type" placeholder="เช่น ด้านการเงิน">
-      </div>
       <div class="fg fg-full"><label>วิชาที่อ่อน</label>
         <input id="add-gpa-weak" placeholder="เช่น คณิตศาสตร์, ภาษาอังกฤษ">
       </div>
       <div class="fg fg-full"><label>การช่วยเหลือของโรงเรียน</label>
         <input id="add-gpa-support" placeholder="เช่น ติวเสริม, ครูที่ปรึกษา">
+      </div>
+      <div class="fg fg-full" style="font-size:12px;color:var(--text3)">
+        ℹ️ กลุ่มการดูแล (ปกติ/เฝ้าระวัง/ต้องดูแลเป็นพิเศษ) จะคำนวณอัตโนมัติจาก GPA นี้ + ผลประเมิน SDQ ของนักเรียนคนนี้ ไม่ต้องเลือกเอง
       </div>
     </div>`;
   // override saveSemData for this context
@@ -288,9 +281,6 @@ window.saveSemData = function(){
     const gpa  = parseFloat(document.getElementById('add-gpa-val').value)||0;
     const rec = {
       term, gpa,
-      riskLevel:    document.getElementById('add-gpa-risk').value,
-      hasObstacle:  document.getElementById('add-gpa-obs').value==='true',
-      obstacleType: document.getElementById('add-gpa-obs-type').value||'',
       weakSubjects: document.getElementById('add-gpa-weak').value||'',
       schoolSupport:document.getElementById('add-gpa-support').value||''
     };
@@ -328,10 +318,14 @@ function exportGpaSheet(){
       rows.push({s,g,grade});
     });
   });
-  const header='ลำดับ,ชื่อ-สกุล,ชั้น,โรงเรียน,จังหวัด,ภาคเรียน,GPA,GPA ป.6,Δ vs ป.6,ความเสี่ยง,มีอุปสรรค,ประเภทอุปสรรค,วิชาที่อ่อน,การช่วยเหลือโรงเรียน';
+  const header='ลำดับ,ชื่อ-สกุล,ชั้น,โรงเรียน,จังหวัด,ภาคเรียน,GPA,GPA ป.6,Δ vs ป.6,กลุ่มการดูแล (วิเคราะห์อัตโนมัติ),ผล SDQ ภาคเรียนนี้,วิชาที่อ่อน,การช่วยเหลือโรงเรียน';
   const csv=[header,...rows.map(({s,g,grade},i)=>{
     const delta=(s.gpa_p6&&g.gpa)?(g.gpa-s.gpa_p6).toFixed(2):'';
-    return [i+1,s.name,grade,s.school_m1||'',s.province||'',g.term||'',g.gpa||'',s.gpa_p6||'',delta,g.riskLevel||'',g.hasObstacle?'มี':'ไม่มี',g.obstacleType||'',g.weakSubjects||'',g.schoolSupport||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+    const cg=CareGroup.compute(s);
+    const sb=s.sdq&&s.sdq[g.term];
+    const sr=(sb&&typeof window.SDQ==='object')?SDQ.compute(sb):null;
+    const sdqTxt=(sr&&sr.complete)?sr.totalGroup:'ยังไม่ประเมิน';
+    return [i+1,s.name,grade,s.school_m1||'',s.province||'',g.term||'',g.gpa||'',s.gpa_p6||'',delta,cg.label,sdqTxt,g.weakSubjects||'',g.schoolSupport||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
   })].join('\n');
   const bom='\uFEFF';
   const blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8'});

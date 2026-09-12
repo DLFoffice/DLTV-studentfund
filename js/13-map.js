@@ -1,5 +1,5 @@
 /* ============================================================
-   13-map.js — แผนที่โรงเรียน (Leaflet) + markers ตามระดับความเสี่ยง
+   13-map.js — แผนที่โรงเรียน (Leaflet) + markers ตามกลุ่มการดูแล (วิเคราะห์จาก GPA+SDQ)
    (แยกมาจาก index.html เดิม บรรทัด 3789-3963 โดยรักษาลำดับโค้ดเดิม)
    ============================================================ */
 const SCHOOL_LATLONG = {
@@ -89,12 +89,6 @@ DB.students.forEach(s=>{
 
 let schoolMap=null;
 let allMarkers=[];
-function riskColor(r){
-  if(r==='สูงมาก') return '#9E2B2B';
-  if(r==='สูง') return '#D85A30';
-  if(r==='ปานกลาง') return '#C47F00';
-  return '#0D6B52';
-}
 function makeMarkerIcon(color){
   return L.divIcon({
     html:`<div style="width:16px;height:16px;background:${color};border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
@@ -122,10 +116,11 @@ function renderMapMarkers(filter){
     const sa=s.school_m1_addr||{};
     if(!sa.lat||!sa.lng) return;
     const g=getLatestGpa(s);
-    if(fr&&g.riskLevel!==fr) return;
+    const cg=CareGroup.compute(s);
+    if(fr&&cg.label!==fr) return;
     if(q&&!(s.name+s.school_m1+s.province+s.nickname).toLowerCase().includes(q)) return;
     shown++;
-    const color=riskColor(g.riskLevel);
+    const color=cg.dotColor;
     const gmUrl=`https://www.google.com/maps?q=${sa.lat},${sa.lng}&z=15`;
     const marker=L.marker([sa.lat,sa.lng],{icon:makeMarkerIcon(color)}).addTo(schoolMap);
     marker.bindPopup(`
@@ -136,7 +131,7 @@ function renderMapMarkers(filter){
         <hr style="margin:6px 0;border-color:#eee">
         <div style="font-size:12px;margin-bottom:2px"><b>นักเรียน:</b> ${s.name} (${s.nickname})</div>
         <div style="font-size:12px;margin-bottom:6px">GPA: <b style="color:${gpaColor(g.gpa)}">${g.gpa||'-'}</b>
-          &nbsp;|&nbsp; ความเสี่ยง: <b style="color:${color}">${g.riskLevel||'-'}</b></div>
+          &nbsp;|&nbsp; กลุ่มการดูแล: <b style="color:${color}">${cg.label}</b></div>
         <a href="${gmUrl}" target="_blank"
           style="display:inline-block;padding:4px 10px;background:#1A5FA8;color:#fff;border-radius:5px;font-size:12px;text-decoration:none;font-family:Noto Sans Thai,sans-serif">
           🗺️ เปิด Google Maps

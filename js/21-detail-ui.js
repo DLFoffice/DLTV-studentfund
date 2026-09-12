@@ -127,10 +127,13 @@
       const st1 = window.Term ? Term.state(s, 'form1', t) : 'none';
       const st2 = window.Term ? Term.state(s, 'form2', t) : 'none';
       const gv = g && g.gpa > 0 ? g.gpa : null;
+      const sdqBk = s.sdq && s.sdq[t];
+      let sdqR = null; try { sdqR = (sdqBk && typeof window.SDQ !== 'undefined') ? SDQ.compute(sdqBk) : null; } catch (e) {}
+      const sdqBadgeTerm = (sdqR && sdqR.complete) ? `<span class="badge ${sdqGroupBadge(sdqR.totalGroup)}">SDQ: ${sdqR.totalGroup}</span>` : '<span class="badge b-gray">ยังไม่ประเมิน SDQ</span>';
       return `<div class="sdx-term${t === active ? ' is-active' : ''}">
         <div class="sdx-term-head">${t}${t === active ? '<span class="sdx-now">กำลังใช้งาน</span>' : ''}</div>
         <div class="sdx-term-gpa" style="color:${gv && typeof gpaColor === 'function' ? gpaColor(gv) : 'var(--text3)'}">${gv ? gv.toFixed(2) : '—'}</div>
-        <div class="sdx-term-row">${g && g.riskLevel ? `<span class="${riskBadge(g.riskLevel)}">${g.riskLevel}</span>` : '<span class="badge b-gray">ไม่มีข้อมูล</span>'}</div>
+        <div class="sdx-term-row">${sdqBadgeTerm}</div>
         <div class="sdx-term-pay">${pay ? money(pay) + ' บาท' : 'ยังไม่เบิกจ่าย'}</div>
         <div class="sdx-term-forms">
           <span class="badge ${FORM_ST[st1][1]}">ฟอร์ม 1 · ${FORM_ST[st1][0]}</span>
@@ -145,6 +148,7 @@
     const s = DB.students[idx];
     const g = getLatestGpa(s) || {};
     if (g.gpa) g.gpa = Number(g.gpa);
+    const cgOv = (typeof CareGroup !== 'undefined') ? CareGroup.compute(s) : { badgeClass: 'badge b-gray', label: 'รอข้อมูล', note: '', hasSdq: false };
     const totalPay = (s.semPayments || []).reduce((a, p) => a + (p.p1 || 0) + (p.p2 || 0), 0);
     const delta = (s.gpa_p6 && g.gpa) ? (g.gpa - s.gpa_p6) : null;
     const missing = CHECKS.filter(c => !c.ok(s));
@@ -167,9 +171,9 @@
             : 'ยังไม่มี GPA ป.6 ให้เทียบ'}</div>
         </div>
         <div class="sdx-stat">
-          <div class="sdx-stat-lbl">ระดับความเสี่ยง</div>
-          <div class="sdx-stat-val" style="font-size:20px;padding-top:6px">${g.riskLevel ? `<span class="${riskBadge(g.riskLevel)}" style="font-size:14px">${g.riskLevel}</span>` : '<span class="badge b-gray">ยังไม่ประเมิน</span>'}</div>
-          <div class="sdx-stat-foot">${g.hasObstacle ? '⚠️ ' + (g.obstacleType || 'มีอุปสรรค') : 'ไม่พบอุปสรรคที่บันทึกไว้'}</div>
+          <div class="sdx-stat-lbl">กลุ่มการดูแล (GPA+SDQ)</div>
+          <div class="sdx-stat-val" style="font-size:20px;padding-top:6px"><span class="${cgOv.badgeClass}" style="font-size:14px" title="${cgOv.note}">${cgOv.label}</span></div>
+          <div class="sdx-stat-foot">${cgOv.hasSdq ? 'ผล SDQ ล่าสุด (' + cgOv.sdqTerm + '): ' + cgOv.sdqGroup : 'ยังไม่มีผลประเมิน SDQ ที่กรอกครบ'}</div>
         </div>
         <div class="sdx-stat">
           <div class="sdx-stat-lbl">เงินทุนสะสม</div>

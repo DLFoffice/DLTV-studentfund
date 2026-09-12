@@ -17,9 +17,9 @@ function filterStudents(){
   const fo=document.getElementById('std-filter-org').value;
   const fr=document.getElementById('std-filter-risk').value;
   return DB.students.filter(s=>{
-    const g=getLatestGpa(s);
     const m=!q||(s.name+s.nickname+s.id+s.school_m1).toLowerCase().includes(q);
-    return m&&(!fp||s.province===fp)&&(!fo||s.org===fo)&&(!fr||g.riskLevel===fr);
+    const cgLabel=fr?CareGroup.compute(s).label:'';
+    return m&&(!fp||s.province===fp)&&(!fo||s.org===fo)&&(!fr||cgLabel===fr);
   });
 }
 
@@ -35,16 +35,15 @@ function renderStudents(){
       const idx=DB.students.indexOf(s);
       const g=getLatestGpa(s);
       const gv=g.gpa||0;
-      const sdqBucket=s.sdq&&s.sdq[g.term];
-      const sdqRes=(sdqBucket&&sdqBucket.__touched&&typeof window.SDQ==='object')?window.SDQ.compute(sdqBucket):null;
-      const sdqBadge=(sdqRes&&sdqRes.complete)?`<span class="badge ${sdqGroupBadge(sdqRes.totalGroup)}" style="font-size:10px" title="ผลประเมิน SDQ รวม 4 ด้าน">SDQ: ${sdqRes.totalGroup}</span>`:'';
+      const cg=CareGroup.compute(s);
+      const sdqBadge=cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}" style="font-size:10px" title="ผลประเมิน SDQ รวม 4 ด้าน (ภาคเรียน ${cg.sdqTerm})">SDQ: ${cg.sdqGroup}</span>`:'';
       return `<div class="student-card" onclick="openStudentDetail(${idx})">
         <div class="card-photo-wrap">
           ${s.photoUrl
             ? `<img class="card-photo" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" onclick="openLightbox('${(s.photoUrl||'').replace(/'/g,"&#39;")}','${(s.name||'').replace(/'/g,"&#39;")}');event.stopPropagation()" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="card-avatar" style="display:none">${initials(s.name)}</div><div class="card-photo-zoom-icon">🔍</div>`
             : `<div class="card-avatar">${initials(s.name)}</div>`}
           <div class="card-no">#${s.no}</div>
-          ${g.riskLevel?`<div class="card-risk-badge"><span class="${riskBadge(g.riskLevel)}">${g.riskLevel}</span></div>`:''}
+          <div class="card-risk-badge"><span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span></div>
         </div>
         <div class="card-body">
           <div class="card-name">${s.name||'(ยังไม่ระบุชื่อ)'}</div>
@@ -70,6 +69,7 @@ function renderStudents(){
       const idx=DB.students.indexOf(s);
       const g=getLatestGpa(s);
       const gv=g.gpa||0;
+      const cg=CareGroup.compute(s);
       const latestTerm=s.semGpa&&s.semGpa.length>0?s.semGpa[s.semGpa.length-1].term:'';
       return`<tr>
         <td style="color:var(--text2)">${s.no}</td>
@@ -82,7 +82,7 @@ function renderStudents(){
         <td><span class="badge b-blue">${s.province}</span></td>
         <td>${gv?`<span style="font-weight:700;color:${gpaColor(gv)}">${gv}</span>`:'-'} ${latestTerm?`<div style="font-size:10px;color:var(--text3)">${latestTerm}</div>`:''}</td>
         <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${s.gpa_p6||'-'}</td>
-        <td><span class="${riskBadge(g.riskLevel)}">${g.riskLevel||'-'}</span></td>
+        <td><span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span></td>
         <td><div style="display:flex;gap:4px">
           <button class="btn btn-sm" onclick="openStudentDetail(${idx});event.stopPropagation()">ดูข้อมูล</button>
           <button class="btn btn-sm btn-danger" onclick="deleteStudent(${idx});event.stopPropagation()">ลบ</button>
@@ -107,7 +107,7 @@ function renderStudents(){
 function goPage(p){if(p<1)return;stdPage=p;renderStudents();}
 function openNewStudent(){
   const _no=DB.students.length+1;
-  const ns={_docId:'no-'+_no,no:_no,id:'',name:'',nickname:'',dob:'',phone:'',parent:'',parentPhone:'',gpa_p6:0,school_p6:'',school_m1:'',province:'',org:'',photoUrl:'',addr:{},bank:{},payment:{p1:0,p2:0,term:'1/2568',item1:'ค่าเงินบำรุงการศึกษา',item2:'ค่าใช้จ่ายในการเรียน'},gpa:{gpa:0,hasObstacle:false,obstacleType:'',riskLevel:'ปานกลาง',weakSubjects:'',schoolSupport:''},semPayments:[{term:'1/2568',p1:0,p2:0,item1:'ค่าเงินบำรุงการศึกษา',item2:'ค่าใช้จ่ายในการเรียน'}],semGpa:[{term:'1/2568',gpa:0,riskLevel:'ปานกลาง',hasObstacle:false,obstacleType:'',weakSubjects:'',schoolSupport:''}]};
+  const ns={_docId:'no-'+_no,no:_no,id:'',name:'',nickname:'',dob:'',phone:'',parent:'',parentPhone:'',gpa_p6:0,school_p6:'',school_m1:'',province:'',org:'',photoUrl:'',addr:{},bank:{},payment:{p1:0,p2:0,term:'1/2568',item1:'ค่าเงินบำรุงการศึกษา',item2:'ค่าใช้จ่ายในการเรียน'},gpa:{gpa:0,weakSubjects:'',schoolSupport:''},semPayments:[{term:'1/2568',p1:0,p2:0,item1:'ค่าเงินบำรุงการศึกษา',item2:'ค่าใช้จ่ายในการเรียน'}],semGpa:[{term:'1/2568',gpa:0,weakSubjects:'',schoolSupport:''}]};
   DB.students.push(ns);
   openStudentDetail(DB.students.length-1);
 }

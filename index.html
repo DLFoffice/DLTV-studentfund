@@ -121,15 +121,15 @@
     </div>
     <div class="chart-card">
       <div class="chart-header">
-        <div class="chart-title">ระดับความเสี่ยง</div>
-        <span class="chart-badge">ทั้งหมด</span>
+        <div class="chart-title">กลุ่มการดูแล (วิเคราะห์จาก GPA + SDQ)</div>
+        <span class="chart-badge">อัตโนมัติ</span>
       </div>
       <div style="position:relative;height:190px"><canvas id="chartRisk"></canvas></div>
       <div class="legend" id="legend-risk"></div>
     </div>
     <div class="chart-card">
       <div class="chart-header">
-        <div class="chart-title">อุปสรรคที่พบ</div>
+        <div class="chart-title">SDQ: ด้านที่พบปัญหามากที่สุด</div>
       </div>
       <div style="position:relative;height:190px"><canvas id="chartObstacle"></canvas></div>
     </div>
@@ -163,7 +163,7 @@
       <table><thead><tr>
         <th>#</th><th>รูป</th><th>ชื่อ-สกุล</th>
         <th>โรงเรียน</th><th>จังหวัด</th>
-        <th>GPA</th><th>ความเสี่ยง</th><th>อุปสรรค</th>
+        <th>GPA</th><th>กลุ่มการดูแล</th><th>ผล SDQ ล่าสุด</th>
       </tr></thead>
       <tbody id="watch-tbody"></tbody></table>
     </div>
@@ -189,8 +189,8 @@
       <option value="">สังกัด (ทั้งหมด)</option>
     </select>
     <select id="std-filter-risk" onchange="renderStudents()">
-      <option value="">ความเสี่ยง (ทั้งหมด)</option>
-      <option>สูงมาก</option><option>สูง</option><option>ปานกลาง</option><option>ต่ำ</option>
+      <option value="">กลุ่มการดูแล (ทั้งหมด)</option>
+      <option>ต้องดูแลเป็นพิเศษ</option><option>เฝ้าระวัง</option><option>ปกติ</option><option>รอข้อมูล</option>
     </select>
   </div>
   <div id="students-card-view">
@@ -199,7 +199,7 @@
   <div id="students-table-view" style="display:none">
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>#</th><th class="photo-cell">รูป</th><th>ชื่อ-สกุล</th><th>เลขบัตร</th><th>วันเกิด</th><th>โทรศัพท์</th><th>โรงเรียน ม.1</th><th>จังหวัด</th><th>GPA ม.1</th><th>GPA ป.6</th><th>ความเสี่ยง</th><th>จัดการ</th></tr></thead>
+        <thead><tr><th>#</th><th class="photo-cell">รูป</th><th>ชื่อ-สกุล</th><th>เลขบัตร</th><th>วันเกิด</th><th>โทรศัพท์</th><th>โรงเรียน ม.1</th><th>จังหวัด</th><th>GPA ม.1</th><th>GPA ป.6</th><th>กลุ่มการดูแล</th><th>จัดการ</th></tr></thead>
         <tbody id="students-tbody"></tbody>
       </table>
       <div class="tbl-footer" id="students-footer"></div>
@@ -355,8 +355,8 @@
           <th>GPA</th>
           <th>GPA ป.6</th>
           <th>Δ vs ป.6</th>
-          <th>ความเสี่ยง</th>
-          <th>อุปสรรค</th>
+          <th>กลุ่มการดูแล</th>
+          <th>ผล SDQ ภาคเรียนนี้</th>
           <th>วิชาที่อ่อน</th>
           <th>จัดการ</th>
         </tr>
@@ -379,8 +379,8 @@
         oninput="filterMapMarkers()">
       <select id="map-filter-risk" onchange="filterMapMarkers()"
         style="padding:8px 12px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
-        <option value="">ความเสี่ยง (ทั้งหมด)</option>
-        <option>สูงมาก</option><option>สูง</option><option>ปานกลาง</option><option>ต่ำ</option>
+        <option value="">กลุ่มการดูแล (ทั้งหมด)</option>
+        <option>ต้องดูแลเป็นพิเศษ</option><option>เฝ้าระวัง</option><option>ปกติ</option><option>รอข้อมูล</option>
       </select>
       <button class="btn" onclick="centerMapThailand()">🇹🇭 มุมมองทั้งประเทศ</button>
       <button id="sync-latlng-btn" class="btn btn-primary" onclick="syncLatLngFromSheet()" title="ดึง lat/lng จาก Google Sheet">🔄 ซิงค์ lat/lng จาก Sheet</button>
@@ -417,7 +417,7 @@
     <table>
       <thead><tr>
         <th>ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>จังหวัด</th>
-        <th>GPA</th><th>Δ ป.6</th><th>ความเสี่ยง</th><th>อุปสรรค</th>
+        <th>GPA</th><th>Δ ป.6</th><th>กลุ่มการดูแล</th><th>ผล SDQ ภาคเรียนนี้</th>
         <th>เงินทุน</th><th>แบบฟอร์ม 1</th><th>แบบฟอร์ม 2</th><th></th>
       </tr></thead>
       <tbody id="tr-tbody"></tbody>
@@ -547,6 +547,7 @@
 <script src="js/21-detail-ui.js"></script>
 <script src="js/22-form-calc.js"></script>
 <script src="js/23-sdq-form.js"></script>
+<script src="js/24-risk-analysis.js"></script>
 
 </body>
 </html>

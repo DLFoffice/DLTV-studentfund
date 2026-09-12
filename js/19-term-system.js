@@ -465,6 +465,13 @@
     return sum;
   }
 
+  function sdqGroupOfTerm(s, t) {
+    const b = s.sdq && s.sdq[t];
+    if (!b || typeof window.SDQ === 'undefined') return null;
+    let r; try { r = SDQ.compute(b); } catch (e) { return null; }
+    return (r && r.complete) ? r.totalGroup : null;
+  }
+
   function termReportRows(t) {
     return (DB.students || []).map(s => {
       const g = gpaOfTerm(s, t);
@@ -472,8 +479,8 @@
         s, no: s.no, name: s.name || '', school: s.school_m1 || '',
         province: s.province || '',
         gpa: g && g.gpa ? g.gpa : null,
-        risk: g ? (g.riskLevel || '') : '',
-        obstacle: g ? (g.hasObstacle ? (g.obstacleType || 'มี') : '') : '',
+        care: (typeof CareGroup !== 'undefined') ? CareGroup.compute(s) : null,
+        sdqTerm: sdqGroupOfTerm(s, t),
         pay: payOfTerm(s, t),
         p1: Math.round(formProgress(s, 'form1', t) * 100),
         p2: Math.round(formProgress(s, 'form2', t) * 100),
@@ -511,7 +518,7 @@
     const n = rows.length;
     const withGpa = rows.filter(r => r.gpa != null);
     const avg = withGpa.length ? (withGpa.reduce((a, r) => a + r.gpa, 0) / withGpa.length) : 0;
-    const highRisk = rows.filter(r => r.risk === 'สูง' || r.risk === 'สูงมาก').length;
+    const highRisk = rows.filter(r => r.care && r.care.severity === 2).length;
     const totalPay = rows.reduce((a, r) => a + r.pay, 0);
     const sub1 = rows.filter(r => r.st1 === 'submitted').length;
     const sub2 = rows.filter(r => r.st2 === 'submitted').length;
@@ -521,7 +528,7 @@
     document.getElementById('tr-metrics').innerHTML =
       metric(n, 'นักเรียนทั้งหมด') +
       metric(withGpa.length ? avg.toFixed(2) : '—', 'GPA เฉลี่ยภาคเรียนนี้', 'var(--blue)') +
-      metric(highRisk, 'ความเสี่ยงสูง/สูงมาก', highRisk ? 'var(--red)' : 'var(--text)') +
+      metric(highRisk, 'ต้องดูแลเป็นพิเศษ (GPA+SDQ)', highRisk ? 'var(--red)' : 'var(--text)') +
       metric((typeof fmt === 'function' ? fmt(totalPay) : totalPay), 'เงินทุนที่เบิกจ่าย (บาท)', 'var(--teal)') +
       metric(`${sub1}/${n}`, 'ส่งแบบฟอร์ม 1', 'var(--green)') +
       metric(`${sub2}/${n}`, 'ส่งแบบฟอร์ม 2', 'var(--green)') +
@@ -537,8 +544,8 @@
         <td><span class="badge b-blue">${r.province || '-'}</span></td>
         <td style="font-weight:700;color:${typeof gpaColor === 'function' && r.gpa ? gpaColor(r.gpa) : 'var(--text3)'}">${r.gpa != null ? r.gpa.toFixed(2) : '—'}</td>
         <td style="font-size:12px">${delta ? (delta > 0 ? '▲ ' : '▼ ') + delta : '—'}</td>
-        <td>${r.risk ? (typeof riskBadge === 'function' ? riskBadge(r.risk) : r.risk) : '—'}</td>
-        <td style="font-size:12px;color:var(--text3)">${r.obstacle || '—'}</td>
+        <td>${r.care ? `<span class="${r.care.badgeClass}" title="${r.care.note}">${r.care.label}</span>` : '—'}</td>
+        <td style="font-size:12px;color:var(--text3)">${r.sdqTerm || 'ยังไม่ประเมิน'}</td>
         <td style="font-weight:600;color:var(--teal)">${typeof fmt === 'function' ? fmt(r.pay) : r.pay}</td>
         <td>${stBadge(r.st1, r.p1)}</td>
         <td>${stBadge(r.st2, r.p2)}</td>
@@ -562,14 +569,14 @@
     const t = document.getElementById('tr-term')?.value || getActiveTerm();
     const rows = termReportRows(t);
     const head = ['ภาคเรียน', 'ลำดับ', 'ชื่อ-สกุล', 'ชั้น', 'โรงเรียน', 'จังหวัด', 'GPA', 'GPA ป.6',
-      'Δ vs ป.6', 'ความเสี่ยง', 'อุปสรรค', 'เงินทุนภาคเรียนนี้', 'ฟอร์ม1 (%)', 'สถานะฟอร์ม1',
+      'Δ vs ป.6', 'กลุ่มการดูแล (วิเคราะห์อัตโนมัติ)', 'ผล SDQ ภาคเรียนนี้', 'เงินทุนภาคเรียนนี้', 'ฟอร์ม1 (%)', 'สถานะฟอร์ม1',
       'ฟอร์ม2 (%)', 'สถานะฟอร์ม2', 'ส่งเมื่อ'];
     const esc = v => '"' + String(v ?? '').replace(/"/g, '""').replace(/^[=+\-@]/, "'$&") + '"';
     const body = rows.map(r => [
       t, r.no, r.name, (typeof gradeFromTerm === 'function' ? gradeFromTerm(t) : ''),
       r.school, r.province, r.gpa ?? '', r.s.gpa_p6 ?? '',
       (r.s.gpa_p6 && r.gpa) ? (r.gpa - r.s.gpa_p6).toFixed(2) : '',
-      r.risk, r.obstacle, r.pay, r.p1, (ST_META[r.st1] || {}).label, r.p2, (ST_META[r.st2] || {}).label,
+      r.care ? r.care.label : '', r.sdqTerm || 'ยังไม่ประเมิน', r.pay, r.p1, (ST_META[r.st1] || {}).label, r.p2, (ST_META[r.st2] || {}).label,
       r.sub ? new Date(r.sub).toLocaleString('th-TH') : ''
     ].map(esc).join(','));
     const csv = '\uFEFF' + [head.map(esc).join(','), ...body].join('\r\n');
