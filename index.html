@@ -181,14 +181,14 @@
     <button class="btn btn-primary" onclick="openNewStudent()">+ เพิ่มนักเรียน</button>
   </div>
   <div class="search-row">
-    <input type="text" id="std-search" placeholder="🔍 ค้นหาชื่อ / ชื่อเล่น / เลขบัตร..." oninput="renderStudents()">
-    <select id="std-filter-prov" onchange="renderStudents()">
+    <input type="search" id="std-search" placeholder="🔍 ค้นหาชื่อ / โรงเรียน / จังหวัด / อำเภอ..." oninput="onStudentSearch()">
+    <select id="std-filter-prov" onchange="onStudentSearch()">
       <option value="">จังหวัด (ทั้งหมด)</option>
     </select>
-    <select id="std-filter-org" onchange="renderStudents()">
+    <select id="std-filter-org" onchange="onStudentSearch()">
       <option value="">สังกัด (ทั้งหมด)</option>
     </select>
-    <select id="std-filter-risk" onchange="renderStudents()">
+    <select id="std-filter-risk" onchange="onStudentSearch()">
       <option value="">กลุ่มการดูแล (ทั้งหมด)</option>
       <option>ต้องดูแลเป็นพิเศษ</option><option>เฝ้าระวัง</option><option>ปกติ</option><option>รอข้อมูล</option>
     </select>

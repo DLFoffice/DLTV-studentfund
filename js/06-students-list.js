@@ -2,26 +2,70 @@
    06-students-list.js — รายชื่อนักเรียน: filter, ค้นหา, การ์ด/ตาราง, pagination
    (แยกมาจาก index.html เดิม บรรทัด 1791-1897 โดยรักษาลำดับโค้ดเดิม)
    ============================================================ */
+/* ---------- v19: ค้นหาแบบทนต่อการพิมพ์ภาษาไทย ----------
+   ปัญหาเดิม: ช่องค้นหาดูแค่ ชื่อ+ชื่อเล่น+เลขบัตร+โรงเรียน → พิมพ์ชื่อจังหวัดถูกแต่ไม่เจอ
+   ตอนนี้ค้นได้ทั้ง ชื่อ ชื่อเล่น ลำดับ เลขบัตร โรงเรียน จังหวัด (ทั้งจังหวัดโรงเรียนและที่อยู่บ้าน)
+   อำเภอ ตำบล สังกัด เบอร์โทร และชื่อผู้ปกครอง
+   • ไม่สนช่องว่าง/อักขระซ่อน, "จ." "จังหวัด" "อ." "อำเภอ" "ต." "ตำบล" นำหน้า
+   • ํา (นิคหิต+สระอา) = ำ, กทม = กรุงเทพ
+   • พิมพ์หลายคำคั่นด้วยเว้นวรรค = ต้องเจอทุกคำ เช่น "ขอนแก่น บ้านไผ่" */
+function stdNorm(v){
+  return String(v ?? '').normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')
+    .replace(/\u0E4D\u0E32/g,'\u0E33')          // ํ + า → ำ
+    .toLowerCase().replace(/\s+/g,'');
+}
+const STD_PREFIX_RE = /^(จังหวัด|จ\.|อำเภอ|อ\.|เขต|ตำบล|ต\.|แขวง)/;
+const STD_ALIAS = { 'กทม':'กรุงเทพ', 'กทม.':'กรุงเทพ', 'bkk':'กรุงเทพ' };
+function stdQueryTokens(q){
+  return String(q||'').split(/\s+/).map(t=>{
+    let n = stdNorm(t);
+    if(STD_ALIAS[n]) n = STD_ALIAS[n];
+    return n.replace(STD_PREFIX_RE,'');   // คำนำหน้าล้วน ๆ (เช่น "จังหวัด" แล้วเว้นวรรค) → ตัดทิ้ง
+  }).filter(Boolean);
+}
+function stdHaystack(s){
+  const a = s.addr||{}, sa = s.school_m1_addr||{};
+  return [s.no, s.name, s.nickname, s.id, s.school_m1, s.school_m3, s.school,
+    s.province, a.province, a.amphoe, a.tambon, sa.amphoe, sa.district, sa.province,
+    s.org, s.phone, s.parent, s.parentPhone]
+    .map(stdNorm).join('|');
+}
+// ค่าจังหวัดสำหรับตัวกรอง — ตัด "จ." / ช่องว่างเกินให้กลุ่มเดียวกันไม่แตกเป็นหลายตัวเลือก
+function stdProvKey(v){ return String(v ?? '').replace(/^\s*(จังหวัด|จ\.)\s*/,'').trim(); }
+
 function populateFilters(){
-  const provs=[...new Set(DB.students.map(s=>s.province).filter(Boolean))].sort();
-  const orgs=[...new Set(DB.students.map(s=>s.org).filter(Boolean))].sort();
-  const ps=document.getElementById('std-filter-prov');
-  const os=document.getElementById('std-filter-org');
-  if(ps.options.length<=1) provs.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;ps.appendChild(o);});
-  if(os.options.length<=1) orgs.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;os.appendChild(o);});
+  const fill = (sel, values) => {
+    if(!sel) return;
+    const cur = sel.value;
+    const first = sel.options[0] ? sel.options[0].outerHTML : '<option value="">ทั้งหมด</option>';
+    // สร้างใหม่ทุกครั้ง — เดิมเติมแค่ครั้งแรก ข้อมูลที่มาจากคลาวด์ทีหลังจึงไม่มีในรายการ
+    sel.innerHTML = first + values.map(v=>`<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+    if(cur && values.includes(cur)) sel.value = cur;
+  };
+  const byThai = (a,b)=>a.localeCompare(b,'th');
+  fill(document.getElementById('std-filter-prov'), [...new Set(DB.students.map(s=>stdProvKey(s.province)).filter(Boolean))].sort(byThai));
+  fill(document.getElementById('std-filter-org'),  [...new Set(DB.students.map(s=>String(s.org||'').trim()).filter(Boolean))].sort(byThai));
 }
 
 function filterStudents(){
-  const q=(document.getElementById('std-search').value||'').toLowerCase();
+  const tokens=stdQueryTokens(document.getElementById('std-search').value);
   const fp=document.getElementById('std-filter-prov').value;
   const fo=document.getElementById('std-filter-org').value;
   const fr=document.getElementById('std-filter-risk').value;
   return DB.students.filter(s=>{
-    const m=!q||(s.name+s.nickname+s.id+s.school_m1).toLowerCase().includes(q);
-    const cgLabel=fr?CareGroup.compute(s).label:'';
-    return m&&(!fp||s.province===fp)&&(!fo||s.org===fo)&&(!fr||cgLabel===fr);
+    if(tokens.length){
+      const hay=stdHaystack(s);
+      if(!tokens.every(t=>hay.includes(t))) return false;
+    }
+    if(fp && stdProvKey(s.province)!==fp) return false;
+    if(fo && String(s.org||'').trim()!==fo) return false;
+    if(fr && CareGroup.compute(s).label!==fr) return false;
+    return true;
   });
 }
+// พิมพ์ค้นหาใหม่ → กลับไปหน้าแรกของผลลัพธ์เสมอ (เดิมอาจค้างอยู่หน้า 2–3 แล้วดูเหมือนไม่เจอ)
+function onStudentSearch(){ stdPage=1; renderStudents(); }
 
 function renderStudents(){
   const filtered=filterStudents();
