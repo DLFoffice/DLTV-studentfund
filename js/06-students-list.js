@@ -31,6 +31,9 @@ function stdHaystack(s){
     s.org, s.phone, s.parent, s.parentPhone]
     .map(stdNorm).join('|');
 }
+function stdQueryGroups(q){
+  return String(q||'').split(/[,，|]/).map(stdQueryTokens).filter(g=>g.length);
+}
 // ค่าจังหวัดสำหรับตัวกรอง — ตัด "จ." / ช่องว่างเกินให้กลุ่มเดียวกันไม่แตกเป็นหลายตัวเลือก
 function stdProvKey(v){ return String(v ?? '').replace(/^\s*(จังหวัด|จ\.)\s*/,'').trim(); }
 
@@ -44,21 +47,22 @@ function populateFilters(){
     if(cur && values.includes(cur)) sel.value = cur;
   };
   const byThai = (a,b)=>a.localeCompare(b,'th');
-  fill(document.getElementById('std-filter-prov'), [...new Set(DB.students.map(s=>stdProvKey(s.province)).filter(Boolean))].sort(byThai));
+  stdProvRender();   // v20: จังหวัดเป็นตัวเลือกหลายรายการ
   fill(document.getElementById('std-filter-org'),  [...new Set(DB.students.map(s=>String(s.org||'').trim()).filter(Boolean))].sort(byThai));
 }
 
 function filterStudents(){
-  const tokens=stdQueryTokens(document.getElementById('std-search').value);
-  const fp=document.getElementById('std-filter-prov').value;
+
   const fo=document.getElementById('std-filter-org').value;
   const fr=document.getElementById('std-filter-risk').value;
+  const groups=stdQueryGroups(document.getElementById('std-search').value);
   return DB.students.filter(s=>{
-    if(tokens.length){
+    if(groups.length){
       const hay=stdHaystack(s);
-      if(!tokens.every(t=>hay.includes(t))) return false;
+      // คั่นด้วย , = "หรือ" / เว้นวรรค = "และ"  เช่น "ขอนแก่น, อุดรธานี"
+      if(!groups.some(g=>g.every(t=>hay.includes(t)))) return false;
     }
-    if(fp && stdProvKey(s.province)!==fp) return false;
+    if(stdProvSel.size && !stdProvSel.has(stdProvKey(s.province))) return false;
     if(fo && String(s.org||'').trim()!==fo) return false;
     if(fr && CareGroup.compute(s).label!==fr) return false;
     return true;
@@ -66,6 +70,110 @@ function filterStudents(){
 }
 // พิมพ์ค้นหาใหม่ → กลับไปหน้าแรกของผลลัพธ์เสมอ (เดิมอาจค้างอยู่หน้า 2–3 แล้วดูเหมือนไม่เจอ)
 function onStudentSearch(){ stdPage=1; renderStudents(); }
+
+/* ---------- v20: เลือกได้หลายจังหวัด (ค้นหาในรายการได้) ---------- */
+const stdProvSel = new Set();
+function stdProvCounts(){
+  const m = new Map();
+  DB.students.forEach(s=>{ const k=stdProvKey(s.province); if(k) m.set(k,(m.get(k)||0)+1); });
+  return [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0],'th'));
+}
+function stdProvVisible(){
+  const q = stdNorm(document.getElementById('std-prov-search')?.value||'').replace(STD_PREFIX_RE,'');
+  return stdProvCounts().filter(([p])=>!q || stdNorm(p).includes(q));
+}
+function stdProvRender(){
+  const all = stdProvCounts();
+  // ตัดจังหวัดที่ไม่มีในข้อมูลแล้วออกจากที่เลือก
+  [...stdProvSel].forEach(p=>{ if(!all.some(([k])=>k===p)) stdProvSel.delete(p); });
+  const btn = document.getElementById('std-prov-btn');
+  if(btn){
+    const n = stdProvSel.size;
+    btn.textContent = n===0 ? 'จังหวัด (ทั้งหมด)' : n===1 ? [...stdProvSel][0] : `จังหวัด (เลือก ${n})`;
+    btn.classList.toggle('on', n>0);
+  }
+  const list = document.getElementById('std-prov-list');
+  if(list){
+    const vis = stdProvVisible();
+    list.innerHTML = vis.length ? vis.map(([p,c])=>`<label class="ms-item" role="option" aria-selected="${stdProvSel.has(p)}">
+        <input type="checkbox" value="${escHtml(p)}" ${stdProvSel.has(p)?'checked':''}>
+        <span class="ms-name">${escHtml(p)}</span><span class="ms-count">${c}</span></label>`).join('')
+      : '<div class="ms-empty">ไม่พบจังหวัดที่ค้นหา</div>';
+  }
+  const chips = document.getElementById('std-prov-chips');
+  if(chips){
+    const counts = new Map(all);
+    chips.hidden = stdProvSel.size===0;
+    const total = [...stdProvSel].reduce((t,p)=>t+(counts.get(p)||0),0);
+    chips.innerHTML = stdProvSel.size ? `<span class="ms-chips-label">จังหวัดที่เลือก (${stdProvSel.size} จังหวัด · ${total} คน)</span>`
+      + [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).map(p=>`<span class="ms-chip">${escHtml(p)} <b>${counts.get(p)||0}</b><button type="button" data-ms-remove="${escHtml(p)}" aria-label="เอา ${escHtml(p)} ออก">×</button></span>`).join('')
+      + `<button type="button" class="ms-chip-clear" data-ms-remove="*">ล้างทั้งหมด</button>` : '';
+  }
+}
+function stdProvChanged(){ stdProvRender(); onStudentSearch(); }
+function stdProvOpen(open){
+  const pop=document.getElementById('std-prov-pop'), btn=document.getElementById('std-prov-btn');
+  if(!pop||!btn) return;
+  pop.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+  if(open){ const s=document.getElementById('std-prov-search'); s.value=''; stdProvRender(); setTimeout(()=>s.focus(),0); }
+}
+(function stdProvBind(){
+  const init = () => {
+    const root=document.getElementById('std-prov-ms'); if(!root || root.dataset.bound) return;
+    root.dataset.bound='1';
+    document.getElementById('std-prov-btn').addEventListener('click',()=>stdProvOpen(document.getElementById('std-prov-pop').hidden));
+    document.getElementById('std-prov-search').addEventListener('input',stdProvRender);
+    document.getElementById('std-prov-search').addEventListener('keydown',e=>{
+      if(e.key==='Escape'){ stdProvOpen(false); document.getElementById('std-prov-btn').focus(); }
+      if(e.key==='Enter'){ // Enter = เลือกจังหวัดแรกที่ตรง
+        e.preventDefault(); const v=stdProvVisible(); if(v.length){ const p=v[0][0]; stdProvSel.has(p)?stdProvSel.delete(p):stdProvSel.add(p); e.target.value=''; stdProvChanged(); }
+      }
+    });
+    document.getElementById('std-prov-list').addEventListener('change',e=>{
+      const cb=e.target.closest('input[type=checkbox]'); if(!cb) return;
+      cb.checked ? stdProvSel.add(cb.value) : stdProvSel.delete(cb.value); stdProvChanged();
+    });
+    root.querySelector('.ms-actions').addEventListener('click',e=>{
+      const a=e.target.closest('[data-ms]'); if(!a) return;
+      if(a.dataset.ms==='all') stdProvVisible().forEach(([p])=>stdProvSel.add(p)); else stdProvSel.clear();
+      stdProvChanged();
+    });
+    document.getElementById('std-prov-chips').addEventListener('click',e=>{
+      const b=e.target.closest('[data-ms-remove]'); if(!b) return;
+      const p=b.getAttribute('data-ms-remove'); p==='*'?stdProvSel.clear():stdProvSel.delete(p); stdProvChanged();
+    });
+    document.addEventListener('click',e=>{ if(!root.contains(e.target)) stdProvOpen(false); });
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+
+/* ---------- v20: ส่งออกรายชื่อตามตัวกรองปัจจุบัน (CSV เปิดด้วย Excel ได้) ----------
+   ไม่รวมเลขบัตร ปชช. / เลขบัญชีธนาคาร / ที่อยู่บ้านละเอียด (ข้อมูลอ่อนไหว) */
+function exportFilteredStudents(){
+  const rows = filterStudents().slice().sort((a,b)=>(+a.no||0)-(+b.no||0));
+  if(!rows.length){ if(typeof showStatus==='function') showStatus('ไม่มีรายชื่อตามตัวกรองนี้','info'); return; }
+  const head = ['ลำดับ','ชื่อ - นามสกุล','ชื่อเล่น','โรงเรียน','อำเภอ (โรงเรียน)','จังหวัด','สังกัด','GPA ล่าสุด','ภาคเรียน GPA','กลุ่มการดูแล','โทรศัพท์นักเรียน','ผู้ปกครอง','โทรศัพท์ผู้ปกครอง'];
+  const body = rows.map(s=>{
+    const g=getLatestGpa(s)||{}; const cg=CareGroup.compute(s);
+    return [s.no, s.name, s.nickname, s.school_m1, (s.school_m1_addr&&s.school_m1_addr.amphoe)||'', stdProvKey(s.province), s.org,
+      Number(g.gpa)>0?g.gpa:'', g.term||'', cg.label, s.phone, s.parent, s.parentPhone];
+  });
+  // กันสูตร Excel แฝง (= + - @) / เบอร์โทรขึ้นต้น 0 ให้ Excel แสดงเป็นข้อความ
+  const PHONE_COLS = [10, 12];
+  const cell = (v, i) => {
+    let t = String(v ?? '').trim();
+    if (PHONE_COLS.includes(i) && /^0\d{7,}$/.test(t.replace(/[-\s]/g, ''))) return '"=""' + t + '"""';
+    if (/^[=+\-@]/.test(t)) t = "'" + t;
+    return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  const csv = '\uFEFF' + [head, ...body].map(r => r.map(cell).join(',')).join('\r\n');
+  const provPart = stdProvSel.size ? '-' + [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).slice(0,3).join('-') + (stdProvSel.size>3?`-และอีก${stdProvSel.size-3}`:'') : '';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`รายชื่อนักเรียนทุน${provPart}-${rows.length}คน.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+  if(typeof showStatus==='function') showStatus(`📥 ส่งออก ${rows.length} รายชื่อแล้ว`,'success');
+}
 
 function renderStudents(){
   const filtered=filterStudents();

@@ -182,9 +182,17 @@
   </div>
   <div class="search-row">
     <input type="search" id="std-search" placeholder="🔍 ค้นหาชื่อ / โรงเรียน / จังหวัด / อำเภอ..." oninput="onStudentSearch()">
-    <select id="std-filter-prov" onchange="onStudentSearch()">
-      <option value="">จังหวัด (ทั้งหมด)</option>
-    </select>
+    <div class="ms" id="std-prov-ms">
+      <button type="button" class="ms-btn" id="std-prov-btn" aria-haspopup="listbox" aria-expanded="false">จังหวัด (ทั้งหมด)</button>
+      <div class="ms-pop" id="std-prov-pop" hidden>
+        <input type="search" class="ms-search" id="std-prov-search" placeholder="พิมพ์ชื่อจังหวัด..." autocomplete="off">
+        <div class="ms-actions">
+          <button type="button" data-ms="all">เลือกทั้งหมดที่แสดง</button>
+          <button type="button" data-ms="clear">ล้างที่เลือก</button>
+        </div>
+        <div class="ms-list" id="std-prov-list" role="listbox" aria-multiselectable="true" aria-label="เลือกจังหวัด"></div>
+      </div>
+    </div>
     <select id="std-filter-org" onchange="onStudentSearch()">
       <option value="">สังกัด (ทั้งหมด)</option>
     </select>
@@ -192,7 +200,9 @@
       <option value="">กลุ่มการดูแล (ทั้งหมด)</option>
       <option>ต้องดูแลเป็นพิเศษ</option><option>เฝ้าระวัง</option><option>ปกติ</option><option>รอข้อมูล</option>
     </select>
+    <button type="button" class="btn" id="std-export-btn" onclick="exportFilteredStudents()" title="ส่งออกรายชื่อตามตัวกรองปัจจุบันเป็นไฟล์ CSV (เปิดด้วย Excel ได้)" style="white-space:nowrap">📥 ส่งออกรายชื่อ (CSV)</button>
   </div>
+  <div class="ms-chips" id="std-prov-chips" hidden></div>
   <div id="students-card-view">
     <div class="card-grid" id="students-card-grid"></div>
   </div>
