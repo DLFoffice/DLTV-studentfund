@@ -31,7 +31,22 @@ function compressDataUrl(dataUrl, maxWidth=300) {
   });
 }
 
+// v15: โหมด Firebase ไม่เก็บข้อมูลนักเรียน (เลขบัตร/บัญชีธนาคาร/ที่อยู่) ไว้ใน localStorage
+// — Firestore คือแหล่งข้อมูลจริง และเครื่องส่วนกลางของโรงเรียนต้องไม่มีข้อมูลค้าง
+// (ตรวจจากค่า config เดียวกับที่ INIT ใน 12-ui-misc.js ใช้ — firebase-config.js โหลดก่อนไฟล์นี้)
+window.FB_NO_LOCAL_STUDENT_CACHE = !!(window.FIREBASE_CONFIG
+  && window.FIREBASE_CONFIG.projectId
+  && window.FIREBASE_CONFIG.projectId !== 'your-project-id'
+  && String(window.FIREBASE_CONFIG.apiKey).indexOf('ใส่ค่า') === -1);
+function clearLocalStudentCache() {
+  try { localStorage.removeItem(STORAGE_KEY_DATA); } catch (e) {}
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+}
+
+if (window.FB_NO_LOCAL_STUDENT_CACHE) clearLocalStudentCache();   // ล้างข้อมูลค้างจากเวอร์ชันก่อน
+
 async function saveToStorage() {
+  if (window.FB_NO_LOCAL_STUDENT_CACHE) { clearLocalStudentCache(); return; }
   try {
     // ---- 1. บันทึกข้อมูลนักเรียนทั้งหมด (ไม่รวมรูป base64 เพื่อประหยัดพื้นที่) ----
     const studentsToSave = DB.students.map(s => ({
@@ -73,6 +88,7 @@ async function saveToStorage() {
 }
 
 function loadFromStorage() {
+  if (window.FB_NO_LOCAL_STUDENT_CACHE) { clearLocalStudentCache(); return; }
   try {
     // ---- 1. โหลดข้อมูลนักเรียนทั้งหมดจาก storage (ถ้ามี) ----
     const rawData = localStorage.getItem(STORAGE_KEY_DATA);
@@ -84,6 +100,7 @@ function loadFromStorage() {
         const rawMap = {};
         RAW.forEach(r => { rawMap[r.id] = r; });
         DB.students = savedStudents.map(s => {
+          if (typeof sanitizeStudent === 'function') sanitizeStudent(s);   // v15: กัน XSS จาก cache
           if (!s.semPayments) s.semPayments = [];
           // migrate mentor & behavior fields
           if (!s.mentor) s.mentor = { firstName: '', lastName: '', phone: '', position: '' };
@@ -123,7 +140,7 @@ function loadFromStorage() {
       const photos = JSON.parse(rawPhotos);
       DB.students.forEach(s => {
         const key = s.id || s.no;
-        if (photos[key]) s.photoUrl = photos[key];
+        if (photos[key]) s.photoUrl = sanitizeUrlValue(photos[key]);   // v15
       });
     }
   } catch(e) {
@@ -146,7 +163,7 @@ function loadPhotosFromStorage() {
       // ใช้รูป local ก็ต่อเมื่อ (1) Sheet ไม่มีรูป หรือ (2) รูป local เป็นภาพอัปโหลด base64
       // ในกรณีอื่นให้ใช้ URL รูปจาก Sheet เป็นหลัก เพื่อให้รูปที่แก้ใน Sheet ขึ้นในทุกเครื่อง
       if (!s.photoUrl || (typeof local === 'string' && local.startsWith('data:'))) {
-        s.photoUrl = local;
+        s.photoUrl = sanitizeUrlValue(local);   // v15
       }
     });
   } catch(e) {

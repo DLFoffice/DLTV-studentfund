@@ -5,6 +5,11 @@
 let ftPage = 1;
 const FT_PER_PAGE = 15;
 function ftOverallStatus(student){
+  // v17: นับครบ 3 งาน (แบบฟอร์ม 1, 2 และ SDQ) ให้ตรงกับหน้า "งานที่ต้องกรอก"
+  if (window.Worklist && window.Term) {
+    const g = Worklist.summary(student, Term.active()).group;
+    return g === 'done' ? 'done' : g === 'doing' ? 'partial' : 'none';
+  }
   const {done1, done2, started1, started2} = sfFormStatus(student);
   if(done1 && done2) return 'done';                 // ครบทั้ง 2 แบบฟอร์ม
   if(done1 || done2 || started1 || started2) return 'partial';  // เริ่มกรอก/ครบบางแบบฟอร์ม
@@ -37,7 +42,7 @@ function renderFormTrack(){
   document.getElementById('ft-metrics').innerHTML = `
     <div class="metric mv-blue">
       <div class="metric-icon">🏫</div>
-      <div class="metric-lbl">โรงเรียนทั้งหมด</div>
+      <div class="metric-lbl">นักเรียนทั้งหมด</div>
       <div class="metric-val">${DB.students.length}</div>
       <div class="metric-sub">คน ในระบบ</div>
     </div>
@@ -45,13 +50,13 @@ function renderFormTrack(){
       <div class="metric-icon">✅</div>
       <div class="metric-lbl">กรอกครบแล้ว</div>
       <div class="metric-val">${doneCount}</div>
-      <div class="metric-sub">แบบฟอร์ม 1 และ 2</div>
+      <div class="metric-sub">แบบฟอร์ม 1, 2 และ SDQ</div>
     </div>
     <div class="metric mv-amber">
       <div class="metric-icon">🟠</div>
       <div class="metric-lbl">กรอกบางส่วน</div>
       <div class="metric-val">${partialCount}</div>
-      <div class="metric-sub">กรอกแล้ว 1 แบบฟอร์ม</div>
+      <div class="metric-sub">ทำแล้วบางงาน</div>
     </div>
     <div class="metric mv-red">
       <div class="metric-icon">🔴</div>
@@ -79,7 +84,7 @@ function renderFormTrack(){
       <td class="photo-cell">${photoEl(s)}</td>
       <td><div style="font-weight:600">${s.name||'(ไม่ระบุชื่อ)'}</div>${s.nickname?`<div style="font-size:11px;color:var(--text3)">${s.nickname}</div>`:''}</td>
       <td style="font-size:12px">${s.school_m1||'-'}</td>
-      <td><span class="badge ${meta.cls}">${meta.label}</span>${termLbl?`<div style="font-size:10px;color:var(--text3);margin-top:3px">📅 ${termLbl}</div>`:''}${previewLinks}</td>
+      <td><span class="badge ${meta.cls}">${meta.label}</span>${ftTaskTags(s)}${termLbl?`<div style="font-size:10px;color:var(--text3);margin-top:3px">📅 ${termLbl}</div>`:''}${previewLinks}</td>
       <td><button class="btn btn-sm" onclick="ftOpenStudentForm(${idx})">📝 เปิดฟอร์ม</button></td>
     </tr>`;
   }).join('');
@@ -99,6 +104,14 @@ function renderFormTrack(){
     h+=`<button class="page-btn" onclick="ftGoPage(${ftPage+1})" ${ftPage===pages?'disabled':''}>→</button>`;
   }
   pag.innerHTML = h;
+}
+// v17: ป้ายย่อยของ 3 งาน (ฟอร์ม 1 / ฟอร์ม 2 / SDQ) ในคอลัมน์สถานะ
+function ftTaskTags(s){
+  if(!window.Worklist || !window.Term) return '';
+  const cls = st => st==='done'||st==='submitted' ? 'b-green' : st==='partial' ? 'b-amber' : 'b-gray';
+  const short = {form1:'ฟอร์ม 1', form2:'ฟอร์ม 2', sdq:'SDQ'};
+  return '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">' + Worklist.summary(s, Term.active()).tasks
+    .map(t=>`<span class="badge ${cls(t.state)}" style="font-size:10px" title="${escHtml(t.title+': '+t.text)}">${short[t.key]}</span>`).join('') + '</div>';
 }
 function ftGoPage(p){ if(p<1) return; ftPage=p; renderFormTrack(); }
 function ftOpenStudentForm(idx){
@@ -956,12 +969,16 @@ async function sfSendToSheet(btn){
   if(btn){ btn.textContent='⏳ กำลังส่ง...'; btn.disabled=true; }
   try{
     const fields = sfFlattenFormForSheet(sfState.formKey, student);
+    // v15: ปิดบังเลขบัตร/เลขบัญชีในข้อมูลที่ส่งไป Sheet (ตั้งค่าได้ที่ SHEET_SEND_SENSITIVE ใน 03-utils.js)
+    if (typeof SHEET_SEND_SENSITIVE !== 'undefined' && !SHEET_SEND_SENSITIVE) {
+      fields.forEach(r => { if (isSensitiveLabel(r.label)) r.value = maskTail(r.value); });
+    }
     const formLabel = sfState.formKey==='form1' ? 'แบบฟอร์มที่ 1 - ข้อมูลรายบุคคล' : 'แบบฟอร์มที่ 2 - ผลการเรียน ความประพฤติ การใช้จ่าย';
     const payload = {
       action: 'saveScholarshipForm',
       formType: sfState.formKey,
       formLabel: formLabel,
-      studentId: student.id || '',
+      studentId: (typeof SHEET_SEND_SENSITIVE !== 'undefined' && !SHEET_SEND_SENSITIVE) ? maskTail(student.id) : (student.id || ''),
       studentNo: student.no || '',
       studentName: student.name || '',
       school: student.school_m1 || '',

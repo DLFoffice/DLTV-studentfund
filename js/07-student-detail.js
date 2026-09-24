@@ -9,23 +9,19 @@ function openStudentDetail(idx){
   const g=getLatestGpa(s);
 
   // Header with large photo
-  const escapedPhotoUrl = (s.photoUrl||'').replace(/'/g,"&#39;");
-  const escapedName = (s.name||'').replace(/'/g,"&#39;");
-  const photoHtml=s.photoUrl
-    ?`<img class="modal-photo-big" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" title="คลิกดูรูปเต็ม" onclick="openLightbox('${escapedPhotoUrl}','${escapedName}')" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="modal-avatar-big" style="display:none">${initials(s.name)}</div>`
-    :`<div class="modal-avatar-big">${initials(s.name)}</div>`;
+  const photoHtml=modalPhotoHtml(s);   // v15: escape + ตัวเปิดรูปแบบ data-lb-url
   const cgHeader=CareGroup.compute(s);
   document.getElementById('student-modal-header-info').innerHTML=`
     ${photoHtml}
     <div class="modal-student-info">
-      <div class="modal-student-name">${s.name||'-'}</div>
-      <div class="modal-student-sub">ชื่อเล่น: ${s.nickname||'-'} &bull; ลำดับที่ ${s.no}</div>
-      <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${maskId(s.id)}</div>
+      <div class="modal-student-name">${escHtml(s.name||'-')}</div>
+      <div class="modal-student-sub">ชื่อเล่น: ${escHtml(s.nickname||'-')} &bull; ลำดับที่ ${escHtml(s.no)}</div>
+      <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${escHtml(maskId(s.id))}</div>
       <div class="modal-student-badges">
-        ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${g.gpa}</span>`:''}
-        <span class="${cgHeader.badgeClass}" title="${cgHeader.note}">${cgHeader.label}</span>
-        ${cgHeader.hasSdq?`<span class="badge ${sdqGroupBadge(cgHeader.sdqGroup)}">SDQ: ${cgHeader.sdqGroup}</span>`:''}
-        <span class="badge b-gray">${s.province||'-'}</span>
+        ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${escHtml(g.gpa)}</span>`:''}
+        <span class="${escHtml(cgHeader.badgeClass)}" title="${escHtml(cgHeader.note)}">${escHtml(cgHeader.label)}</span>
+        ${cgHeader.hasSdq?`<span class="badge ${sdqGroupBadge(cgHeader.sdqGroup)}">SDQ: ${escHtml(cgHeader.sdqGroup)}</span>`:''}
+        <span class="badge b-gray">${escHtml(s.province||'-')}</span>
       </div>
     </div>`;
 
@@ -437,24 +433,20 @@ function renderSchoolPanel(idx){
 function refreshModalHeader(idx){
   const s=DB.students[idx];
   const g=getLatestGpa(s);
-  const _ep2=(s.photoUrl||'').replace(/'/g,"&#39;");
-  const _en2=(s.name||'').replace(/'/g,"&#39;");
-  const photoHtml=s.photoUrl
-    ?`<img class="modal-photo-big" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" title="คลิกดูรูปเต็ม" onclick="openLightbox('${_ep2}','${_en2}')" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="modal-avatar-big" style="display:none">${initials(s.name)}</div>`
-    :`<div class="modal-avatar-big">${initials(s.name)}</div>`;
+  const photoHtml=modalPhotoHtml(s);
   {
     const cg=CareGroup.compute(s);
     document.getElementById('student-modal-header-info').innerHTML=`
     ${photoHtml}
     <div class="modal-student-info">
-      <div class="modal-student-name">${s.name||'-'}</div>
-      <div class="modal-student-sub">ชื่อเล่น: ${s.nickname||'-'} &bull; ลำดับที่ ${s.no}</div>
-      <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${maskId(s.id)}</div>
+      <div class="modal-student-name">${escHtml(s.name||'-')}</div>
+      <div class="modal-student-sub">ชื่อเล่น: ${escHtml(s.nickname||'-')} &bull; ลำดับที่ ${escHtml(s.no)}</div>
+      <div class="modal-student-sub" style="font-family:'Noto Sans Thai',monospace;font-size:12px">${escHtml(maskId(s.id))}</div>
       <div class="modal-student-badges">
-        ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${g.gpa}</span>`:''}
-        <span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span>
-        ${cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}">SDQ: ${cg.sdqGroup}</span>`:''}
-        <span class="badge b-gray">${s.province||'-'}</span>
+        ${g.gpa>0?`<span class="badge b-blue" style="font-size:12px">GPA ${escHtml(g.gpa)}</span>`:''}
+        <span class="${escHtml(cg.badgeClass)}" title="${escHtml(cg.note)}">${escHtml(cg.label)}</span>
+        ${cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}">SDQ: ${escHtml(cg.sdqGroup)}</span>`:''}
+        <span class="badge b-gray">${escHtml(s.province||'-')}</span>
       </div>
     </div>`;
   }
@@ -600,3 +592,12 @@ function switchTabByName(name){
 
 // ============ GPA SHEET ============
 // กำหนดชั้นเรียนจาก ภาคเรียน (term เช่น 1/2568 → ม.1, 2/2568 → ม.1, 1/2569 → ม.2 ...)
+
+/* v15: รูปใหญ่ในหัว modal — escape ทุกค่า และเปิดรูปขยายผ่าน data-lb-url (ไม่ใช้ onclick ต่อสตริง) */
+function modalPhotoHtml(s){
+  const src = safeUrl(s.photoUrl ? fixDriveUrl(s.photoUrl) : '');
+  const ini = escHtml(initials(s.name||''));
+  return src
+    ? `<img class="modal-photo-big" src="${escHtml(src)}" alt="${escHtml(s.name)}" title="คลิกดูรูปเต็ม" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="modal-avatar-big" style="display:none">${ini}</div>`
+    : `<div class="modal-avatar-big">${ini}</div>`;
+}

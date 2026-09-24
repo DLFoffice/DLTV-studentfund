@@ -18,6 +18,9 @@ function sfSplitName(full){
   const t = String(full||'').replace(/เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.|นางสาว|นาย|นาง/g,'').trim().split(/\s+/);
   return { first: t[0]||'', last: t.slice(1).join(' ') };
 }
+// v16: ปีการศึกษา/ภาคเรียนในแบบฟอร์มอิงภาคเรียนที่เปิดใช้งาน (เดิมตายตัวเป็น 2568)
+function sfActiveYear(){ try{ const p = window.Term && Term.parse(Term.active()); if(p) return String(p.year); }catch(e){} return '2568'; }
+function sfActiveTermOr(s){ try{ if(window.Term && Term.active) return Term.active(); }catch(e){} return sfLatestTerm(s); }
 function sfLatestTerm(s){ const g = s.semGpa||[]; return g.length ? (g[g.length-1].term||'') : ''; }
 function sfSumPayments(s){
   let t = 0;
@@ -40,7 +43,7 @@ const SF_FORM1 = [
     { id:'fax', type:'text', label:'โทรสาร' },
     { id:'email', type:'text', label:'อีเมล' },
     { id:'fund_year', type:'text', label:'รับทุนปีที่' },
-    { id:'academic_year', type:'text', label:'ปีการศึกษา', from:()=>'2568' },
+    { id:'academic_year', type:'text', label:'ปีการศึกษา', from:()=>sfActiveYear() },
   ]},
   { id:'personal', title:'ข้อมูลส่วนตัวนักเรียน', short:'ข้อมูลส่วนตัว', fields:[
     { id:'full_name', type:'text', label:'ชื่อ - นามสกุล ผู้รับทุนการศึกษา', full:true, from:s=>s.name },
@@ -207,8 +210,8 @@ const SF_FORM1 = [
 
 const SF_FORM2 = [
   { id:'general', title:'ข้อมูลทั่วไป', short:'ข้อมูลทั่วไป', fields:[
-    { id:'semester', type:'text', label:'ภาคเรียนที่', from:s=>sfLatestTerm(s) },
-    { id:'academic_year', type:'text', label:'ปีการศึกษา', from:()=>'2568' },
+    { id:'semester', type:'text', label:'ภาคเรียนที่', from:s=>sfActiveTermOr(s) },
+    { id:'academic_year', type:'text', label:'ปีการศึกษา', from:()=>sfActiveYear() },
     { id:'prefix', type:'radio', label:'คำนำหน้า', options:['เด็กชาย','เด็กหญิง','นาย','นางสาว'] },
     { id:'first_name', type:'text', label:'ชื่อ', from:s=>sfSplitName(s.name).first }, { id:'last_name', type:'text', label:'นามสกุล', from:s=>sfSplitName(s.name).last },
     { id:'nickname', type:'text', label:'ชื่อเล่น', from:s=>s.nickname },
@@ -274,7 +277,7 @@ const SF_FORM2 = [
     { id:'teacher_position', type:'text', label:'ตำแหน่ง', from:s=>(s.mentor&&s.mentor.position)||'' },
     { id:'teacher_phone', optional:true, type:'text', label:'โทรศัพท์', from:s=>(s.mentor&&s.mentor.phone)||'' },
     { id:'teacher_sign_date', type:'date', label:'วันที่ลงนามครู' },
-    { id:'director_name', type:'text', label:'ชื่อผู้อำนวยการสถานศึกษา', from:s=>s.directorM1||s.directorM_1||'' },
+    { id:'director_name', type:'text', label:'ชื่อผู้อำนวยการสถานศึกษา', from:s=>(s.school_m1_addr&&s.school_m1_addr.directorM1)||s.directorM1||s.directorM_1||'' },
     { id:'director_sign_date', type:'date', label:'วันที่ลงนามผู้อำนวยการ' },
   ]},
 ];

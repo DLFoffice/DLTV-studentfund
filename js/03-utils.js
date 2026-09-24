@@ -4,6 +4,112 @@
    ============================================================ */
 const fmt=n=>Number(n||0).toLocaleString('th-TH');
 
+/* ============================================================
+   🛡️ ความปลอดภัยของการแสดงผล (เพิ่มใน v15)
+   ------------------------------------------------------------
+   ปัญหาเดิม: ข้อมูลนักเรียนถูกนำไปต่อเป็น HTML แล้วใส่ innerHTML ตรง ๆ
+   กว่า 60 จุด — บัญชีนักเรียนแก้เอกสารตัวเองได้ จึงฝังสคริปต์ลงใน
+   ชื่อเล่น/โรงเรียน/URL รูป แล้วสคริปต์จะไปรันในเบราว์เซอร์ของครู/แอดมิน
+
+   แก้ 2 ชั้น:
+   1) escHtml() / lbAttrs() — escape ตอนสร้าง HTML (ใช้ในจุดหลักที่ครูเห็น)
+   2) sanitizeStudent() — ล้างอักขระอันตรายตั้งแต่ข้อมูล "เข้ามา" ในแอป
+      (จากคลาวด์ / Sheet / localStorage) ครอบคลุมทุกจุดที่ยังไม่ได้ escape
+   ============================================================ */
+
+/** escape ข้อความสำหรับใส่ใน HTML (ทั้งเนื้อหาและค่า attribute ที่มีเครื่องหมายคำพูด) */
+function escHtml(v){
+  return String(v ?? '').replace(/[&<>"'`]/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+}
+
+/** อนุญาตเฉพาะ URL รูปที่ปลอดภัย (https หรือ data:image) — อย่างอื่นคืนค่าว่าง */
+function safeUrl(u){
+  const s = String(u ?? '').trim();
+  if (/^https:\/\//i.test(s)) return s;
+  if (/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(s)) return s;
+  return '';
+}
+
+/** attribute สำหรับเปิดรูปขยาย — ใช้แทน onclick="openLightbox('...')" ที่ escape ไม่ได้จริง
+    (การแทน ' ด้วย &#39; ไม่ช่วย เพราะเบราว์เซอร์ถอดกลับเป็น ' ก่อนรันโค้ดใน onclick) */
+function lbAttrs(url, name){
+  return `data-lb-url="${escHtml(safeUrl(url))}" data-lb-name="${escHtml(name)}"`;
+}
+// ตัวรับคลิกกลางสำหรับ data-lb-url (capture phase → หยุดไม่ให้คลิกทะลุไปเปิดการ์ดนักเรียน)
+document.addEventListener('click', e => {
+  const el = e.target && e.target.closest && e.target.closest('[data-lb-url]');
+  if (!el) return;
+  e.stopPropagation(); e.preventDefault();
+  const url = el.getAttribute('data-lb-url');
+  if (url && typeof openLightbox === 'function') openLightbox(url, el.getAttribute('data-lb-name') || '');
+}, true);
+
+/* ล้างอักขระที่ใช้เจาะ HTML/JS ออกจากทุกข้อความในระเบียน (ลงลึกทุกชั้น)
+   แทนด้วยอักขระหน้าตาใกล้เคียงที่ไม่มีความหมายพิเศษใน HTML:
+     <  →  ＜      >  →  ＞      "  →  ”      '  →  ’      `  →  ‘      \  →  ＼
+     &# / &name;  →  ＆...   (กันการซ่อนเครื่องหมายคำพูดในรูป entity เช่น &#39;)
+   ฟิลด์ที่เป็น URL (photoUrl ฯลฯ) ใช้กฎของ URL แทน เพื่อไม่ให้ลิงก์ Google Drive พัง
+   ทำซ้ำกี่ครั้งผลก็เท่าเดิม (idempotent) จึงไม่ทำให้ระบบ sync เห็นว่าข้อมูลเปลี่ยนวนไปมา */
+const _URL_KEY_RE = /(url|photo|link|image|img)$/i;
+function sanitizeText(v){
+  return String(v)
+    .replace(/&(?=#?[A-Za-z0-9]+;)/g, '＆')
+    .replace(/</g, '＜').replace(/>/g, '＞')
+    .replace(/"/g, '”').replace(/'/g, '’')
+    .replace(/`/g, '‘').replace(/\\/g, '＼');
+}
+function sanitizeUrlValue(v){
+  const s = String(v).trim();
+  if (s === '') return '';
+  if (/^data:image\//i.test(s)) return safeUrl(s);
+  if (!/^https?:\/\//i.test(s)) return '';          // javascript:, vbscript: ฯลฯ → ทิ้ง
+  return s.replace(/["'<>`\\\s]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'))
+          .replace(/&(?=#?[A-Za-z0-9]+;)/g, '%26');
+}
+function sanitizeDeep(v, key){
+  if (typeof v === 'string') return _URL_KEY_RE.test(key || '') ? sanitizeUrlValue(v) : sanitizeText(v);
+  if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = sanitizeDeep(v[i], key); return v; }
+  if (v && typeof v === 'object') {
+    // ชื่อ key ก็ถูกนำไปแสดงได้ในบางหน้า (เช่น ตารางใน form) — ล้าง key ที่มีอักขระอันตรายด้วย
+    Object.keys(v).forEach(k => {
+      const val = sanitizeDeep(v[k], k);
+      const nk = /[<>"'`&\\]/.test(k) ? sanitizeText(k) : k;
+      if (nk !== k) delete v[k];
+      v[nk] = val;
+    });
+    return v;
+  }
+  return v;
+}
+/** ใช้กับระเบียนนักเรียน 1 คน — แก้ในที่ (in-place) และคืนตัวเดิม */
+function sanitizeStudent(s){
+  if (!s || typeof s !== 'object') return s;
+  try { sanitizeDeep(s, ''); } catch (e) { console.warn('sanitizeStudent:', e); }
+  return s;
+}
+
+/* ============================================================
+   🔒 ข้อมูลอ่อนไหวที่ส่งไป Google Sheet (เพิ่มใน v15)
+   Apps Script Web App ที่ตั้งเป็น "Anyone" ไม่มีการยืนยันตัวตน —
+   ค่าเริ่มต้นจึง "ปิดบัง" เลขบัตร ปชช. และเลขบัญชีธนาคาร (เหลือ 4 หลักท้าย)
+   ในข้อมูล "แบบฟอร์มทุน" ที่ส่งไป Sheet (sfSendToSheet)
+   ส่วนการ mirror ทั้งระเบียนไป Sheet ถูกปิดในโหมด Firebase (ดู 18-firebase-bridge.js)
+   ถ้า Apps Script ตรวจ token แล้วและจำเป็นต้องใช้ข้อมูลเต็ม ค่อยเปลี่ยนเป็น true
+   ============================================================ */
+const SHEET_SEND_SENSITIVE = false;
+// โหมด Firebase: ไม่ mirror "ทั้งระเบียน" (เลขบัตร/บัญชีธนาคาร/ที่อยู่) ไป Sheet อีก
+// (saveStudentToSheet / saveAllToSheet / deleteStudentFromSheet) — เปลี่ยนเป็น true ถ้าจำเป็นจริง
+const SHEET_MIRROR_IN_FIREBASE_MODE = false;
+function maskTail(v){
+  const s = String(v ?? '');
+  const digits = s.replace(/\D/g, '');
+  if (!digits) return s ? '•••' : '';
+  return '•'.repeat(Math.max(0, digits.length - 4)) + digits.slice(-4);
+}
+const _SENSITIVE_LABEL_RE = /(เลขบัตร|เลขประจำตัวประชาชน|บัตรประชาชน|เลขที่บัญชี|เลขบัญชี)/;
+function isSensitiveLabel(label){ return _SENSITIVE_LABEL_RE.test(String(label || '')); }
+
 // จัดรูปแบบวันที่ให้เป็น dd/mm/yyyy (พ.ศ.) ไม่ว่าค่าจะมาแบบ ISO, Date, หรือ dd/mm/yyyy
 function fmtThaiDate(v){
   if(v===null||v===undefined||v==='') return '';
@@ -155,13 +261,11 @@ function fixDriveUrl(url) {
 }
 
 function photoEl(s, cls='tbl-photo', fallbackCls='tbl-avatar'){
-  if(s.photoUrl) {
-    const src = fixDriveUrl(s.photoUrl);
-    const escapedName = (s.name||'').replace(/'/g,"&#39;");
-    const escapedUrl = (s.photoUrl||'').replace(/'/g,"&#39;");
-    return `<img class="${cls}" src="${src}" alt="${s.name}" title="คลิกดูรูปเต็ม" onclick="openLightbox('${escapedUrl}','${escapedName}');event.stopPropagation()" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="${fallbackCls}" style="display:none">${initials(s.name)}</div>`;
+  const src = safeUrl(s.photoUrl ? fixDriveUrl(s.photoUrl) : '');
+  if(src) {
+    return `<img class="${cls}" src="${escHtml(src)}" alt="${escHtml(s.name)}" title="คลิกดูรูปเต็ม" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="${fallbackCls}" style="display:none">${escHtml(initials(s.name||''))}</div>`;
   }
-  return `<div class="${fallbackCls}">${initials(s.name)}</div>`;
+  return `<div class="${fallbackCls}">${escHtml(initials(s.name||''))}</div>`;
 }
 function getLatestGpa(s){
   // ถ้ามี semGpa และมี GPA จริง ให้ใช้ตัวล่าสุด

@@ -68,7 +68,7 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
       <button class="btn" id="btn-create">➕ สร้างบัญชีให้นักเรียนที่ยังไม่มี</button>
       <button class="btn" id="btn-audit" style="background:linear-gradient(90deg,#0EA5E9,#0369A1)">🩺 ตรวจ+แก้การเชื่อมทั้งระบบ</button>
       <button class="btn gray" id="btn-csv">⬇️ ส่งออกรายชื่อ+รหัส (CSV)</button>
-      <button class="btn gray" id="btn-roster" title="คัดลอกเฉพาะ ลำดับ+ชื่อ+โรงเรียน ไปที่ collection roster เพื่อให้หน้าขอรับรหัสใช้ตรวจสอบได้ โดยไม่เปิดข้อมูลอ่อนไหว">📢 เผยแพร่ทะเบียนสมัคร (roster)</button>
+      <button class="btn gray" id="btn-roster" title="เผยแพร่ลำดับ + ค่าแฮชของชื่อ ไปที่ collection roster เพื่อให้หน้าขอรับรหัสใช้ตรวจสอบได้ โดยไม่เปิดเผยชื่อจริง">📢 เผยแพร่ทะเบียนสมัคร (roster)</button>
       <button class="btn gray" id="btn-staff" title="สร้างบัญชีครู/เจ้าหน้าที่ (role = staff) ซึ่งเห็นข้อมูลนักเรียนทุกคน">👩‍🏫 สร้างบัญชีครู (staff)</button>
       <button class="btn gray" id="btn-purge" title="ลบอีเมลที่ยังค้างใน Firebase Authentication (กรณีลบบัญชีแล้วสร้างใหม่ไม่ได้ / email-already-in-use) โดยกรอก username + รหัสเริ่มต้นเดิม">🔧 ล้างอีเมลค้างใน Auth</button>
       <input type="search" id="q" placeholder="🔍 ค้นหาชื่อ / โรงเรียน / username">
@@ -186,6 +186,37 @@ async function loadAll(){
     if (a.studentId) accounts[String(a.studentId)] = a;
   });
   renderRows();
+  cleanupInitialPasswords();   // v15
+}
+
+/* v15: รหัสเริ่มต้นถูกเก็บเป็นข้อความธรรมดาใน accounts/{uid}.initialPassword
+   → ลบทิ้งอัตโนมัติเมื่อเจ้าของบัญชีตั้งรหัสใหม่แล้ว (ใช้ไม่ได้อยู่แล้ว เก็บไว้มีแต่ความเสี่ยง) */
+async function cleanupInitialPasswords(){
+  const stale = accountsList.filter(a => a.initialPassword && a.mustChangePassword === false);
+  if (!stale.length) return;
+  try {
+    for (let i = 0; i < stale.length; i += 400) {
+      const b = db.batch();
+      stale.slice(i, i + 400).forEach(a => b.update(db.collection('accounts').doc(a._uid),
+        { initialPassword: firebase.firestore.FieldValue.delete() }));
+      await b.commit();
+    }
+    stale.forEach(a => { delete a.initialPassword; });
+    console.log('🧹 ลบรหัสเริ่มต้นที่ไม่ใช้แล้ว ' + stale.length + ' บัญชี');
+  } catch (e) { console.warn('cleanupInitialPasswords:', e.message); }
+}
+
+/* v15: ทะเบียนสาธารณะ (roster) เก็บเฉพาะ "ค่าแฮช" ของชื่อ — ไม่เปิดเผยชื่อเด็กให้คนนอกไล่อ่าน
+   ต้องใช้สูตรเดียวกับ request-code.html (ROSTER_SALT + ตัดคำนำหน้า/ช่องว่าง + SHA-256) */
+const ROSTER_SALT = 'dltvfund-roster-v1|';
+async function rosterHash(normalized){
+  if (!normalized) return '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ROSTER_SALT + normalized));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function _surnameOf(n){
+  const t = String(n || '').trim().split(/\s+/);
+  return t.length > 1 ? _normName(t[t.length - 1]) : '';
 }
 
 function schoolOf(s){ return s.school_m3 || s.school || s.school_m1 || (s.school_m1_addr && s.school_m1_addr.name) || '-'; }
@@ -548,22 +579,32 @@ function _normName(n){
 }
 
 document.getElementById('btn-roster').onclick = async () => {
-  if (!confirm('เผยแพร่ทะเบียนสมัคร (roster)?\n\nจะคัดลอกเฉพาะ ลำดับ · ชื่อ-สกุล · โรงเรียน\nไม่มีเลขบัตร ปชช. / บัญชีธนาคาร / ที่อยู่')) return;
+  if (!confirm('เผยแพร่ทะเบียนสมัคร (roster)?\n\nจะเก็บเฉพาะ ลำดับ + ค่าแฮชของชื่อ (อ่านย้อนกลับเป็นชื่อไม่ได้)\nไม่มีชื่อจริง / โรงเรียน / เลขบัตร ปชช. / บัญชีธนาคาร / ที่อยู่\n\nระเบียนเก่าที่เคยมีชื่อจริงจะถูกเขียนทับ และลำดับที่ไม่มีแล้วจะถูกลบ')) return;
   const btn = document.getElementById('btn-roster'); btn.disabled = true;
   logBox.textContent = ''; plog('กำลังเผยแพร่ roster...');
   try {
     const snap = await db.collection('students').get();
     const batch = db.batch(); const seen = {}; let ok = 0;
-    snap.forEach(d => {
-      const st = d.data(); const no = Number(st.no);
-      if (!no || seen[no]) { if (no) plog('⚠️ ลำดับ ' + no + ' ซ้ำ — ข้าม ' + (st.name||'')); return; }
+    const list = [];
+    snap.forEach(d => list.push(d.data()));
+    for (const st of list) {
+      const no = Number(st.no);
+      if (!no || seen[no]) { if (no) plog('⚠️ ลำดับ ' + no + ' ซ้ำ — ข้าม ' + (st.name||'')); continue; }
       seen[no] = 1;
+      // set (ไม่ merge) = เขียนทับทั้งเอกสาร → ฟิลด์ name / school เดิมหายไปด้วย
       batch.set(db.collection('roster').doc('no-' + no), {
-        no, name: st.name || '', nameKey: _normName(st.name), school: schoolOf(st)
+        no,
+        nameHash: await rosterHash(_normName(st.name)),
+        surnameHash: await rosterHash(_surnameOf(st.name))
       });
       ok++;
-    });
+    }
+    // ลบ roster ของลำดับที่ไม่มีในทะเบียนแล้ว (ชื่อจริงเก่าจะไม่ค้างอยู่)
+    const old = await db.collection('roster').get();
+    let removed = 0;
+    old.forEach(d => { if (!seen[Number(d.id.replace('no-', ''))]) { batch.delete(d.ref); removed++; } });
     await batch.commit();
+    if (removed) plog('🧹 ลบ roster ที่ไม่มีในทะเบียนแล้ว ' + removed + ' รายการ');
     plog('🎉 เผยแพร่ roster สำเร็จ ' + ok + ' รายการ — หน้าขอรับรหัสใช้ตรวจชื่อได้แล้ว');
   } catch(e) { plog('❌ ' + (e.code||'') + ' ' + e.message); }
   btn.disabled = false;

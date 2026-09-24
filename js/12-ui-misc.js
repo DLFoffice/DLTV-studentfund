@@ -26,10 +26,16 @@ function updateNavAvatars() {
     if (!el) return;
     const s = withPhoto[_navAvatarIdx[key] % withPhoto.length];
     if (!s) return;
-    const src = fixDriveUrl(s.photoUrl);
-    el.innerHTML = `<img class="nav-avatar-img" src="${src}"
-      alt="${s.name}"
-      onerror="this.style.display='none';this.parentElement.textContent='${initials(s.name)}'">`;
+    const src = safeUrl(fixDriveUrl(s.photoUrl));
+    if (!src) return;
+    // v15: สร้างด้วย DOM API แทนการต่อ HTML (กันสคริปต์แฝงในชื่อ/URL)
+    const img = document.createElement('img');
+    img.className = 'nav-avatar-img';
+    img.src = src;
+    img.alt = s.name || '';
+    const fallback = initials(s.name || '');
+    img.onerror = function () { this.style.display = 'none'; this.parentElement.textContent = fallback; };
+    el.replaceChildren(img);
     _navAvatarIdx[key] = (_navAvatarIdx[key] + 3) % Math.max(withPhoto.length, 1);
   });
 }
@@ -199,7 +205,8 @@ function deleteStudent(idx) {
 // ============ LIGHTBOX ============
 function openLightbox(url, name) {
   if (!url) return;
-  const fullUrl = fixDriveUrl(url).replace('sz=w200', 'sz=w800');
+  const fullUrl = safeUrl(fixDriveUrl(url).replace('sz=w200', 'sz=w800'));   // v15: กัน javascript:/data: แปลก ๆ
+  if (!fullUrl) return;
   const img = document.getElementById('lightbox-img');
   const nameEl = document.getElementById('lightbox-name');
   img.src = fullUrl;

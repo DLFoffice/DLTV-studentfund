@@ -1193,3 +1193,101 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .status-pill.approved{background:var(--blue-lt);color:var(--blue-dk)}
 .status-pill.done{background:var(--green-lt);color:var(--green)}
 .status-pill.rejected{background:var(--red-lt);color:var(--red)}
+
+/* ═══════════════════════════════════════════
+   v16 — หน้า "งานที่ต้องกรอก" (js/25-teacher-worklist.js)
+   สีบอกสถานะเท่านั้น: เทา = ยังไม่เริ่ม, เหลือง = ทำค้าง, เขียว = ครบ, น้ำเงิน = ส่งแล้ว
+═══════════════════════════════════════════ */
+.wl{max-width:1180px}
+.wl-head{margin:4px 0 18px}
+.wl-head h2{font-family:var(--font-heading);font-size:21px;font-weight:700;line-height:1.35;margin:0 0 4px;color:var(--text)}
+.wl-head p{margin:0 0 12px;color:var(--text2);font-size:14px;max-width:70ch}
+.wl-overall{height:8px;border-radius:99px;background:var(--bg3);overflow:hidden;max-width:520px}
+.wl-overall span{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .4s var(--ease)}
+
+.wl-tools{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.wl-chips{display:flex;gap:6px;flex-wrap:wrap}
+.wl-chip{border:1.5px solid var(--border2);background:var(--bg4);color:var(--text2);border-radius:99px;padding:6px 14px;font:600 13px var(--font-body);cursor:pointer}
+.wl-chip b{font-weight:700;color:var(--text);margin-left:2px}
+.wl-chip:hover{border-color:var(--blue)}
+.wl-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.wl-chip.on b{color:#fff}
+.wl-search{min-width:260px;flex:0 1 320px;padding:9px 12px;border:1.5px solid var(--border2);border-radius:var(--rad);font:14px var(--font-body);background:var(--bg4)}
+
+.wl-list{display:flex;flex-direction:column;gap:10px}
+.wl-row{display:grid;grid-template-columns:minmax(210px,1.05fr) minmax(0,2.6fr) 200px;gap:14px;align-items:center;
+  background:var(--bg4);border:1px solid var(--border);border-radius:var(--rad-lg);padding:14px 16px;box-shadow:var(--shadow)}
+.wl-row-done{background:var(--bg2);box-shadow:none}
+
+.wl-who{display:flex;gap:12px;align-items:center;min-width:0}
+.wl-photo-wrap{flex:none}
+.wl-photo,.wl-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;cursor:zoom-in}
+.wl-avatar{display:flex;align-items:center;justify-content:center;background:var(--blue-lt);color:var(--blue);font-weight:700;cursor:default}
+.wl-who-text{display:flex;flex-direction:column;min-width:0}
+.wl-name{font-weight:700;font-size:15px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-school{font-size:12.5px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-count{font-size:12px;color:var(--text2);margin-top:2px}
+
+.wl-tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wl-task{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1.5px solid var(--border2);background:var(--bg4);
+  border-radius:var(--rad);padding:9px 10px;cursor:pointer;font-family:var(--font-body);min-width:0;transition:border-color .15s,background .15s}
+.wl-task:hover:not(:disabled){border-color:var(--blue)}
+.wl-task:focus-visible,.wl-next:focus-visible,.wl-chip:focus-visible{outline:3px solid rgba(47,92,255,.35);outline-offset:2px}
+.wl-task-mark{flex:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;background:var(--bg3);color:var(--text2)}
+.wl-task-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.wl-task-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+.wl-task-status{font-size:12px;color:var(--text3);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-task-bar{height:4px;border-radius:99px;background:var(--bg3);overflow:hidden;margin-top:4px}
+.wl-task-bar span{display:block;height:100%;border-radius:99px;background:var(--text3)}
+
+.wl-partial{border-color:#F3C77A;background:var(--amber-lt)}
+.wl-partial .wl-task-mark{background:var(--amber);color:#fff}
+.wl-partial .wl-task-status{color:var(--amber)}
+.wl-partial .wl-task-bar span{background:var(--amber)}
+.wl-done{border-color:#A7E0BA;background:var(--green-lt)}
+.wl-done .wl-task-mark{background:var(--green);color:#fff}
+.wl-done .wl-task-status{color:var(--green)}
+.wl-done .wl-task-bar span{background:var(--green)}
+.wl-submitted{border-color:#B9C9FF;background:var(--blue-lt)}
+.wl-submitted .wl-task-mark{background:var(--blue);color:#fff}
+.wl-submitted .wl-task-status{color:var(--blue)}
+.wl-submitted .wl-task-bar span{background:var(--blue)}
+.wl-locked{border-style:dashed;background:var(--bg2);cursor:not-allowed}
+.wl-locked .wl-task-title,.wl-locked .wl-task-status{color:var(--text3)}
+
+.wl-action{display:flex;justify-content:flex-end}
+.wl-next{width:100%;border:none;border-radius:var(--rad);background:var(--blue);color:#fff;font:700 13.5px/1.4 var(--font-body);
+  padding:10px 12px;cursor:pointer;text-align:center}
+.wl-next:hover{background:var(--blue-dk)}
+.wl-next-quiet{background:var(--bg4);color:var(--blue);border:1.5px solid var(--border2)}
+.wl-next-quiet:hover{background:var(--blue-lt)}
+.wl-wait{font-size:12.5px;color:var(--text3);text-align:right}
+
+.wl-empty{text-align:center;padding:48px 16px;border:1.5px dashed var(--border2);border-radius:var(--rad-lg);background:var(--bg4)}
+.wl-empty p{font-weight:700;font-size:16px;margin:0 0 4px}
+.wl-empty span{color:var(--text2);font-size:14px}
+
+/* บัญชีนักเรียน/ครูประจำตัว (มีนักเรียนคนเดียว) — วางงานเป็นแนวตั้งให้อ่านเป็นขั้นตอน */
+.wl-single .wl-row{grid-template-columns:1fr;padding:20px}
+.wl-single .wl-tasks{grid-template-columns:1fr}
+.wl-single .wl-task{padding:14px}
+.wl-single .wl-task-title{font-size:15px}
+.wl-single .wl-task-status{font-size:13px}
+.wl-single .wl-next{font-size:15px;padding:13px}
+
+@media (max-width:1100px){
+  .wl-row{grid-template-columns:1fr 200px}
+  .wl-tasks{grid-column:1 / -1;grid-row:2}
+}
+@media (max-width:640px){
+  .wl-row{grid-template-columns:1fr}
+  .wl-tasks{grid-template-columns:1fr;grid-row:auto}
+  .wl-search{min-width:0;flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){.wl-overall span{transition:none}}
+.wl-next small{display:block;font-weight:500;font-size:12px;opacity:.85;margin-top:1px}
+.wl-task-hint{display:none;font-size:12.5px;color:var(--text2);line-height:1.4}
+.wl-single{max-width:760px}
+.wl-single .wl-task-hint{display:block}
+.wl-single .wl-count{display:none}

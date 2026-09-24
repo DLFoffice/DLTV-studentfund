@@ -174,6 +174,17 @@
     return id;
   }
 
+  /* v15: บัญชีนักเรียนเขียนได้เฉพาะฟิลด์แบบฟอร์ม — ต้องตรงกับ STUDENT_WRITABLE ใน firestore.rules
+     (ประวัติเบิกจ่าย / GPA / เลขบัญชี / ข้อมูลส่วนตัว เป็นงานของครูเท่านั้น) */
+  const STUDENT_WRITABLE_FIELDS = ['form1', 'form2', 'forms', 'sdq'];
+  function payloadFor(s) {
+    const c = cleanForCloud(s);
+    if (!studentMode) return c;
+    const p = {};
+    STUDENT_WRITABLE_FIELDS.forEach(k => { if (c[k] !== undefined) p[k] = c[k]; });
+    return p;
+  }
+
   /** เขียนขึ้นคลาวด์เฉพาะเอกสารที่เนื้อหาเปลี่ยนจริง (force=true → เขียนทุกฉบับ) */
   async function pushAllToCloud(force) {
     const students = DB.students.slice();   // ทุกคนต้องถูกบันทึก — ไม่คัดใครทิ้งเงียบ ๆ อีก
@@ -189,7 +200,7 @@
       const batch = fsdb.batch();
       dirty.slice(i, i + 450).forEach(({ id, s }) => {
         // merge:true — ไม่ลบฟิลด์ที่เวอร์ชันนี้ยังไม่รู้จัก (กันข้อมูลหายเหมือนเคสลำดับ 1)
-        batch.set(fsdb.collection(COL).doc(id), cleanForCloud(s), { merge: true });
+        batch.set(fsdb.collection(COL).doc(id), payloadFor(s), { merge: true });
       });
       await batch.commit();
     }
@@ -241,6 +252,8 @@
     // ถ้าเปิดหน้าแบบฟอร์ม/สถานะการกรอกอยู่ ให้วาดลิสต์ใหม่ด้วย (ไม่งั้นลิสต์เก่าค้าง)
     if (typeof sfRenderPage === 'function' && document.getElementById('page-scholarform')?.classList.contains('active')) sfRenderPage();
     if (typeof renderFormTrack === 'function' && document.getElementById('page-formtrack')?.classList.contains('active')) renderFormTrack();
+    // v17: แจ้งโมดูลอื่น (26-data-links.js) ว่าข้อมูลจากคลาวด์เข้ามาแล้ว — ใช้เชื่อมข้อมูลฟอร์ม ↔ ทะเบียน
+    try { window.dispatchEvent(new CustomEvent('dltv:students-loaded', { detail: { studentMode: studentMode } })); } catch (e) {}
   }
 
   /* ---------- 1) ดัก saveToStorage ---------- */
@@ -289,6 +302,18 @@
   if (typeof stopPolling === 'function') stopPolling();
   if (typeof loadFromSheet === 'function') {
     loadFromSheet = async function () {};
+  }
+
+  /* ---------- 3.1) v15: ปิดการ mirror ทั้งระเบียนไป Google Sheet ----------
+     Firestore คือแหล่งข้อมูลจริงแล้ว — การส่งเลขบัตร/บัญชีธนาคาร/ที่อยู่ไป Apps Script
+     ที่ไม่มีการยืนยันตัวตน เพิ่มความเสี่ยงโดยไม่ได้ประโยชน์ (การส่ง "แบบฟอร์มทุน" ยังทำงาน) */
+  if (typeof SHEET_MIRROR_IN_FIREBASE_MODE === 'undefined' || !SHEET_MIRROR_IN_FIREBASE_MODE) {
+    if (typeof saveStudentToSheet === 'function') saveStudentToSheet = async function () {};
+    if (typeof deleteStudentFromSheet === 'function') deleteStudentFromSheet = async function () {};
+    if (typeof saveAllToSheet === 'function') saveAllToSheet = async function () {
+      if (typeof showStatus === 'function')
+        showStatus('ℹ️ โหมด Firebase: ข้อมูลบันทึกบนคลาวด์อัตโนมัติแล้ว — ปิดการส่งทั้งระเบียนไป Google Sheet เพื่อความปลอดภัย', 'info');
+    };
   }
 
   /* ---------- 4) ปุ่มบัญชีใน sidebar (ล่างซ้าย) + modal เปลี่ยนรหัสผ่าน ---------- */
@@ -432,7 +457,9 @@
       await user.reauthenticateWithCredential(cred);
       await user.updatePassword(n1);
       await fsdb.collection('accounts').doc(user.uid)
-        .set({ mustChangePassword: false, passwordChangedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
+        .set({ mustChangePassword: false, passwordChangedAt: firebase.firestore.FieldValue.serverTimestamp(),
+               // v15: ลบรหัสเริ่มต้นที่เก็บเป็นข้อความธรรมดาทิ้ง เมื่อเจ้าของตั้งรหัสใหม่แล้ว
+               initialPassword: firebase.firestore.FieldValue.delete() }, { merge: true })
         .catch(() => {});
       document.getElementById('fb-pass-modal').classList.remove('open');
       if (typeof showStatus === 'function') showStatus('✅ เปลี่ยนรหัสผ่านเรียบร้อย', 'success');
@@ -453,6 +480,10 @@
     if (!user) {
       fbReady = false;
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      // v15: ออกจากระบบแล้วต้องไม่เหลือข้อมูลนักเรียนในเครื่อง (เครื่องส่วนกลางของโรงเรียน)
+      try { DB.students = []; } catch (e) {}
+      try { if (typeof clearLocalStudentCache === 'function') clearLocalStudentCache(); } catch (e) {}
+      try { localStorage.removeItem('fbRoleHint'); } catch (e) {}
       location.replace('login.html');      // → หน้า login ดีไซน์ใหม่
       return;
     }

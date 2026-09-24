@@ -947,6 +947,12 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.SDQ = { compute: sdqCompute, items: SDQ_ITEMS, domainMeta: DOMAIN_META, isOpen: sdqGetOpen, setOpen: sdqSetOpen };
+  window.SDQ = { compute: sdqCompute, items: SDQ_ITEMS, domainMeta: DOMAIN_META, isOpen: sdqGetOpen, setOpen: sdqSetOpen,
+    // v16: เปิดแบบประเมินของนักเรียนคนนี้ในภาคเรียนนี้โดยตรง (ใช้จากหน้า "งานที่ต้องกรอก")
+    openFor: function (idx, term) {
+      sdqState.studentIdx = idx;
+      if (term) sdqState.term = term;
+      showPage('sdqform', document.getElementById('sdq-nav-form'));
+    } };
   console.log('🧠 แบบประเมิน SDQ (ฉบับครู) พร้อมใช้งาน');
 })();

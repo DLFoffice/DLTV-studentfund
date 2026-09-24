@@ -1,7 +1,16 @@
 rules_version = '2';
 
 // ============================================================
-// Security Rules — DLTV Fund (v6 : fail-closed + ภาคเรียน)
+// Security Rules — DLTV Fund (v7 : จำกัดฟิลด์ที่นักเรียนแก้ได้)
+// ------------------------------------------------------------
+// v7 (เพิ่มจาก v6):
+//  A. บัญชีนักเรียนแก้เอกสารตัวเองได้ "เฉพาะฟิลด์แบบฟอร์ม" (form1/form2/forms/sdq)
+//     เดิมแก้ได้ทุกฟิลด์ยกเว้น no/id/name → แก้ประวัติเบิกจ่าย/GPA/เลขบัญชีได้
+//     และฝังสคริปต์ในชื่อเล่น/URL รูปเพื่อโจมตีเบราว์เซอร์ของครูได้
+//     ⚠️ ต้องใช้คู่กับ js/18-firebase-bridge.js v15 (ส่งเฉพาะฟิลด์เหล่านี้ในโหมดนักเรียน)
+//  B. เจ้าของบัญชีแก้ accounts ของตัวเองได้เฉพาะ สถานะรหัสผ่าน / ลบรหัสเริ่มต้น / ผูก studentId
+//  C. loginLogs ต้องเป็น log ของตัวเอง (uid ตรง) + เวลาจากเซิร์ฟเวอร์ + ฟิลด์จำกัด
+//  D. roster เก็บเฉพาะ no + ค่าแฮชชื่อ (ห้ามมีชื่อจริง)
 // ------------------------------------------------------------
 // เปลี่ยนจาก v3/v5 อย่างมีนัยสำคัญ:
 //  1. "ครู/เจ้าหน้าที่" ต้องถูกประกาศชัดเจน (admins/... หรือ accounts.role=='staff')
@@ -40,6 +49,11 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys()
                .hasAny(['role', 'no', 'username', 'email', 'name']) == false;
     }
+    // ฟิลด์ในเอกสารนักเรียนที่ "บัญชีนักเรียน" แก้ได้ (ต้องตรงกับ STUDENT_WRITABLE_FIELDS ใน 18-firebase-bridge.js)
+    function studentWritableOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['form1', 'form2', 'forms', 'sdq']);
+    }
     // ผูก studentId ได้เฉพาะเอกสารที่ "ลำดับ" ตรงกับบัญชีตัวเอง
     function studentDocMatchesMyNo(sid) {
       return exists(/databases/$(database)/documents/students/$(sid))
@@ -55,21 +69,21 @@ service cloud.firestore {
 
       allow create, delete: if isStaff();
 
-      // นักเรียนแก้ได้เฉพาะเอกสารตัวเอง และห้ามแก้ ลำดับ / เลขบัตร / ชื่อ
+      // นักเรียนแก้ได้เฉพาะเอกสารตัวเอง และเฉพาะฟิลด์แบบฟอร์ม (v7)
       allow update: if isStaff()
         || (isStudent()
             && acct().studentId == studentId
-            && request.resource.data.no   == resource.data.no
-            && request.resource.data.id   == resource.data.id
-            && request.resource.data.name == resource.data.name);
+            && studentWritableOnly());
     }
 
     /* ---------- roster : ทะเบียนสาธารณะสำหรับหน้าสมัคร (ลำดับ + ชื่อ เท่านั้น) ---------- */
-    // ห้ามใส่เลขบัตร ปชช. / บัญชีธนาคาร / ที่อยู่ ลงใน collection นี้เด็ดขาด
+    // v7: เก็บเฉพาะ no + ค่าแฮชของชื่อ — ห้ามมีชื่อจริง/โรงเรียน/ข้อมูลอ่อนไหวเด็ดขาด
     match /roster/{noKey} {
       allow get: if true;
       allow list: if isStaff();
-      allow write: if isStaff();
+      allow create, update: if isStaff()
+        && request.resource.data.keys().hasOnly(['no', 'nameHash', 'surnameHash']);
+      allow delete: if isStaff();
     }
 
     /* ---------- settings : ภาคเรียนที่เปิดให้กรอก ---------- */
@@ -99,10 +113,17 @@ service cloud.firestore {
       // ปิดการสมัครเอง — สร้างบัญชีนักเรียนได้เฉพาะผู้ดูแล/ครู (หน้า accounts.html)
       allow create: if isStaff();
 
-      // เจ้าของบัญชีแก้ได้: สถานะรหัสผ่าน และ "ผูก studentId" ที่ลำดับตรงกันเท่านั้น
+      // เจ้าของบัญชีแก้ได้: สถานะรหัสผ่าน / ลบรหัสเริ่มต้น และ "ผูก studentId" ที่ลำดับตรงกันเท่านั้น
       allow update: if isStaff()
         || (signedIn() && myUid() == uid
             && keepsLockedFields()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['mustChangePassword', 'passwordChangedAt', 'initialPassword', 'studentId'])
+            // ปิด "บังคับเปลี่ยนรหัส" ได้ แต่เปิดกลับเองไม่ได้ / ลบรหัสเริ่มต้นได้ แต่ใส่ค่าใหม่ไม่ได้
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['mustChangePassword'])
+                || request.resource.data.mustChangePassword == false)
+            && !('initialPassword' in request.resource.data
+                 && request.resource.data.initialPassword != resource.data.get('initialPassword', null))
             && (request.resource.data.get('studentId', '') == resource.data.get('studentId', '')
                 || studentDocMatchesMyNo(request.resource.data.studentId)));
 
@@ -111,7 +132,13 @@ service cloud.firestore {
 
     /* ---------- loginLogs : เขียนอย่างเดียว อ่านเฉพาะครู/แอดมิน ---------- */
     match /loginLogs/{logId} {
-      allow create: if signedIn();
+      // v7: บันทึกได้เฉพาะ log ของตัวเอง เวลาต้องมาจากเซิร์ฟเวอร์ และฟิลด์จำกัด
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'username', 'name', 'at', 'ua'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.get('ua', '') is string
+        && request.resource.data.get('ua', '').size() <= 200;
       allow read: if isStaff();
       allow update, delete: if false;
     }

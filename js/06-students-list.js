@@ -36,29 +36,29 @@ function renderStudents(){
       const g=getLatestGpa(s);
       const gv=g.gpa||0;
       const cg=CareGroup.compute(s);
-      const sdqBadge=cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}" style="font-size:10px" title="ผลประเมิน SDQ รวม 4 ด้าน (ภาคเรียน ${cg.sdqTerm})">SDQ: ${cg.sdqGroup}</span>`:'';
+      const sdqBadge=cg.hasSdq?`<span class="badge ${sdqGroupBadge(cg.sdqGroup)}" style="font-size:10px" title="ผลประเมิน SDQ รวม 4 ด้าน (ภาคเรียน ${escHtml(cg.sdqTerm)})">SDQ: ${escHtml(cg.sdqGroup)}</span>`:'';
       return `<div class="student-card" onclick="openStudentDetail(${idx})">
         <div class="card-photo-wrap">
-          ${s.photoUrl
-            ? `<img class="card-photo" src="${fixDriveUrl(s.photoUrl)}" alt="${s.name}" onclick="openLightbox('${(s.photoUrl||'').replace(/'/g,"&#39;")}','${(s.name||'').replace(/'/g,"&#39;")}');event.stopPropagation()" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="card-avatar" style="display:none">${initials(s.name)}</div><div class="card-photo-zoom-icon">🔍</div>`
-            : `<div class="card-avatar">${initials(s.name)}</div>`}
-          <div class="card-no">#${s.no}</div>
-          <div class="card-risk-badge"><span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span></div>
+          ${safeUrl(s.photoUrl)
+            ? `<img class="card-photo" src="${escHtml(safeUrl(fixDriveUrl(s.photoUrl)))}" alt="${escHtml(s.name)}" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="card-avatar" style="display:none">${escHtml(initials(s.name||''))}</div><div class="card-photo-zoom-icon">🔍</div>`
+            : `<div class="card-avatar">${escHtml(initials(s.name||''))}</div>`}
+          <div class="card-no">#${escHtml(s.no)}</div>
+          <div class="card-risk-badge"><span class="${escHtml(cg.badgeClass)}" title="${escHtml(cg.note)}">${escHtml(cg.label)}</span></div>
         </div>
         <div class="card-body">
-          <div class="card-name">${s.name||'(ยังไม่ระบุชื่อ)'}</div>
-          <div class="card-nickname">"${s.nickname}"</div>
-          <div class="card-school">🏫 ${s.school_m1}</div>
+          <div class="card-name">${escHtml(s.name||'(ยังไม่ระบุชื่อ)')}</div>
+          <div class="card-nickname">"${escHtml(s.nickname)}"</div>
+          <div class="card-school">🏫 ${escHtml(s.school_m1)}</div>
           ${gv>0?`<div class="card-gpa-row">
             <div>
-              <div class="card-gpa-val" style="color:${gpaColor(gv)}">${gv}</div>
+              <div class="card-gpa-val" style="color:${gpaColor(gv)}">${escHtml(gv)}</div>
               <div class="card-gpa-lbl">GPA</div>
             </div>
             <div class="card-bar"><div class="card-bar-fill" style="width:${(gv/4*100).toFixed(0)}%;background:${gpaColor(gv)}"></div></div>
           </div>`:'<div style="font-size:12px;color:var(--text3);margin-top:4px">ยังไม่มีข้อมูล GPA</div>'}
         </div>
         <div class="card-footer">
-          <div class="card-province">📍 ${s.province}</div>
+          <div class="card-province">📍 ${escHtml(s.province)}</div>
           ${sdqBadge}
         </div>
       </div>`;
@@ -72,17 +72,17 @@ function renderStudents(){
       const cg=CareGroup.compute(s);
       const latestTerm=s.semGpa&&s.semGpa.length>0?s.semGpa[s.semGpa.length-1].term:'';
       return`<tr>
-        <td style="color:var(--text2)">${s.no}</td>
+        <td style="color:var(--text2)">${escHtml(s.no)}</td>
         <td class="photo-cell">${photoEl(s)}</td>
-        <td><div style="font-weight:600">${s.name||'(ยังไม่ระบุชื่อ)'}</div><div style="font-size:11px;color:var(--text3)">${s.nickname}</div></td>
-        <td style="font-family:'Noto Sans Thai',monospace;font-size:11px">${maskId(s.id)}</td>
-        <td style="font-size:12px">${s.dob||'-'}<div style="font-size:11px;color:var(--blue);font-weight:600">${calcAge(s.dob)}</div></td>
-        <td style="font-size:12px">${s.phone||'-'}</td>
-        <td style="font-size:12px">${s.school_m1}</td>
-        <td><span class="badge b-blue">${s.province}</span></td>
-        <td>${gv?`<span style="font-weight:700;color:${gpaColor(gv)}">${gv}</span>`:'-'} ${latestTerm?`<div style="font-size:10px;color:var(--text3)">${latestTerm}</div>`:''}</td>
-        <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${s.gpa_p6||'-'}</td>
-        <td><span class="${cg.badgeClass}" title="${cg.note}">${cg.label}</span></td>
+        <td><div style="font-weight:600">${escHtml(s.name||'(ยังไม่ระบุชื่อ)')}</div><div style="font-size:11px;color:var(--text3)">${escHtml(s.nickname)}</div></td>
+        <td style="font-family:'Noto Sans Thai',monospace;font-size:11px">${escHtml(maskId(s.id))}</td>
+        <td style="font-size:12px">${escHtml(s.dob||'-')}<div style="font-size:11px;color:var(--blue);font-weight:600">${escHtml(calcAge(s.dob))}</div></td>
+        <td style="font-size:12px">${escHtml(s.phone||'-')}</td>
+        <td style="font-size:12px">${escHtml(s.school_m1)}</td>
+        <td><span class="badge b-blue">${escHtml(s.province)}</span></td>
+        <td>${gv?`<span style="font-weight:700;color:${gpaColor(gv)}">${escHtml(gv)}</span>`:'-'} ${latestTerm?`<div style="font-size:10px;color:var(--text3)">${escHtml(latestTerm)}</div>`:''}</td>
+        <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${escHtml(s.gpa_p6||'-')}</td>
+        <td><span class="${escHtml(cg.badgeClass)}" title="${escHtml(cg.note)}">${escHtml(cg.label)}</span></td>
         <td><div style="display:flex;gap:4px">
           <button class="btn btn-sm" onclick="openStudentDetail(${idx});event.stopPropagation()">ดูข้อมูล</button>
           <button class="btn btn-sm btn-danger" onclick="deleteStudent(${idx});event.stopPropagation()">ลบ</button>

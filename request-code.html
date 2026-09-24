@@ -130,8 +130,27 @@ function normName(n){
     .replace(/เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.|นางสาว|นาย|นาง/g,'')
     .replace(/\s+/g,'').trim();
 }
-function nameMatch(a, b){
-  const x = normName(a), y = normName(b);
+// v15: roster เก็บเฉพาะค่าแฮชของชื่อ (ไม่มีชื่อจริงให้คนนอกไล่อ่าน) — สูตรต้องตรงกับ accounts.html
+const ROSTER_SALT = 'dltvfund-roster-v1|';
+async function rosterHash(normalized){
+  if (!normalized) return '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ROSTER_SALT + normalized));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function surnameOf(n){
+  const t = String(n || '').trim().split(/\s+/);
+  return t.length > 1 ? normName(t[t.length - 1]) : '';
+}
+// ชื่อเต็มตรง หรือ (สะกดชื่อต้นคลาดเล็กน้อย แต่) นามสกุลตรง — ผู้ดูแลตรวจซ้ำอีกชั้นตอนอนุมัติ
+async function nameMatchesRoster(typed, roster){
+  if (!roster) return false;
+  if (roster.nameHash) {
+    if (await rosterHash(normName(typed)) === roster.nameHash) return true;
+    const sn = surnameOf(typed);
+    return !!(sn && roster.surnameHash && await rosterHash(sn) === roster.surnameHash);
+  }
+  // roster รูปแบบเก่า (ยังมีชื่อจริง) — ใช้ได้ชั่วคราวจนกว่าแอดมินจะกดเผยแพร่ใหม่
+  const x = normName(typed), y = normName(roster.name);
   if (!x || !y) return false;
   return x === y || (x.length >= 5 && (x.includes(y) || y.includes(x)));
 }
@@ -161,7 +180,7 @@ btn.onclick = async () => {
     if (!rosterDoc.exists)
       throw { friendly: 'ไม่พบนักเรียนลำดับที่ ' + no + ' ในทะเบียน — ตรวจลำดับอีกครั้ง หรือแจ้งผู้ดูแลให้เผยแพร่ทะเบียน' };
     const roster = rosterDoc.data();
-    if (!nameMatch(studentName, roster.name))
+    if (!(await nameMatchesRoster(studentName, roster)))
       throw { friendly: 'ชื่อ-สกุลนักเรียนไม่ตรงกับทะเบียนของลำดับที่ ' + no + ' — สะกดให้ตรงกับที่แจ้งโครงการ' };
 
     // ── บันทึกคำขอ ──
@@ -174,7 +193,7 @@ btn.onclick = async () => {
     document.getElementById('done-email').textContent = email;
     document.getElementById('recap').innerHTML =
       '<b>ลำดับนักเรียน:</b> ' + no + '<br>' +
-      '<b>นักเรียนทุน:</b> ' + esc(roster.name || studentName) + '<br>' +
+      '<b>นักเรียนทุน:</b> ' + esc(studentName) + '<br>' +
       '<b>โรงเรียน:</b> ' + esc(school) + '<br>' +
       '<b>ครูผู้ขอ:</b> ' + esc(teacherName) + ' (' + esc(position) + ')<br>' +
       '<b>ส่งรหัสไปที่:</b> ' + esc(email) + (note ? '<br><b>หมายเหตุ:</b> ' + esc(note) : '');

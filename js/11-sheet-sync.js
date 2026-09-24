@@ -27,6 +27,8 @@ function parseJsonField(val) {
 }
 
 function normalizeStudent(s) {
+  // v15: ล้างอักขระอันตราย (<, >, ", ' ฯลฯ) ตั้งแต่ข้อมูลเข้าแอป — กัน XSS ทุกหน้าที่แสดงผล
+  if (typeof sanitizeStudent === 'function') sanitizeStudent(s);
   // ── 1. map ฟิลด์ระดับบนสุดจาก Sheet → school_m1_addr ──────
   // Sheet ส่งมา: district, Amphoe, lat, lng, directorM_1, Tel.directorM_1, AdvisorM_1, TelAdvisorM_1
   if (!s.school_m1_addr) s.school_m1_addr = {};
