@@ -1291,3 +1291,114 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .wl-single{max-width:760px}
 .wl-single .wl-task-hint{display:block}
 .wl-single .wl-count{display:none}
+
+/* ═══════════════════════════════════════════
+   v18 — เอกสารพิมพ์ / PDF แบบฟอร์มทุน (js/27-print-layout.js)
+   หมึกดำ + น้ำเงินกรมท่าเป็นสีเดียวที่ใช้เน้น, ฟอนต์ Sarabun
+═══════════════════════════════════════════ */
+.pf-doc{
+  --pf-ink:#111827; --pf-soft:#4B5563; --pf-mute:#6B7280; --pf-line:#CBD5E1; --pf-rule:#94A3B8;
+  --pf-navy:#1E3A6E; --pf-tint:#EEF2F8;
+  page:pfdoc; font-family:'Sarabun','Noto Sans Thai',sans-serif; font-size:10.5pt; line-height:1.5;
+  color:var(--pf-ink); background:#fff; text-align:left; overflow-wrap:anywhere;
+}
+.pf-doc *{box-sizing:border-box}
+/* หัวเอกสาร */
+.pf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:2px solid var(--pf-navy);padding-bottom:6px}
+.pf-org-name{font-weight:700;font-size:11pt;color:var(--pf-navy)}
+.pf-org-sub{font-size:9pt;color:var(--pf-mute)}
+.pf-formno{flex:none;border:1.5px solid var(--pf-navy);color:var(--pf-navy);font-weight:700;font-size:10pt;padding:2px 10px;border-radius:3px}
+.pf-titleblock{text-align:center;margin:12px 0 10px}
+.pf-title{font-weight:700;font-size:14.5pt;line-height:1.35;color:var(--pf-ink)}
+.pf-subtitle{font-size:9.5pt;color:var(--pf-soft);max-width:150mm;margin:1px auto 0}
+.pf-idstrip{border:1px solid var(--pf-line);background:var(--pf-tint);border-radius:4px;padding:6px 10px 8px;margin-bottom:6px}
+/* หัวข้อ */
+.pf-sec{margin-top:12px}
+.pf-sec>h3,.pf-doc h3{display:flex;align-items:baseline;gap:8px;font-size:12pt;font-weight:700;color:var(--pf-navy);
+  border-bottom:1px solid var(--pf-rule);padding-bottom:2px;margin:14px 0 6px;break-after:avoid;page-break-after:avoid}
+.pf-no{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 4px;
+  border-radius:3px;background:var(--pf-navy);color:#fff;font-size:10pt}
+.pf-doc h4{font-size:10.5pt;font-weight:700;margin:10px 0 4px;color:var(--pf-ink);break-after:avoid;page-break-after:avoid}
+.pf-doc h4 span{color:var(--pf-navy)}
+.pf-break{break-before:page;page-break-before:always}
+/* ช่องข้อมูล */
+.pf-row{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:12px;margin:3px 0;break-inside:avoid}
+.pf-f{display:flex;flex-direction:column;min-width:0}
+.pf-l{font-size:8.5pt;color:var(--pf-mute);line-height:1.3}
+.pf-v{min-height:1.55em;border-bottom:1px dotted var(--pf-rule);font-weight:600;padding:0 2px}
+.pf-v small{font-weight:400;color:var(--pf-soft);font-size:9pt}
+.pf-mono{letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.pf-group{border:1px solid var(--pf-line);border-radius:4px;padding:4px 10px 6px;margin:8px 0;break-inside:avoid}
+.pf-group-t{font-weight:700;font-size:9.5pt;color:var(--pf-navy);margin-bottom:1px}
+/* ตัวเลือก */
+.pf-choice{display:grid;grid-template-columns:40mm 1fr;gap:10px;align-items:baseline;margin:6px 0;break-inside:avoid}
+.pf-choice .pf-l{font-size:9.5pt;color:var(--pf-soft)}
+.pf-opts{display:flex;flex-wrap:wrap;gap:3px 16px}
+.pf-opt{display:inline-flex;align-items:baseline;gap:5px;color:var(--pf-soft)}
+.pf-opt i{flex:none;display:inline-flex;align-items:center;justify-content:center;width:11px;height:11px;border:1.2px solid var(--pf-soft);
+  border-radius:2px;font-style:normal;font-size:8.5pt;line-height:1;transform:translateY(1px)}
+.pf-opt.on{color:var(--pf-ink);font-weight:700}
+.pf-opt.on i{background:var(--pf-navy);border-color:var(--pf-navy);color:#fff}
+.pf-opt b{border-bottom:1px dotted var(--pf-rule);padding:0 3px}
+.pf-after{color:var(--pf-soft)}
+.pf-inl{display:inline-block;min-width:26mm;border-bottom:1px dotted var(--pf-rule);font-weight:600;color:var(--pf-ink);padding:0 3px;text-align:center}
+.pf-blank{display:inline-block;min-width:26mm;border-bottom:1px dotted var(--pf-rule);height:1em;vertical-align:baseline}
+.pf-blank.wide{min-width:52mm}
+/* ข้อความปลายเปิด */
+.pf-para{margin:4px 0 8px;break-inside:avoid}
+.pf-q{font-size:9.5pt;color:var(--pf-soft);margin:6px 0 2px}
+.pf-ans{min-height:15mm;border:1px solid var(--pf-line);border-radius:4px;padding:5px 9px;white-space:normal;
+  background-image:repeating-linear-gradient(transparent 0 calc(1.5em - 1px),#E5E7EB calc(1.5em - 1px) 1.5em);background-position:0 5px}
+.pf-ans:not(:empty){background-image:none}
+.pf-note{font-size:8.5pt;color:var(--pf-mute);margin:-2px 0 8px;font-style:italic}
+.pf-mapbox{min-height:48mm;border:1px dashed var(--pf-rule);border-radius:4px;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;break-inside:avoid}
+.pf-mapbox span{color:var(--pf-mute);font-size:9pt}
+/* ตาราง */
+.pf-table{width:100%;border-collapse:collapse;table-layout:fixed;margin:4px 0 8px;font-size:9.5pt}
+.pf-table th,.pf-table td{border:1px solid var(--pf-line);padding:4px 7px;vertical-align:top;text-align:left}
+.pf-table thead th{background:var(--pf-tint);color:var(--pf-navy);font-weight:700;font-size:9pt;line-height:1.3;vertical-align:bottom}
+.pf-table tbody td{height:7.5mm}
+.pf-table tr{break-inside:avoid;page-break-inside:avoid}
+.pf-table thead{display:table-header-group}
+.pf-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.pf-table tbody th[scope=row]{background:#FAFBFD;font-weight:600;color:var(--pf-ink)}
+.pf-grades th[scope=row]{width:34%}
+.pf-money{max-width:150mm}
+.pf-money th{width:auto;font-weight:500!important}
+.pf-money td.num{width:34mm;font-weight:600}
+.pf-money td.unit{width:12mm;color:var(--pf-soft);border-left:none}
+.pf-money td.num{border-right:none}
+.pf-money .pf-indent{padding-left:18px}
+.pf-money .pf-strong th{font-weight:700!important}
+.pf-money .pf-total th,.pf-money .pf-total td{background:var(--pf-tint);font-weight:700!important;border-top:1.5px solid var(--pf-navy)}
+/* รับรอง + ลงนาม */
+.pf-certify{margin-top:12px;break-inside:avoid;page-break-inside:avoid}
+.pf-certify>p{text-align:center;font-size:10pt;margin:0 0 4px}
+.pf-signs{display:flex;justify-content:flex-end;gap:14mm;flex-wrap:wrap}
+.pf-signs:has(.pf-sign + .pf-sign){justify-content:space-around}
+.pf-sign{width:70mm;text-align:center;padding-top:14mm}
+.pf-sign-line{display:flex;align-items:flex-end;gap:6px;margin-bottom:3px}
+.pf-sign-line span{font-size:9.5pt;color:var(--pf-soft)}
+.pf-sign-line i{flex:1;border-bottom:1px solid var(--pf-ink);height:1px}
+.pf-sign{width:74mm}
+.pf-sign-name{font-weight:600}
+.pf-sign-role{font-size:9.5pt;color:var(--pf-soft)}
+.pf-sign-meta{font-size:9pt;color:var(--pf-soft)}
+.pf-sign-meta .pf-blank{min-width:30mm}
+/* ปก (แบบฟอร์ม 2) */
+.pf-cover .pf-titleblock{margin-top:26mm}
+.pf-cover .pf-title{font-size:17pt}
+.pf-cover-term{text-align:center;font-weight:700;font-size:13pt;color:var(--pf-navy);margin:10mm 0 8mm}
+.pf-cover-card{max-width:150mm;margin:0 auto;border:1px solid var(--pf-line);border-radius:6px;padding:8px 14px 12px}
+/* ตัวอย่างก่อนพิมพ์บนจอ */
+.sf-preview-pages.pf-preview{display:block}
+.sf-preview-pages.pf-preview .pf-doc{max-width:210mm;margin:0 auto;padding:16mm 15mm;box-shadow:0 6px 28px rgba(15,17,35,.16);border-radius:4px}
+@media print{
+  #sf-print-area .pf-doc{padding:0;box-shadow:none;width:auto}
+}
+/* v18: ให้พื้นที่พิมพ์ไหลตามหน้ากระดาษจริง (เดิม position:absolute ทำให้ margin/เลขหน้าของ @page ไม่ทำงาน) */
+@media print{
+  html,body{height:auto!important;overflow:visible!important;display:block!important;background:#fff!important}
+  body>*:not(#sf-print-area){display:none!important}
+  #sf-print-area{position:static!important}
+}
