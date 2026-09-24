@@ -1438,3 +1438,39 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 /* กล่องติ๊กอยู่ใน .search-row — ยกเลิกสไตล์ช่องค้นหาที่ครอบลงมา */
 .search-row .ms-item input[type=checkbox]{flex:none;min-width:0;width:16px;height:16px;padding:0;border:none;box-shadow:none;border-radius:3px}
 .search-row .ms-search{flex:none}
+
+/* ═══ v21 — PDF รายชื่อนักเรียน (A4 แนวนอน) ═══ */
+.pl-doc{page:pllist;font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:9.5pt;line-height:1.4;color:#111827;background:#fff}
+.pl-doc *{box-sizing:border-box}
+.pl-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:2px solid #1E3A6E;padding-bottom:6px;margin-bottom:8px}
+.pl-org{font-size:9pt;color:#1E3A6E;font-weight:700}
+.pl-head h1{font-size:16pt;margin:0;line-height:1.3}
+.pl-cond{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:9pt;color:#4B5563;margin-top:2px}
+.pl-cond b{color:#111827}
+.pl-total{text-align:right;flex:none}
+.pl-total b{display:block;font-size:22pt;line-height:1;color:#1E3A6E}
+.pl-total span{font-size:9pt;color:#4B5563}
+.pl-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.pl-sumbox{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 14px;border:1px solid #CBD5E1;border-radius:4px;padding:4px 10px;font-size:9pt}
+.pl-sumt{font-weight:700;color:#1E3A6E;margin-right:2px}
+.pl-sumbox b{font-weight:700}
+.pl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.pl-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pl-table th,.pl-table td{border:1px solid #CBD5E1;padding:3px 6px;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+.pl-table thead th{background:#EEF2F8;color:#1E3A6E;font-weight:700;font-size:8.5pt;vertical-align:bottom}
+.pl-table thead{display:table-header-group}
+.pl-table tr{break-inside:avoid;page-break-inside:avoid}
+.pl-table tbody tr:nth-child(odd):not(.pl-prov) td{background:#FAFBFD}
+.pl-prov th{background:#1E3A6E!important;color:#fff!important;font-size:10pt;padding:4px 8px;break-after:avoid;page-break-after:avoid}
+.pl-prov th span{font-weight:500;opacity:.85;margin-left:6px;font-size:9pt}
+.pl-table .c{text-align:center}
+.pl-table .muted,.pl-doc .muted{color:#6B7280;font-size:8.5pt}
+.pl-table .nowrap{white-space:nowrap}
+.pl-care{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:8.5pt}
+.pl-care::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.pl-care.red,.pl-dot.red{color:#B91C1C;background-color:currentColor}
+.pl-care.amber,.pl-dot.amber{color:#B45309;background-color:currentColor}
+.pl-care.green,.pl-dot.green{color:#15803D;background-color:currentColor}
+.pl-care.gray,.pl-dot.gray{color:#6B7280;background-color:currentColor}
+.pl-care{background:none!important}
+@media screen{#sf-print-area .pl-doc{display:none}}

@@ -147,33 +147,97 @@ function stdProvOpen(open){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 
-/* ---------- v20: ส่งออกรายชื่อตามตัวกรองปัจจุบัน (CSV เปิดด้วย Excel ได้) ----------
-   ไม่รวมเลขบัตร ปชช. / เลขบัญชีธนาคาร / ที่อยู่บ้านละเอียด (ข้อมูลอ่อนไหว) */
+/* ---------- v21: ส่งออกรายชื่อตามตัวกรองปัจจุบันเป็น PDF (ผ่านหน้าต่างพิมพ์ → บันทึกเป็น PDF) ----------
+   • กระดาษ A4 แนวนอน จัดกลุ่มตามจังหวัด พร้อมจำนวนคนต่อจังหวัด
+   • หัวเอกสารบอกเงื่อนไขที่ใช้กรอง + สรุปจำนวนตามกลุ่มการดูแล
+   • ทุกหน้ามีหัวตารางซ้ำ และท้ายกระดาษ "หน้า x / y"
+   • ไม่รวมเลขบัตร ปชช. / เลขบัญชีธนาคาร / ที่อยู่บ้าน (ข้อมูลอ่อนไหว) */
 function exportFilteredStudents(){
-  const rows = filterStudents().slice().sort((a,b)=>(+a.no||0)-(+b.no||0));
+  const rows = filterStudents().slice();
   if(!rows.length){ if(typeof showStatus==='function') showStatus('ไม่มีรายชื่อตามตัวกรองนี้','info'); return; }
-  const head = ['ลำดับ','ชื่อ - นามสกุล','ชื่อเล่น','โรงเรียน','อำเภอ (โรงเรียน)','จังหวัด','สังกัด','GPA ล่าสุด','ภาคเรียน GPA','กลุ่มการดูแล','โทรศัพท์นักเรียน','ผู้ปกครอง','โทรศัพท์ผู้ปกครอง'];
-  const body = rows.map(s=>{
-    const g=getLatestGpa(s)||{}; const cg=CareGroup.compute(s);
-    return [s.no, s.name, s.nickname, s.school_m1, (s.school_m1_addr&&s.school_m1_addr.amphoe)||'', stdProvKey(s.province), s.org,
-      Number(g.gpa)>0?g.gpa:'', g.term||'', cg.label, s.phone, s.parent, s.parentPhone];
-  });
-  // กันสูตร Excel แฝง (= + - @) / เบอร์โทรขึ้นต้น 0 ให้ Excel แสดงเป็นข้อความ
-  const PHONE_COLS = [10, 12];
-  const cell = (v, i) => {
-    let t = String(v ?? '').trim();
-    if (PHONE_COLS.includes(i) && /^0\d{7,}$/.test(t.replace(/[-\s]/g, ''))) return '"=""' + t + '"""';
-    if (/^[=+\-@]/.test(t)) t = "'" + t;
-    return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
-  };
-  const csv = '\uFEFF' + [head, ...body].map(r => r.map(cell).join(',')).join('\r\n');
-  const provPart = stdProvSel.size ? '-' + [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).slice(0,3).join('-') + (stdProvSel.size>3?`-และอีก${stdProvSel.size-3}`:'') : '';
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`รายชื่อนักเรียนทุน${provPart}-${rows.length}คน.csv`;
-  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
-  if(typeof showStatus==='function') showStatus(`📥 ส่งออก ${rows.length} รายชื่อแล้ว`,'success');
+  const E = escHtml;
+  const byNo = (a,b)=>(+a.no||0)-(+b.no||0);
+
+  // จัดกลุ่มตามจังหวัด
+  const groups = new Map();
+  rows.forEach(s=>{ const k = stdProvKey(s.province) || 'ไม่ระบุจังหวัด'; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
+  const provs = [...groups.keys()].sort((a,b)=> a==='ไม่ระบุจังหวัด' ? 1 : b==='ไม่ระบุจังหวัด' ? -1 : a.localeCompare(b,'th'));
+
+  // สรุปกลุ่มการดูแล
+  const CARE = ['ต้องดูแลเป็นพิเศษ','เฝ้าระวัง','ปกติ','รอข้อมูล'];
+  const careOf = new Map(rows.map(s=>[s, CareGroup.compute(s)]));
+  const careCount = CARE.map(l=>[l, rows.filter(s=>careOf.get(s).label===l).length]);
+
+  // เงื่อนไขที่ใช้กรอง
+  const cond = [];
+  if(stdProvSel.size) cond.push(['จังหวัด', [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).join(', ')]);
+  const q = (document.getElementById('std-search').value||'').trim(); if(q) cond.push(['คำค้นหา', q]);
+  const fo = document.getElementById('std-filter-org').value; if(fo) cond.push(['สังกัด', fo]);
+  const fr = document.getElementById('std-filter-risk').value; if(fr) cond.push(['กลุ่มการดูแล', fr]);
+
+  const careCls = l => l==='ต้องดูแลเป็นพิเศษ' ? 'red' : l==='เฝ้าระวัง' ? 'amber' : l==='ปกติ' ? 'green' : 'gray';
+  const COLS = 10;
+  const body = provs.map(p=>{
+    const list = groups.get(p).sort(byNo);
+    return `<tbody class="pl-group">
+      <tr class="pl-prov"><th colspan="${COLS}">${E(p)} <span>${list.length} คน</span></th></tr>
+      ${list.map((s,i)=>{
+        const g = getLatestGpa(s)||{}; const cg = careOf.get(s);
+        const sa = s.school_m1_addr||{};
+        return `<tr>
+          <td class="c">${i+1}</td>
+          <td class="c muted">${E(s.no)}</td>
+          <td><b>${E(s.name||'-')}</b>${s.nickname?`<div class="muted">(${E(s.nickname)})</div>`:''}</td>
+          <td>${E(s.school_m1||'-')}</td>
+          <td>${E(sa.amphoe||'-')}</td>
+          <td>${E(s.org||'-')}</td>
+          <td class="c">${Number(g.gpa)>0?`<b>${E(g.gpa)}</b><div class="muted">${E(g.term||'')}</div>`:'<span class="muted">-</span>'}</td>
+          <td><span class="pl-care ${careCls(cg.label)}">${E(cg.label)}</span></td>
+          <td class="nowrap">${E(s.phone||'-')}</td>
+          <td>${E(s.parent||'-')}${s.parentPhone?`<div class="muted nowrap">${E(s.parentPhone)}</div>`:''}</td>
+        </tr>`;}).join('')}
+    </tbody>`;
+  }).join('');
+
+  const printed = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const qs = v => String(v).replace(/["\\\n\r]/g,' ');
+  const html = `<style>
+      @page pllist { size: A4 landscape; margin: 13mm 12mm 14mm;
+        @top-left { content: "รายชื่อนักเรียนทุน DLTV — ${qs(rows.length)} คน"; font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #64748B; }
+        @bottom-left { content: "พิมพ์เมื่อ ${qs(printed)} · เอกสารใช้ภายใน"; font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #94A3B8; }
+        @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #64748B; } }
+    </style>
+    <article class="pl-doc">
+      <header class="pl-head">
+        <div>
+          <div class="pl-org">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
+          <h1>รายชื่อนักเรียนทุนการศึกษา</h1>
+          <div class="pl-cond">${cond.length ? cond.map(([k,v])=>`<span><b>${E(k)}:</b> ${E(v)}</span>`).join('') : '<span>นักเรียนทุกคน (ไม่ได้ใช้ตัวกรอง)</span>'}</div>
+        </div>
+        <div class="pl-total"><b>${rows.length}</b><span>คน · ${provs.length} จังหวัด</span></div>
+      </header>
+      <div class="pl-summary">
+        ${provs.length>1 ? `<div class="pl-sumbox"><div class="pl-sumt">จำนวนตามจังหวัด</div>${provs.map(p=>`<span>${E(p)} <b>${groups.get(p).length}</b></span>`).join('')}</div>` : ''}
+        <div class="pl-sumbox"><div class="pl-sumt">กลุ่มการดูแล</div>${careCount.map(([l,n])=>`<span><i class="pl-dot ${careCls(l)}"></i>${E(l)} <b>${n}</b></span>`).join('')}</div>
+      </div>
+      <table class="pl-table">
+        <colgroup><col style="width:4%"><col style="width:4.5%"><col style="width:17%"><col style="width:15%"><col style="width:8.5%"><col style="width:10%"><col style="width:7%"><col style="width:11%"><col style="width:9%"><col></colgroup>
+        <thead><tr><th class="c">ที่</th><th class="c">ลำดับทุน</th><th>ชื่อ - นามสกุล</th><th>โรงเรียน</th><th>อำเภอ</th><th>สังกัด</th><th class="c">GPA ล่าสุด</th><th>กลุ่มการดูแล</th><th>โทรศัพท์</th><th>ผู้ปกครอง / โทรศัพท์</th></tr></thead>
+        ${body}
+      </table>
+    </article>`;
+
+  let area = document.getElementById('sf-print-area');
+  if(!area){ area = document.createElement('div'); area.id='sf-print-area'; document.body.appendChild(area); }
+  area.innerHTML = html;
+  const oldTitle = document.title;   // ชื่อไฟล์ PDF ที่เบราว์เซอร์เสนอ = document.title
+  const provPart = stdProvSel.size ? '-' + [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).slice(0,3).join('-') + (stdProvSel.size>3?`-และอีก${stdProvSel.size-3}จังหวัด`:'') : '';
+  document.title = `รายชื่อนักเรียนทุน${provPart}-${rows.length}คน`;
+  const restore = () => { document.title = oldTitle; window.removeEventListener('afterprint', restore); };
+  window.addEventListener('afterprint', restore);
+  setTimeout(()=>window.print(), 60);
 }
+
 
 function renderStudents(){
   const filtered=filterStudents();
