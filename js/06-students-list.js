@@ -147,96 +147,134 @@ function stdProvOpen(open){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 
-/* ---------- v21: ส่งออกรายชื่อตามตัวกรองปัจจุบันเป็น PDF (ผ่านหน้าต่างพิมพ์ → บันทึกเป็น PDF) ----------
-   • กระดาษ A4 แนวนอน จัดกลุ่มตามจังหวัด พร้อมจำนวนคนต่อจังหวัด
-   • หัวเอกสารบอกเงื่อนไขที่ใช้กรอง + สรุปจำนวนตามกลุ่มการดูแล
-   • ทุกหน้ามีหัวตารางซ้ำ และท้ายกระดาษ "หน้า x / y"
-   • ไม่รวมเลขบัตร ปชช. / เลขบัญชีธนาคาร / ที่อยู่บ้าน (ข้อมูลอ่อนไหว) */
+/* ---------- v22: ส่งออก "แฟ้มประวัติ" นักเรียนตามตัวกรองปัจจุบันเป็น PDF ----------
+   • แบบ resume มีรูปนักเรียน A4 แนวตั้ง 2 คนต่อหน้า เรียงตามจังหวัด → ลำดับทุน
+   • ข้อมูล: ลำดับทุน, ชื่อ-ชื่อเล่น, โรงเรียน, อำเภอ/จังหวัด, สังกัด, GPA ล่าสุด, กลุ่มการดูแล
+     และตารางผู้ติดต่อ: นักเรียน / ผู้ปกครอง / ครูที่ปรึกษา / ผู้อำนวยการ (ชื่อ + เบอร์โทร)
+   • หน้าแรกมีหัวเอกสาร: เงื่อนไขที่กรอง + สรุปจำนวนต่อจังหวัด/กลุ่มการดูแล
+   • ไม่รวมเลขบัตร ปชช. / เลขบัญชีธนาคาร / ที่อยู่บ้าน (ข้อมูลอ่อนไหว)
+   • รอให้รูปโหลดเสร็จก่อนเปิดหน้าต่างพิมพ์ (สูงสุด 6 วินาที) */
+function stdContactsOf(s){
+  const sa = s.school_m1_addr || {}, m = s.mentor || {};
+  // ค่าในแบบฟอร์มภาคเรียนปัจจุบัน ใช้เป็นค่าสำรองเมื่อทะเบียนยังว่าง
+  let f1 = {}, f2 = {};
+  try { const b = window.Term && Term.bucket(s, Term.active()); if (b) { f1 = b.form1 || {}; f2 = b.form2 || {}; } } catch (e) {}
+  const pick = (...v) => { for (const x of v) { const t = String(x ?? '').trim(); if (t) return t; } return ''; };
+  const teacherName = pick([m.firstName, m.lastName].filter(Boolean).join(' '), sa.advisorM1, f2.teacher_name, f1.teacher_name);
+  return {
+    student:  { name: pick(s.nickname ? `${s.name} (${s.nickname})` : s.name), phone: pick(s.phone, f1.cur_phone) },
+    parent:   { name: pick(s.parent), phone: pick(s.parentPhone, f1.guardian_phone) },
+    teacher:  { name: teacherName, phone: pick(m.phone, sa.telAdvisorM1, f2.teacher_phone, f1.teacher_phone), extra: pick(m.position, f2.teacher_position, f1.teacher_position) },
+    director: { name: pick(sa.directorM1, f2.director_name), phone: pick(sa.telDirectorM1) },
+  };
+}
+
 function exportFilteredStudents(){
   const rows = filterStudents().slice();
   if(!rows.length){ if(typeof showStatus==='function') showStatus('ไม่มีรายชื่อตามตัวกรองนี้','info'); return; }
   const E = escHtml;
-  const byNo = (a,b)=>(+a.no||0)-(+b.no||0);
+  const provOf = s => stdProvKey(s.province) || 'ไม่ระบุจังหวัด';
+  rows.sort((a,b)=>{ const pa=provOf(a), pb=provOf(b);
+    if(pa!==pb) return pa==='ไม่ระบุจังหวัด'?1:pb==='ไม่ระบุจังหวัด'?-1:pa.localeCompare(pb,'th');
+    return (+a.no||0)-(+b.no||0); });
 
-  // จัดกลุ่มตามจังหวัด
-  const groups = new Map();
-  rows.forEach(s=>{ const k = stdProvKey(s.province) || 'ไม่ระบุจังหวัด'; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
-  const provs = [...groups.keys()].sort((a,b)=> a==='ไม่ระบุจังหวัด' ? 1 : b==='ไม่ระบุจังหวัด' ? -1 : a.localeCompare(b,'th'));
-
-  // สรุปกลุ่มการดูแล
+  const provCount = new Map(); rows.forEach(s=>provCount.set(provOf(s),(provCount.get(provOf(s))||0)+1));
   const CARE = ['ต้องดูแลเป็นพิเศษ','เฝ้าระวัง','ปกติ','รอข้อมูล'];
   const careOf = new Map(rows.map(s=>[s, CareGroup.compute(s)]));
-  const careCount = CARE.map(l=>[l, rows.filter(s=>careOf.get(s).label===l).length]);
+  const careCls = l => l==='ต้องดูแลเป็นพิเศษ'?'red':l==='เฝ้าระวัง'?'amber':l==='ปกติ'?'green':'gray';
 
-  // เงื่อนไขที่ใช้กรอง
   const cond = [];
   if(stdProvSel.size) cond.push(['จังหวัด', [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).join(', ')]);
-  const q = (document.getElementById('std-search').value||'').trim(); if(q) cond.push(['คำค้นหา', q]);
-  const fo = document.getElementById('std-filter-org').value; if(fo) cond.push(['สังกัด', fo]);
-  const fr = document.getElementById('std-filter-risk').value; if(fr) cond.push(['กลุ่มการดูแล', fr]);
+  const q=(document.getElementById('std-search').value||'').trim(); if(q) cond.push(['คำค้นหา', q]);
+  const fo=document.getElementById('std-filter-org').value; if(fo) cond.push(['สังกัด', fo]);
+  const fr=document.getElementById('std-filter-risk').value; if(fr) cond.push(['กลุ่มการดูแล', fr]);
 
-  const careCls = l => l==='ต้องดูแลเป็นพิเศษ' ? 'red' : l==='เฝ้าระวัง' ? 'amber' : l==='ปกติ' ? 'green' : 'gray';
-  const COLS = 10;
-  const body = provs.map(p=>{
-    const list = groups.get(p).sort(byNo);
-    return `<tbody class="pl-group">
-      <tr class="pl-prov"><th colspan="${COLS}">${E(p)} <span>${list.length} คน</span></th></tr>
-      ${list.map((s,i)=>{
-        const g = getLatestGpa(s)||{}; const cg = careOf.get(s);
-        const sa = s.school_m1_addr||{};
-        return `<tr>
-          <td class="c">${i+1}</td>
-          <td class="c muted">${E(s.no)}</td>
-          <td><b>${E(s.name||'-')}</b>${s.nickname?`<div class="muted">(${E(s.nickname)})</div>`:''}</td>
-          <td>${E(s.school_m1||'-')}</td>
-          <td>${E(sa.amphoe||'-')}</td>
-          <td>${E(s.org||'-')}</td>
-          <td class="c">${Number(g.gpa)>0?`<b>${E(g.gpa)}</b><div class="muted">${E(g.term||'')}</div>`:'<span class="muted">-</span>'}</td>
-          <td><span class="pl-care ${careCls(cg.label)}">${E(cg.label)}</span></td>
-          <td class="nowrap">${E(s.phone||'-')}</td>
-          <td>${E(s.parent||'-')}${s.parentPhone?`<div class="muted nowrap">${E(s.parentPhone)}</div>`:''}</td>
-        </tr>`;}).join('')}
-    </tbody>`;
+  const val = v => v ? E(v) : '<span class="rs-empty">ยังไม่มีข้อมูล</span>';
+  const tel = v => v ? `<span class="rs-tel">${E(v)}</span>` : '<span class="rs-empty">—</span>';
+
+  const cards = rows.map(s=>{
+    const g = getLatestGpa(s)||{}; const cg = careOf.get(s); const sa = s.school_m1_addr||{};
+    const c = stdContactsOf(s);
+    const src = safeUrl(s.photoUrl ? fixDriveUrl(s.photoUrl) : '');
+    const ini = E(initials(s.name||''));
+    const photo = src
+      ? `<img class="rs-photo" src="${E(src)}" alt="" onerror="this.outerHTML='<div class=&quot;rs-photo rs-noimg&quot;>${ini}</div>'">`
+      : `<div class="rs-photo rs-noimg">${ini}</div>`;
+    const gpa = Number(g.gpa)>0 ? g.gpa : '';
+    return `<section class="rs-card">
+      <div class="rs-side">
+        ${photo}
+        <div class="rs-no">ลำดับทุน <b>${E(s.no)}</b></div>
+        <div class="rs-gpa"><span>GPA ล่าสุด</span><b>${gpa ? E(gpa) : '–'}</b><small>${gpa ? 'ภาคเรียน '+E(g.term||'') : 'ยังไม่มีข้อมูล'}</small></div>
+        <div class="rs-care ${careCls(cg.label)}">${E(cg.label)}</div>
+      </div>
+      <div class="rs-main">
+        <header class="rs-name">
+          <h2>${E(s.name||'(ยังไม่ระบุชื่อ)')}</h2>
+          <div class="rs-sub">${s.nickname?`ชื่อเล่น <b>${E(s.nickname)}</b> · `:''}จังหวัด<b> ${E(provOf(s))}</b></div>
+        </header>
+        <h3>ข้อมูลการศึกษา</h3>
+        <dl class="rs-grid">
+          <div class="w2"><dt>โรงเรียน</dt><dd>${val(s.school_m1)}</dd></div>
+          <div><dt>อำเภอ</dt><dd>${val(sa.amphoe)}</dd></div>
+          <div><dt>จังหวัด</dt><dd>${val(stdProvKey(s.province))}</dd></div>
+          <div class="w2"><dt>สังกัด</dt><dd>${val(s.org)}</dd></div>
+        </dl>
+        <h3>ผู้ติดต่อ</h3>
+        <table class="rs-contacts">
+          <tbody>
+            <tr><th>นักเรียน</th><td>${val(s.name)}</td><td>${tel(c.student.phone)}</td></tr>
+            <tr><th>ผู้ปกครอง</th><td>${val(c.parent.name)}</td><td>${tel(c.parent.phone)}</td></tr>
+            <tr><th>ครูที่ปรึกษา</th><td>${val(c.teacher.name)}${c.teacher.extra?`<div class="rs-role">${E(c.teacher.extra)}</div>`:''}</td><td>${tel(c.teacher.phone)}</td></tr>
+            <tr><th>ผู้อำนวยการ</th><td>${val(c.director.name)}</td><td>${tel(c.director.phone)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>`;
   }).join('');
 
   const printed = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const qs = v => String(v).replace(/["\\\n\r]/g,' ');
   const html = `<style>
-      @page pllist { size: A4 landscape; margin: 13mm 12mm 14mm;
-        @top-left { content: "รายชื่อนักเรียนทุน DLTV — ${qs(rows.length)} คน"; font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #64748B; }
+      @page rsdoc { size: A4; margin: 12mm 13mm 13mm;
+        @top-left { content: "แฟ้มประวัตินักเรียนทุน DLTV — ${qs(rows.length)} คน"; font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #64748B; }
         @bottom-left { content: "พิมพ์เมื่อ ${qs(printed)} · เอกสารใช้ภายใน"; font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #94A3B8; }
         @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-family: Sarabun,'Noto Sans Thai',sans-serif; font-size: 8.5pt; color: #64748B; } }
     </style>
-    <article class="pl-doc">
+    <article class="rs-doc">
       <header class="pl-head">
         <div>
           <div class="pl-org">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
-          <h1>รายชื่อนักเรียนทุนการศึกษา</h1>
+          <h1>แฟ้มประวัตินักเรียนทุนการศึกษา</h1>
           <div class="pl-cond">${cond.length ? cond.map(([k,v])=>`<span><b>${E(k)}:</b> ${E(v)}</span>`).join('') : '<span>นักเรียนทุกคน (ไม่ได้ใช้ตัวกรอง)</span>'}</div>
         </div>
-        <div class="pl-total"><b>${rows.length}</b><span>คน · ${provs.length} จังหวัด</span></div>
+        <div class="pl-total"><b>${rows.length}</b><span>คน · ${provCount.size} จังหวัด</span></div>
       </header>
       <div class="pl-summary">
-        ${provs.length>1 ? `<div class="pl-sumbox"><div class="pl-sumt">จำนวนตามจังหวัด</div>${provs.map(p=>`<span>${E(p)} <b>${groups.get(p).length}</b></span>`).join('')}</div>` : ''}
-        <div class="pl-sumbox"><div class="pl-sumt">กลุ่มการดูแล</div>${careCount.map(([l,n])=>`<span><i class="pl-dot ${careCls(l)}"></i>${E(l)} <b>${n}</b></span>`).join('')}</div>
+        ${provCount.size>1?`<div class="pl-sumbox"><div class="pl-sumt">จำนวนตามจังหวัด</div>${[...provCount].map(([p,n])=>`<span>${E(p)} <b>${n}</b></span>`).join('')}</div>`:''}
+        <div class="pl-sumbox"><div class="pl-sumt">กลุ่มการดูแล</div>${CARE.map(l=>`<span><i class="pl-dot ${careCls(l)}"></i>${E(l)} <b>${rows.filter(s=>careOf.get(s).label===l).length}</b></span>`).join('')}</div>
       </div>
-      <table class="pl-table">
-        <colgroup><col style="width:4%"><col style="width:4.5%"><col style="width:17%"><col style="width:15%"><col style="width:8.5%"><col style="width:10%"><col style="width:7%"><col style="width:11%"><col style="width:9%"><col></colgroup>
-        <thead><tr><th class="c">ที่</th><th class="c">ลำดับทุน</th><th>ชื่อ - นามสกุล</th><th>โรงเรียน</th><th>อำเภอ</th><th>สังกัด</th><th class="c">GPA ล่าสุด</th><th>กลุ่มการดูแล</th><th>โทรศัพท์</th><th>ผู้ปกครอง / โทรศัพท์</th></tr></thead>
-        ${body}
-      </table>
+      ${cards}
     </article>`;
 
   let area = document.getElementById('sf-print-area');
-  if(!area){ area = document.createElement('div'); area.id='sf-print-area'; document.body.appendChild(area); }
+  if(!area){ area=document.createElement('div'); area.id='sf-print-area'; document.body.appendChild(area); }
   area.innerHTML = html;
-  const oldTitle = document.title;   // ชื่อไฟล์ PDF ที่เบราว์เซอร์เสนอ = document.title
+
+  const oldTitle = document.title;
   const provPart = stdProvSel.size ? '-' + [...stdProvSel].sort((a,b)=>a.localeCompare(b,'th')).slice(0,3).join('-') + (stdProvSel.size>3?`-และอีก${stdProvSel.size-3}จังหวัด`:'') : '';
-  document.title = `รายชื่อนักเรียนทุน${provPart}-${rows.length}คน`;
+  document.title = `แฟ้มประวัตินักเรียนทุน${provPart}-${rows.length}คน`;
   const restore = () => { document.title = oldTitle; window.removeEventListener('afterprint', restore); };
   window.addEventListener('afterprint', restore);
-  setTimeout(()=>window.print(), 60);
+
+  // รอรูปโหลด (รูปจาก Google Drive อาจช้า) แล้วค่อยเปิดหน้าต่างพิมพ์
+  const imgs = [...area.querySelectorAll('img.rs-photo')];
+  if(imgs.length && typeof showStatus==='function') showStatus(`⏳ กำลังโหลดรูปนักเรียน ${imgs.length} รูป...`,'info');
+  const waitImg = img => img.complete ? Promise.resolve() : new Promise(r=>{ img.addEventListener('load',r,{once:true}); img.addEventListener('error',r,{once:true}); });
+  Promise.race([Promise.all(imgs.map(waitImg)), new Promise(r=>setTimeout(r,6000))])
+    .then(()=>setTimeout(()=>window.print(), 80));
 }
+
 
 
 function renderStudents(){

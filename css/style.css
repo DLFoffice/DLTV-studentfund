@@ -1474,3 +1474,64 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .pl-care.gray,.pl-dot.gray{color:#6B7280;background-color:currentColor}
 .pl-care{background:none!important}
 @media screen{#sf-print-area .pl-doc{display:none}}
+
+/* ═══ v22 — แฟ้มประวัตินักเรียน (resume) A4 แนวตั้ง 2 คน/หน้า ═══ */
+.rs-doc{page:rsdoc;font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:10pt;line-height:1.45;color:#111827;background:#fff}
+.rs-doc *{box-sizing:border-box}
+/* ใช้ display:table แทน grid — Chrome ตัดหน้า grid/flex แล้วดันคอลัมน์รูปไปหน้าถัดไป */
+.rs-card{display:table;table-layout:fixed;width:100%;border:1px solid #CBD5E1;border-radius:6px;border-collapse:separate;
+  margin:0 0 5mm;break-inside:avoid;page-break-inside:avoid;height:100mm}
+.rs-side,.rs-main{display:table-cell;vertical-align:top}
+.rs-side{width:44mm;background:#F1F5FB;border-right:1px solid #DCE3EE;padding:6mm 5mm;text-align:center;border-radius:6px 0 0 6px}
+.rs-side>*+*{margin-top:4mm}
+.rs-photo{display:block;margin:0 auto}
+.rs-photo{width:32mm;height:40mm;object-fit:cover;border-radius:4px;border:2px solid #fff;box-shadow:0 0 0 1px #CBD5E1;background:#E2E8F0}
+.rs-noimg{display:flex!important;align-items:center;justify-content:center;font-size:20pt;font-weight:700;color:#1E3A6E}
+.rs-no{font-size:9pt;color:#4B5563}
+.rs-no b{display:inline-block;margin-left:3px;background:#1E3A6E;color:#fff;border-radius:3px;padding:0 7px;font-size:10pt}
+.rs-gpa{line-height:1.2}
+.rs-gpa>*{display:block}
+.rs-gpa span{font-size:8.5pt;color:#4B5563}
+.rs-gpa b{font-size:22pt;color:#1E3A6E;line-height:1.1;font-variant-numeric:tabular-nums}
+.rs-gpa small{font-size:8pt;color:#6B7280}
+.rs-care{display:inline-block;font-size:9pt;font-weight:700;padding:2px 10px;border-radius:99px;border:1.5px solid currentColor}
+.rs-care.red{color:#B91C1C}.rs-care.amber{color:#B45309}.rs-care.green{color:#15803D}.rs-care.gray{color:#6B7280}
+.rs-main{padding:5mm 6mm 5mm}
+.rs-name{border-bottom:2px solid #1E3A6E;padding-bottom:2mm;margin-bottom:1mm}
+.rs-name h2{font-size:17pt;line-height:1.25;margin:0;color:#111827}
+.rs-sub{font-size:10pt;color:#4B5563}
+.rs-sub b{color:#111827}
+.rs-main h3{font-size:10pt;font-weight:700;color:#1E3A6E;margin:3.5mm 0 1.5mm;text-transform:none;letter-spacing:0;
+  display:flex;align-items:center;gap:6px}
+.rs-main h3::after{content:'';flex:1;border-bottom:1px solid #DCE3EE}
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 6mm;margin:0}
+.rs-grid .w2{grid-column:span 2}
+.rs-grid dt{font-size:8.5pt;color:#6B7280}
+.rs-grid dd{margin:0;font-weight:600;border-bottom:1px dotted #CBD5E1;min-height:1.5em}
+.rs-contacts{width:100%;border-collapse:collapse;font-size:9.5pt}
+.rs-contacts th,.rs-contacts td{padding:2mm 2mm;border-bottom:1px solid #E5E7EB;text-align:left;vertical-align:top}
+.rs-contacts tr:last-child th,.rs-contacts tr:last-child td{border-bottom:none}
+.rs-contacts th{width:26mm;color:#4B5563;font-weight:500;font-size:9pt}
+.rs-contacts td:first-of-type{font-weight:600}
+.rs-contacts td:last-child{width:34mm;text-align:right}
+.rs-tel{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;white-space:nowrap}
+.rs-tel::before{content:'☎ ';color:#1E3A6E;font-weight:400}
+.rs-role{font-size:8.5pt;color:#6B7280;font-weight:400}
+.rs-empty{color:#9CA3AF;font-weight:400;font-size:9pt}
+@media screen{#sf-print-area .rs-doc{display:none}}
+.rs-doc .pl-summary{flex-wrap:nowrap}
+.rs-doc .pl-sumbox{flex:0 1 auto}
+/* กระชับให้หน้าแรก (มีหัวเอกสาร) ยังได้ 2 คน */
+.rs-card{height:auto}
+.rs-side{padding:5mm 4mm}
+.rs-side>*+*{margin-top:3mm}
+.rs-photo{width:30mm;height:37.5mm}
+.rs-main{padding:4mm 5.5mm}
+.rs-name h2{font-size:15.5pt}
+.rs-main h3{margin:2.5mm 0 1mm}
+.rs-grid{gap:1mm 6mm}
+.rs-contacts th,.rs-contacts td{padding:1.4mm 2mm}
+.rs-gpa b{font-size:20pt}
+.rs-doc .pl-head{margin-bottom:5px}
+.rs-doc .pl-head h1{font-size:15pt}
+.rs-doc .pl-summary{margin-bottom:5px}
