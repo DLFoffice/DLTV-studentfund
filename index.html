@@ -248,13 +248,13 @@
 
 <div id="page-payment" class="page">
   <div class="toolbar">
-    <div class="toolbar-title">การจ่ายเงินทุน ปีการศึกษา 2568</div>
+    <div class="toolbar-title">การจ่ายเงินทุน — สรุปตามระดับชั้นและภาคเรียน</div>
     <select id="pay-filter-term" onchange="renderPayment()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
       <option value="">ทุกภาคเรียน</option>
     </select>
   </div>
   <div class="search-row">
-    <input type="text" id="pay-search" placeholder="🔍 ค้นหาชื่อ..." oninput="renderPayment()">
+    <input type="search" id="pay-search" placeholder="🔍 ค้นหาชื่อ / โรงเรียน / จังหวัด / ลำดับ..." oninput="renderPayment()">
   </div>
   <div class="tbl-wrap">
     <table>
@@ -561,6 +561,7 @@
 <script src="js/25-teacher-worklist.js"></script>
 <script src="js/26-data-links.js"></script>
 <script src="js/27-print-layout.js"></script>
+<script src="js/28-payments-ux.js"></script>
 
 </body>
 </html>

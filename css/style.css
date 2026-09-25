@@ -1548,3 +1548,80 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .tr-g-table tbody tr.on td{background:var(--blue-lt)}
 .tr-g-table tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
 .tr-g-sub{font-size:11px;color:var(--text3)}
+
+/* ═══ v24 — หน้าการเงิน: สรุปตามชั้น/ภาคเรียน + ตารางรายคน ═══ */
+.pay-summary{margin-bottom:16px}
+.pay-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.pay-kpi{background:var(--bg4);border:1px solid var(--border);border-radius:var(--rad-lg);box-shadow:var(--shadow);padding:12px 16px;display:flex;flex-direction:column}
+.pay-kpi span{font-size:12.5px;color:var(--text2)}
+.pay-kpi b{font-size:24px;font-family:var(--font-heading);color:var(--teal);line-height:1.25;font-variant-numeric:tabular-nums}
+.pay-kpi:first-child b{color:var(--blue)}
+.pay-kpi small{font-size:12px;color:var(--text3)}
+.pay-sum-table td.num,.pay-sum-table th.num,.pay-matrix td.num,.pay-matrix th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pay-sum-table small{color:var(--text3);font-size:11px}
+.pay-sum-table tbody tr{cursor:pointer}
+.pay-sum-table tbody tr:hover td{background:var(--bg2)}
+.pay-t-grade td{background:var(--blue-lt);font-weight:600}
+.pay-t-grade td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+.pay-yr{font-weight:400;font-size:12px;color:var(--text3);margin-left:6px}
+.pay-indent{padding-left:18px;display:inline-block}
+.pay-sum-table td.warn{color:var(--amber);font-weight:700}
+.pay-sum-table tfoot td{font-weight:700;border-top:2px solid var(--border2);background:var(--bg2)}
+.pay-sum-hint{font-size:12px;color:var(--text3);margin-top:6px}
+.pay-none{color:var(--text3);font-size:12.5px}
+.pay-matrix th.pay-grp{text-align:center;background:var(--blue-lt);color:var(--blue);border-left:2px solid var(--bg4)}
+.pay-matrix .pay-sub{background:rgba(37,99,235,.05);font-weight:600}
+.pay-matrix .pay-grand-col{background:var(--teal-lt);color:var(--teal)}
+.pay-name{font-weight:600;min-width:170px}
+.pay-name small{display:block;font-weight:400;font-size:11px;color:var(--text3)}
+.pay-norow td{background:var(--bg2)}
+@media (max-width:900px){.pay-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* แท็บการเงินในหน้ารายละเอียด */
+.pay-grand{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--teal-lt);border:1px solid rgba(13,107,82,.18);border-radius:var(--rad-lg);padding:12px 16px;margin-bottom:12px}
+.pay-grand>div:first-child{flex:1}
+.pay-grand-t{font-size:11.5px;color:var(--teal);font-weight:700}
+.pay-grand-v{font-size:22px;font-weight:700;color:var(--teal);font-variant-numeric:tabular-nums}
+.pay-grand-r{text-align:right;font-size:12px;color:var(--text2)}
+.pay-empty{padding:18px;text-align:center;color:var(--text3);border:1.5px dashed var(--border2);border-radius:var(--rad-lg);margin-bottom:6px}
+.pay-grade-sep{font-size:12px;font-weight:700;color:var(--blue);margin:12px 2px 6px;display:flex;align-items:center;gap:8px}
+.pay-grade-sep::after{content:'';flex:1;border-bottom:1px solid var(--border)}
+.sem-record-header[data-pay-toggle]{cursor:pointer}
+.sem-record-header[data-pay-toggle]:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:-3px}
+.pay-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.pay-rec-total{font-size:13px;font-weight:700;color:var(--teal);margin-left:auto;font-variant-numeric:tabular-nums}
+.pay-caret{font-size:18px;color:var(--text3);margin-left:8px;transition:transform .15s}
+.sem-record-header[aria-expanded="true"] .pay-caret{transform:rotate(180deg)}
+.pay-sum2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 14px 10px;border-bottom:1px solid var(--border)}
+.pay-part{border-radius:var(--rad);padding:10px 12px}
+.pay-part.p1{background:var(--blue-lt);border:1px solid rgba(26,95,168,.12)}
+.pay-part.p2{background:var(--teal-lt);border:1px solid rgba(13,107,82,.12)}
+.pay-part-t{font-size:10.5px;font-weight:700;margin-bottom:3px}
+.pay-part.p1 .pay-part-t,.pay-part.p1 .pay-part-v{color:var(--blue)}
+.pay-part.p2 .pay-part-t,.pay-part.p2 .pay-part-v{color:var(--teal)}
+.pay-part-v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.pay-part-s{font-size:11px;color:var(--text2)}
+.pay-rec-foot{padding:0 14px 14px;font-size:13px;color:var(--text2)}
+.pay-rec-foot strong{color:var(--teal);font-size:15px}
+.pay-rec-hint{display:block;font-size:11.5px;color:var(--text3);margin-top:2px}
+
+/* ป๊อปอัปผลการบันทึก */
+#save-pop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.28);
+  opacity:0;pointer-events:none;transition:opacity .18s}
+#save-pop.show{opacity:1;pointer-events:auto}
+.save-pop-card{background:var(--bg4,#fff);border-radius:22px;box-shadow:0 24px 64px rgba(15,23,42,.28);padding:30px 40px 26px;min-width:280px;max-width:min(420px,88vw);
+  text-align:center;transform:scale(.9);transition:transform .22s cubic-bezier(.2,.9,.3,1.3)}
+#save-pop.show .save-pop-card{transform:scale(1)}
+.save-pop-card svg{width:96px;height:96px;display:block;margin:0 auto 12px}
+.save-pop-card circle{fill:none;stroke-width:3.5}
+.save-pop-card path{fill:none;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60}
+#save-pop.show path{animation:savepop-draw .45s .12s ease-out forwards}
+#save-pop.ok circle{stroke:#16A34A;fill:#DCFCE7}#save-pop.ok path{stroke:#16A34A}
+#save-pop.err circle{stroke:#DC2626;fill:#FEE2E2}#save-pop.err path{stroke:#DC2626}
+.save-pop-title{font-family:var(--font-heading);font-size:21px;font-weight:700}
+#save-pop.ok .save-pop-title{color:#15803D}#save-pop.err .save-pop-title{color:#B91C1C}
+.save-pop-detail{font-size:14px;color:var(--text2);margin-top:4px}
+.save-pop-hint{font-size:12px;color:var(--text3);margin-top:10px}
+@keyframes savepop-draw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){#save-pop,.save-pop-card{transition:none}#save-pop.show path{animation:none;stroke-dashoffset:0}}
+.pay-sum-table tfoot td{padding:12px 16px}

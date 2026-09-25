@@ -285,6 +285,17 @@
     }, 800);
   };
 
+  /** v24: บันทึก "ทันที" แล้วรอผลจากคลาวด์ — ใช้แสดงป๊อปอัปสถานะการบันทึก */
+  window.fbSaveNow = async function () {
+    await _origSaveToStorage();
+    if (!fbReady) return { cloud: false, ok: true };
+    clearTimeout(_pushTimer);
+    pushPending = true;
+    try { await pushAllToCloud(); if (typeof setSyncDot === 'function') setSyncDot('online'); return { cloud: true, ok: true }; }
+    catch (e) { return { cloud: true, ok: false, error: e }; }
+    finally { pushPending = false; }
+  };
+
   /* ---------- 2) ดัก deleteStudent ---------- */
   const _origDeleteStudent = deleteStudent;
   deleteStudent = function (idx) {
