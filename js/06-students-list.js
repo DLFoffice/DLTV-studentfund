@@ -192,6 +192,10 @@ function exportFilteredStudents(){
   const val = v => v ? E(v) : '<span class="rs-empty">ยังไม่มีข้อมูล</span>';
   const tel = v => v ? `<span class="rs-tel">${E(v)}</span>` : '<span class="rs-empty">—</span>';
 
+  // v23: ระดับชั้นปัจจุบันตามภาคเรียนที่เปิดใช้งาน (2568 = ม.1, 2569 = ม.2, …)
+  const actT = (window.Term && Term.active) ? Term.active() : '';
+  const curGrade = actT ? gradeFromTerm(actT) : '';
+  const curYear = actT ? String(actT).split('/')[1] || '' : '';
   const cards = rows.map(s=>{
     const g = getLatestGpa(s)||{}; const cg = careOf.get(s); const sa = s.school_m1_addr||{};
     const c = stdContactsOf(s);
@@ -205,7 +209,7 @@ function exportFilteredStudents(){
       <div class="rs-side">
         ${photo}
         <div class="rs-no">ลำดับทุน <b>${E(s.no)}</b></div>
-        <div class="rs-gpa"><span>GPA ล่าสุด</span><b>${gpa ? E(gpa) : '–'}</b><small>${gpa ? 'ภาคเรียน '+E(g.term||'') : 'ยังไม่มีข้อมูล'}</small></div>
+        <div class="rs-gpa"><span>GPA ล่าสุด</span><b>${gpa ? E(gpa) : '–'}</b><small>${gpa ? 'ภาคเรียน '+E(termWithGrade(g.term)) : 'ยังไม่มีข้อมูล'}</small></div>
         <div class="rs-care ${careCls(cg.label)}">${E(cg.label)}</div>
       </div>
       <div class="rs-main">
@@ -216,6 +220,8 @@ function exportFilteredStudents(){
         <h3>ข้อมูลการศึกษา</h3>
         <dl class="rs-grid">
           <div class="w2"><dt>โรงเรียน</dt><dd>${val(s.school_m1)}</dd></div>
+          <div><dt>ระดับชั้นปัจจุบัน</dt><dd>${val(curGrade)}</dd></div>
+          <div><dt>ปีการศึกษา</dt><dd>${val(curYear)}</dd></div>
           <div><dt>อำเภอ</dt><dd>${val(sa.amphoe)}</dd></div>
           <div><dt>จังหวัด</dt><dd>${val(stdProvKey(s.province))}</dd></div>
           <div class="w2"><dt>สังกัด</dt><dd>${val(s.org)}</dd></div>

@@ -131,7 +131,7 @@
       let sdqR = null; try { sdqR = (sdqBk && typeof window.SDQ !== 'undefined') ? SDQ.compute(sdqBk) : null; } catch (e) {}
       const sdqBadgeTerm = (sdqR && sdqR.complete) ? `<span class="badge ${sdqGroupBadge(sdqR.totalGroup)}">SDQ: ${sdqR.totalGroup}</span>` : '<span class="badge b-gray">ยังไม่ประเมิน SDQ</span>';
       return `<div class="sdx-term${t === active ? ' is-active' : ''}">
-        <div class="sdx-term-head">${t}${t === active ? '<span class="sdx-now">กำลังใช้งาน</span>' : ''}</div>
+        <div class="sdx-term-head">${t} <span class="sdx-grade">${gradeFromTerm(t)}</span>${t === active ? '<span class="sdx-now">กำลังใช้งาน</span>' : ''}</div>
         <div class="sdx-term-gpa" style="color:${gv && typeof gpaColor === 'function' ? gpaColor(gv) : 'var(--text3)'}">${gv ? gv.toFixed(2) : '—'}</div>
         <div class="sdx-term-row">${sdqBadgeTerm}</div>
         <div class="sdx-term-pay">${pay ? money(pay) + ' บาท' : 'ยังไม่เบิกจ่าย'}</div>
@@ -164,7 +164,7 @@
     $('st-panel-7').innerHTML = `
       <div class="sdx-stats">
         <div class="sdx-stat">
-          <div class="sdx-stat-lbl">GPA ล่าสุด${g.term ? ' · ' + g.term : ''}</div>
+          <div class="sdx-stat-lbl">GPA ล่าสุด${g.term ? ' · ' + termWithGrade(g.term) : ''}</div>
           <div class="sdx-stat-val" style="color:${g.gpa && typeof gpaColor === 'function' ? gpaColor(g.gpa) : 'var(--text3)'}">${g.gpa ? g.gpa.toFixed(2) : '—'}</div>
           <div class="sdx-stat-foot">${delta !== null
             ? `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(2)} เทียบ ป.6 (${s.gpa_p6})`

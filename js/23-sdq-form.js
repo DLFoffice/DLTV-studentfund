@@ -250,7 +250,7 @@
       <div class="toolbar-title">📝 แบบประเมิน SDQ — เลือกนักเรียน</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="sdq-term-select" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
-          ${(typeof Term === 'object' ? Term.all() : [sdqState.term]).map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
+          ${(typeof Term === 'object' && Term.options) ? Term.options(Term.all(), sdqState.term) : (typeof Term === 'object' ? Term.all() : [sdqState.term]).map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
         </select>
         ${toggleBtn}
       </div>
@@ -529,7 +529,7 @@
         <div class="toolbar-title">📈 ผลการประเมิน SDQ ของฉัน</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select id="sdq-my-term" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
-            ${terms.map(t => `<option value="${t}" ${t === term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
+            ${(typeof Term === 'object' && Term.options) ? Term.options(terms, term) : terms.map(t => `<option value="${t}" ${t === term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
           </select>
           <button class="btn btn-sm" id="sdq-my-print-btn">🖨️ พิมพ์ / PDF</button>
         </div>
@@ -557,7 +557,8 @@
 
     const sel = document.getElementById('sdq-dash-term');
     if (sel) {
-      sel.innerHTML = (typeof Term === 'object' ? Term.all() : [sdqState.term])
+      sel.innerHTML = (typeof Term === 'object' && Term.options) ? Term.options(Term.all(), sdqState.term)
+        : (typeof Term === 'object' ? Term.all() : [sdqState.term])
         .map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('');
     }
     const term = (sel && sel.value) || sdqState.term;

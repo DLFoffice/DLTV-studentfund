@@ -224,7 +224,7 @@ function renderPaymentPanel(idx){
     html+=`<div class="sem-record">
       <div class="sem-record-header" onclick="toggleSemRecord(this)">
         <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0"></div>
-        <div class="sem-record-term">ภาคเรียน <strong>${p.term}</strong></div>
+        <div class="sem-record-term">ภาคเรียน <strong>${termWithGrade(p.term)}</strong></div>
         <div style="font-size:13px;font-weight:700;color:var(--teal);margin-left:auto">${fmt(total)} บาท</div>
         <div style="font-size:18px;color:var(--text3);margin-left:8px">▾</div>
       </div>
@@ -278,7 +278,7 @@ function renderGpaPanel(idx){
       :'<span class="badge b-gray" style="margin-left:6px">ยังไม่ประเมิน SDQ</span>';
     html+=`<div class="sem-record">
       <div class="sem-record-header" onclick="toggleSemRecord(this)">
-        <div class="sem-record-term">📅 ภาคเรียน ${g.term}</div>
+        <div class="sem-record-term">📅 ภาคเรียน ${termWithGrade(g.term)}</div>
         ${g.gpa>0?`<span style="font-size:15px;font-weight:700;color:${gpaColor(g.gpa)}">${g.gpa}</span>`:'<span style="color:var(--text3);font-size:12px">ยังไม่มี GPA</span>'}
         ${sdqBadgeTerm}
         <div style="font-size:18px;color:var(--text3);margin-left:auto">▾</div>
@@ -512,7 +512,9 @@ function populateTermFilter(){
   const terms=new Set();
   DB.students.forEach(s=>s.semPayments&&s.semPayments.forEach(p=>terms.add(p.term)));
   const sel=document.getElementById('pay-filter-term');
-  if(sel.options.length<=1)[...terms].sort().forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=`ภาคเรียน ${t}`;sel.appendChild(o);});
+  // v23: สร้างใหม่ทุกครั้ง + จัดกลุ่มตามระดับชั้น
+  const cur=sel.value;
+  sel.innerHTML='<option value="">ทุกภาคเรียน</option>'+gradeTermOptions([...terms].filter(Boolean), cur, t=>`ภาคเรียนที่ ${t}`);
 }
 function renderPayment(){
   const q=(document.getElementById('pay-search').value||'').toLowerCase();
@@ -544,7 +546,9 @@ function populateGpaTerm(){
   const terms=new Set();
   DB.students.forEach(s=>s.semGpa&&s.semGpa.forEach(g=>terms.add(g.term)));
   const sel=document.getElementById('gpa-term-select');
-  if(sel.options.length<=1)[...terms].sort().forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=`ภาคเรียน ${t}`;sel.appendChild(o);});
+  // v23: สร้างใหม่ทุกครั้ง + จัดกลุ่มตามระดับชั้น
+  const cur=sel.value;
+  sel.innerHTML='<option value="">ทุกภาคเรียน</option>'+gradeTermOptions([...terms].filter(Boolean), cur, t=>`ภาคเรียนที่ ${t}`);
 }
 function renderAcademic(){
   const q=(document.getElementById('gpa-search').value||'').toLowerCase();
@@ -571,7 +575,7 @@ function renderAcademic(){
       <td style="font-weight:600">${s.name}</td>
       <td style="font-size:12px">${s.school_m1}</td>
       <td><span class="badge b-blue">${s.province}</span></td>
-      <td><span class="badge b-gray">${g.term||'-'}</span></td>
+      <td><span class="badge b-gray">${termWithGrade(g.term)}</span></td>
       <td><div style="font-weight:700;font-size:15px;color:${gpaColor(g.gpa)}">${g.gpa||'-'}</div>
         ${g.gpa?`<div class="gpa-bar"><div class="gpa-fill" style="width:${(g.gpa/4*100).toFixed(0)}%;background:${gpaColor(g.gpa)}"></div></div>`:''}</td>
       <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${s.gpa_p6||'-'}</td>

@@ -221,7 +221,7 @@ const SF_FORM2 = [
     { id:'amphoe', type:'text', label:'อำเภอ', from:s=>(s.school_m1_addr&&s.school_m1_addr.amphoe)||'' },
     { id:'province', type:'text', label:'จังหวัด', from:s=>s.province },
     { id:'sangkad', type:'text', label:'สังกัด', from:s=>s.org },
-    { id:'grade_level', type:'text', label:'ระดับชั้น' }, { id:'track', type:'text', label:'แผน/แผนก/สาขา' },
+    { id:'grade_level', type:'text', label:'ระดับชั้น', from:()=>{ try{ return (window.Term&&typeof gradeFromTerm==='function') ? gradeFromTerm(Term.active()) : ''; }catch(e){ return ''; } } }, { id:'track', type:'text', label:'แผน/แผนก/สาขา' },
   ]},
   { id:'grades', title:'ผลการเรียน', short:'ผลการเรียน', fields:[
     { id:'grades_matrix', type:'matrix', full:true, defaultCols:2, rows:[

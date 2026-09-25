@@ -33,7 +33,15 @@
   }
   function termLabel(t) {
     const p = parseTerm(t); if (!p) return t || '-';
-    return `ภาคเรียนที่ ${p.sem} ปีการศึกษา ${p.year}`;
+    // v23: ต่อท้ายระดับชั้น — ปีการศึกษาเดียวกัน = ชั้นเดียวกัน (2568 = ม.1, 2569 = ม.2, …)
+    const g = (typeof gradeFromTerm === 'function') ? ` (${gradeFromTerm(t)})` : '';
+    return `ภาคเรียนที่ ${p.sem} ปีการศึกษา ${p.year}${g}`;
+  }
+  /** v23: <option> ภาคเรียนจัดกลุ่มตามระดับชั้น */
+  function termOptions(terms, cur) {
+    if (typeof gradeTermOptions === 'function')
+      return gradeTermOptions(terms, cur, t => { const p = parseTerm(t); return p ? `ภาคเรียนที่ ${p.sem}/${p.year}` : t; });
+    return terms.map(x => `<option value="${x}" ${x === cur ? 'selected' : ''}>${termLabel(x)}</option>`).join('');
   }
 
   /** ภาคเรียนทั้งหมดที่ "ปรากฏในข้อมูลจริง" (GPA + การเบิกจ่าย + แบบฟอร์ม) */
@@ -65,6 +73,7 @@
     const cur = (typeof sfState === 'object' && sfState.studentIdx !== null) ? DB.students[sfState.studentIdx] : null;
     if (cur) bindTerm(cur, t);
     if (!(opts && opts.silent)) pushActiveTermToCloud(t);
+    try { updateYearLabels(); } catch (e) {}
     return true;
   }
 
@@ -272,7 +281,7 @@
   /* ══════════ 5) แถบเลือกภาคเรียนบนหน้าแบบฟอร์ม ══════════ */
   function termBarHtml() {
     const t = getActiveTerm();
-    const opts = allTerms().map(x => `<option value="${x}" ${x === t ? 'selected' : ''}>${termLabel(x)}</option>`).join('');
+    const opts = termOptions(allTerms(), t);
     const staff = isStaffUser();
     const s = (typeof sfGetStudent === 'function' && sfState.studentIdx !== null) ? sfGetStudent() : null;
     let submitBtn = '';
@@ -450,7 +459,17 @@
     };
   }
 
+  /** v23: ข้อความ "ปีการศึกษา …" ที่เคยตายตัวในหน้าเว็บ → ตามภาคเรียนที่เปิดใช้งาน + ระดับชั้น */
+  function updateYearLabels() {
+    const p = parseTerm(getActiveTerm()); if (!p) return;
+    const g = (typeof gradeFromTerm === 'function') ? ` (${gradeFromTerm(getActiveTerm())})` : '';
+    document.querySelectorAll('.sidebar-user-role, #page-payments .toolbar-title, .toolbar-title').forEach(el => {
+      if (/ปีการศึกษา\s*\d{4}/.test(el.textContent))
+        el.textContent = el.textContent.replace(/ปีการศึกษา\s*\d{4}(\s*\([^)]*\))?/, `ปีการศึกษา ${p.year}${g}`);
+    });
+  }
   function rerenderTermViews() {
+    try { updateYearLabels(); } catch (e) {}
     try { if (typeof sfRenderPage === 'function' && document.getElementById('page-scholarform')?.classList.contains('active')) sfRenderPage(); } catch (e) {}
     try { if (typeof renderFormTrack === 'function' && document.getElementById('page-formtrack')?.classList.contains('active')) renderFormTrack(); } catch (e) {}
     try { if (document.getElementById('page-termreport')?.classList.contains('active')) renderTermReport(); } catch (e) {}
@@ -502,15 +521,174 @@
     return `<span class="badge ${m.cls}" title="${pct}%">${m.label}${st === 'partial' ? ' ' + pct + '%' : ''}</span>`;
   }
 
+
+  /* ══════════ 6.1) v23: สรุปตามระดับชั้น (1 ชั้น = 1 ปีการศึกษา = ภาค 1 + ภาค 2) ══════════ */
+  const gl = () => window.GradeLevel;
+  const TERM_HEAD = `<tr>
+        <th>ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>จังหวัด</th>
+        <th>GPA</th><th>Δ ป.6</th><th>กลุ่มการดูแล</th><th>ผล SDQ ภาคเรียนนี้</th>
+        <th>เงินทุน</th><th>แบบฟอร์ม 1</th><th>แบบฟอร์ม 2</th><th></th></tr>`;
+  const GRADE_HEAD = `<tr>
+        <th>ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>จังหวัด</th>
+        <th>GPA ภาค 1</th><th>GPA ภาค 2</th><th>เฉลี่ยทั้งปี</th><th>Δ ป.6</th>
+        <th>SDQ ภาค 1 / ภาค 2</th><th>เงินทุนทั้งปี</th><th>แบบฟอร์มที่ส่งแล้ว</th><th></th></tr>`;
+  const SDQ_RISK = g => g && g !== 'ปกติ' && g !== 'จุดแข็ง';
+
+  /** ข้อมูลรายคนของ 1 ระดับชั้น */
+  function gradeReportRows(lv) {
+    const [t1, t2] = gl().terms(lv);
+    return (DB.students || []).map(s => {
+      const g1 = gpaOfTerm(s, t1), g2 = gpaOfTerm(s, t2);
+      const v1 = g1 && Number(g1.gpa) > 0 ? Number(g1.gpa) : null;
+      const v2 = g2 && Number(g2.gpa) > 0 ? Number(g2.gpa) : null;
+      const vs = [v1, v2].filter(v => v != null);
+      const sub = ['form1', 'form2'].flatMap(k => [t1, t2].map(t => formState(s, k, t) === 'submitted')).filter(Boolean).length;
+      const started = ['form1', 'form2'].some(k => [t1, t2].some(t => formState(s, k, t) !== 'none'));
+      return {
+        s, no: s.no, name: s.name || '', school: s.school_m1 || '', province: s.province || '',
+        t1, t2, v1, v2, year: vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null,
+        sdq1: sdqGroupOfTerm(s, t1), sdq2: sdqGroupOfTerm(s, t2),
+        pay: payOfTerm(s, t1) + payOfTerm(s, t2), sub, started
+      };
+    }).sort((a, b) => (a.no || 0) - (b.no || 0));
+  }
+
+  /** ระดับชั้นที่มีข้อมูลจริง (GPA / เบิกจ่าย / แบบฟอร์ม / ภาคเรียนที่เปิด) */
+  function gradeLevelsInData() {
+    const lvs = new Set(allTerms().map(t => gl().of(t)));
+    lvs.add(gl().of(getActiveTerm()));
+    return [...lvs].sort((a, b) => a - b);
+  }
+
+  /** ตารางภาพรวมทุกระดับชั้น — แสดงเหนือรายงานเสมอ */
+  function renderGradeOverview(activeLv) {
+    const page = document.getElementById('page-termreport'); if (!page) return;
+    let box = document.getElementById('tr-grades');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'tr-grades'; box.className = 'tr-grades';
+      page.insertBefore(box, document.getElementById('tr-metrics'));
+    }
+    const f2 = v => v == null ? '—' : v.toFixed(2);
+    const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+    const money = v => (typeof fmt === 'function' ? fmt(v) : v);
+    const rowsHtml = gradeLevelsInData().map(lv => {
+      const R = gradeReportRows(lv);
+      const a1 = avg(R.map(r => r.v1).filter(v => v != null)), a2 = avg(R.map(r => r.v2).filter(v => v != null));
+      const ay = avg(R.map(r => r.year).filter(v => v != null));
+      const low = R.filter(r => r.year != null && r.year < 2).length;
+      const sdqRisk = R.filter(r => SDQ_RISK(r.sdq1) || SDQ_RISK(r.sdq2)).length;
+      const pay = R.reduce((t, r) => t + r.pay, 0);
+      const full = R.filter(r => r.sub === 4).length;
+      const cur = lv === gl().of(getActiveTerm());
+      return `<tr class="${lv === activeLv ? 'on' : ''}" data-grade="${lv}" title="กดเพื่อดูรายงานทั้งปีของ ${gl().name(lv)}">
+        <td><b>${gl().name(lv)}</b>${cur ? ' <span class="badge b-blue" style="font-size:10px">ปีปัจจุบัน</span>' : ''}<div class="tr-g-sub">${gl().stage(lv)}</div></td>
+        <td>${gl().year(lv)}</td>
+        <td class="num" style="color:${a1 && typeof gpaColor === 'function' ? gpaColor(a1) : 'inherit'}">${f2(a1)}</td>
+        <td class="num" style="color:${a2 && typeof gpaColor === 'function' ? gpaColor(a2) : 'inherit'}">${f2(a2)}</td>
+        <td class="num"><b style="color:${ay && typeof gpaColor === 'function' ? gpaColor(ay) : 'inherit'}">${f2(ay)}</b></td>
+        <td class="num" style="color:${low ? 'var(--red)' : 'inherit'}">${low}</td>
+        <td class="num" style="color:${sdqRisk ? 'var(--amber)' : 'inherit'}">${sdqRisk}</td>
+        <td class="num">${money(pay)}</td>
+        <td class="num">${full}/${R.length}</td>
+      </tr>`;
+    }).join('');
+    box.innerHTML = `<div class="tr-g-title">สรุปตามระดับชั้น <span>1 ชั้น = 1 ปีการศึกษา (ภาคเรียนที่ 1 + 2) · กดที่แถวเพื่อดูรายงานทั้งปี</span></div>
+      <div class="tbl-wrap"><table class="tr-g-table"><thead><tr>
+        <th>ระดับชั้น</th><th>ปีการศึกษา</th><th class="num">GPA เฉลี่ย ภาค 1</th><th class="num">GPA เฉลี่ย ภาค 2</th><th class="num">GPA เฉลี่ยทั้งปี</th>
+        <th class="num">GPA ทั้งปี &lt; 2.00</th><th class="num">SDQ เสี่ยง/มีปัญหา</th><th class="num">เงินทุนเบิกจ่ายทั้งปี (บาท)</th><th class="num">ส่งแบบฟอร์มครบ 4 ฉบับ</th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+    if (!box.dataset.bound) {
+      box.dataset.bound = '1';
+      box.addEventListener('click', e => {
+        const tr = e.target.closest('tr[data-grade]'); if (!tr) return;
+        const sel = document.getElementById('tr-term'); if (sel) { sel.value = 'grade:' + tr.dataset.grade; renderTermReport(); }
+      });
+    }
+  }
+
+  function renderGradeReport(lv) {
+    const page = document.getElementById('page-termreport');
+    const thead = page && page.querySelector('table:not(.tr-g-table) thead');
+    const q = (document.getElementById('tr-search')?.value || '').trim().toLowerCase();
+    let rows = gradeReportRows(lv);
+    if (q) rows = rows.filter(r => (r.name + r.school + r.province).toLowerCase().includes(q));
+    const n = rows.length;
+    const ys = rows.map(r => r.year).filter(v => v != null);
+    const avg = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
+    const low = rows.filter(r => r.year != null && r.year < 2).length;
+    const sdqRisk = rows.filter(r => SDQ_RISK(r.sdq1) || SDQ_RISK(r.sdq2)).length;
+    const pay = rows.reduce((t, r) => t + r.pay, 0);
+    const full = rows.filter(r => r.sub === 4).length;
+    const none = rows.filter(r => !r.started).length;
+    const money = v => (typeof fmt === 'function' ? fmt(v) : v);
+    const metric = (v, l, c) => `<div class="metric"><div class="metric-val" style="color:${c || 'var(--text)'}">${v}</div><div class="metric-lbl">${l}</div></div>`;
+    document.getElementById('tr-metrics').innerHTML =
+      metric(n, 'นักเรียนทั้งหมด') +
+      metric(ys.length ? avg.toFixed(2) : '—', `GPA เฉลี่ยทั้งปี ${gl().name(lv)}`, 'var(--blue)') +
+      metric(low, 'GPA ทั้งปีต่ำกว่า 2.00', low ? 'var(--red)' : 'var(--text)') +
+      metric(sdqRisk, 'SDQ เสี่ยง/มีปัญหา (ภาคใดภาคหนึ่ง)', sdqRisk ? 'var(--amber)' : 'var(--text)') +
+      metric(money(pay), 'เงินทุนเบิกจ่ายทั้งปี (บาท)', 'var(--teal)') +
+      metric(`${full}/${n}`, 'ส่งแบบฟอร์มครบ 4 ฉบับ', 'var(--green)') +
+      metric(none, 'ยังไม่เริ่มกรอกทั้งปี', none ? 'var(--amber)' : 'var(--text)');
+    if (thead) thead.innerHTML = GRADE_HEAD;
+    const f2 = v => v == null ? '<span style="color:var(--text3)">—</span>' : `<b style="color:${typeof gpaColor === 'function' ? gpaColor(v) : 'inherit'}">${v.toFixed(2)}</b>`;
+    const sdqB = g => g ? `<span class="badge ${typeof sdqGroupBadge === 'function' ? sdqGroupBadge(g) : 'b-gray'}" style="font-size:10.5px">${escHtml(g)}</span>` : '<span style="color:var(--text3);font-size:11px">ยังไม่ประเมิน</span>';
+    document.getElementById('tr-tbody').innerHTML = rows.map(r => {
+      const idx = DB.students.indexOf(r.s);
+      const delta = (r.s.gpa_p6 && r.year) ? (r.year - r.s.gpa_p6).toFixed(2) : '';
+      return `<tr>
+        <td>${escHtml(r.no ?? '')}</td>
+        <td style="font-weight:600">${escHtml(r.name)}<div style="font-size:11px;color:var(--text3)">${escHtml(r.s.nickname || '')}</div></td>
+        <td style="font-size:12px">${escHtml(r.school || '-')}</td>
+        <td><span class="badge b-blue">${escHtml(r.province || '-')}</span></td>
+        <td>${f2(r.v1)}</td><td>${f2(r.v2)}</td>
+        <td style="font-size:15px">${f2(r.year)}</td>
+        <td style="font-size:12px">${delta ? (delta > 0 ? '▲ ' : '▼ ') + delta : '—'}</td>
+        <td>${sdqB(r.sdq1)} ${sdqB(r.sdq2)}</td>
+        <td style="font-weight:600;color:var(--teal)">${money(r.pay)}</td>
+        <td><span class="badge ${r.sub === 4 ? 'b-green' : r.sub ? 'b-amber' : 'b-red'}">${r.sub}/4 ฉบับ</span></td>
+        <td><button class="btn btn-sm" onclick="trOpenForm(${idx})">เปิดฟอร์ม</button></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3)">ไม่มีข้อมูลในระดับชั้นนี้</td></tr>`;
+    document.getElementById('tr-footer').textContent =
+      `${gl().name(lv)} ปีการศึกษา ${gl().year(lv)} (ภาคเรียนที่ ${gl().terms(lv).join(' และ ')}) • ${n} คน • เบิกจ่ายรวม ${money(pay)} บาท`;
+  }
+
+  function exportGradeReport(lv) {
+    const rows = gradeReportRows(lv);
+    const head = ['ระดับชั้น', 'ปีการศึกษา', 'ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'จังหวัด', 'GPA ภาค 1', 'GPA ภาค 2', 'GPA เฉลี่ยทั้งปี',
+      'GPA ป.6', 'Δ vs ป.6', 'SDQ ภาค 1', 'SDQ ภาค 2', 'เงินทุนทั้งปี', 'แบบฟอร์มที่ส่งแล้ว (จาก 4)'];
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""').replace(/^[=+\-@]/, "'$&") + '"';
+    const body = rows.map(r => [gl().name(lv), gl().year(lv), r.no, r.name, r.school, r.province,
+      r.v1 ?? '', r.v2 ?? '', r.year != null ? r.year.toFixed(2) : '', r.s.gpa_p6 ?? '',
+      (r.s.gpa_p6 && r.year) ? (r.year - r.s.gpa_p6).toFixed(2) : '', r.sdq1 || 'ยังไม่ประเมิน', r.sdq2 || 'ยังไม่ประเมิน', r.pay, r.sub
+    ].map(esc).join(','));
+    const csv = '\uFEFF' + [head.map(esc).join(','), ...body].join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `รายงานระดับชั้น_${gl().name(lv).replace(/\s+/g, '')}_${gl().year(lv)}.csv`;
+    a.click();
+  }
+
   window.renderTermReport = function () {
     const host = document.getElementById('page-termreport');
     if (!host) return;
     const sel = document.getElementById('tr-term');
     if (sel) {
-      const cur = sel.value && isValidTerm(sel.value) ? sel.value : getActiveTerm();
-      sel.innerHTML = allTerms().map(x => `<option value="${x}" ${x === cur ? 'selected' : ''}>${termLabel(x)}</option>`).join('');
+      const prev = sel.value;
+      const cur = prev && (isValidTerm(prev) || /^grade:\d+$/.test(prev)) ? prev : getActiveTerm();
+      // v23: ตัวเลือก "สรุปทั้งปีตามระดับชั้น" + ภาคเรียนจัดกลุ่มตามชั้น
+      const gradeOpts = gradeLevelsInData().map(lv => `<option value="grade:${lv}" ${cur === 'grade:' + lv ? 'selected' : ''}>${gl().name(lv)} — ทั้งปีการศึกษา ${gl().year(lv)} (ภาค 1 + 2)</option>`).join('');
+      sel.innerHTML = `<optgroup label="สรุปทั้งปีตามระดับชั้น">${gradeOpts}</optgroup>` + termOptions(allTerms(), cur);
+      if (!sel.value) sel.value = getActiveTerm();
     }
-    const t = (sel && sel.value) || getActiveTerm();
+    const scope = (sel && sel.value) || getActiveTerm();
+    const gm = /^grade:(\d+)$/.exec(scope);
+    renderGradeOverview(gm ? +gm[1] : gl().of(scope));
+    if (gm) { renderGradeReport(+gm[1]); return; }
+    const thead = document.querySelector('#page-termreport table:not(.tr-g-table) thead');
+    if (thead) thead.innerHTML = TERM_HEAD;
+    const t = scope;
     const q = (document.getElementById('tr-search')?.value || '').trim().toLowerCase();
     let rows = termReportRows(t);
     if (q) rows = rows.filter(r => (r.name + r.school + r.province).toLowerCase().includes(q));
@@ -567,6 +745,8 @@
 
   window.exportTermReport = function () {
     const t = document.getElementById('tr-term')?.value || getActiveTerm();
+    const gm = /^grade:(\d+)$/.exec(t);
+    if (gm) { exportGradeReport(+gm[1]); return; }
     const rows = termReportRows(t);
     const head = ['ภาคเรียน', 'ลำดับ', 'ชื่อ-สกุล', 'ชั้น', 'โรงเรียน', 'จังหวัด', 'GPA', 'GPA ป.6',
       'Δ vs ป.6', 'กลุ่มการดูแล (วิเคราะห์อัตโนมัติ)', 'ผล SDQ ภาคเรียนนี้', 'เงินทุนภาคเรียนนี้', 'ฟอร์ม1 (%)', 'สถานะฟอร์ม1',
@@ -588,7 +768,7 @@
 
   /* ══════════ 7) เชื่อมเข้ากับระบบนำทางเดิม ══════════ */
   if (typeof PAGE_META === 'object') {
-    PAGE_META.termreport = { title: 'รายงานรายภาคเรียน', sub: 'สรุปผลการเรียน การเบิกจ่าย และสถานะการกรอกแบบฟอร์ม แยกตามภาคเรียน' };
+    PAGE_META.termreport = { title: 'รายงานรายภาคเรียน / ระดับชั้น', sub: 'สรุปผลการเรียน การเบิกจ่าย และสถานะการกรอกแบบฟอร์ม แยกตามภาคเรียนและระดับชั้น (1 ชั้น = 1 ปีการศึกษา)' };
   }
   const _origShowPage = window.showPage;
   window.showPage = function (p, btn) {
@@ -598,6 +778,7 @@
 
   /* ══════════ 8) เปิดใช้งาน ══════════ */
   function boot() {
+    try { updateYearLabels(); } catch (e) {}
     pullActiveTermFromCloud();
     pullFormAccessFromCloud();
   }
@@ -607,7 +788,7 @@
   /* ══════════ 9) เปิด API ให้ไฟล์อื่นเรียกใช้ ══════════ */
   window.Term = {
     parse: parseTerm, key: termKey, isValid: isValidTerm, cmp: cmpTerm,
-    next: nextTerm, label: termLabel, all: allTerms,
+    next: nextTerm, label: termLabel, all: allTerms, options: termOptions,
     active: getActiveTerm, setActive: setActiveTerm,
     bind: bindTerm, bucket: bucketOf,
     progress: formProgress, state: formState, meta: formMeta,
