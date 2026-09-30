@@ -1658,3 +1658,62 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .ac-norow td{background:var(--bg2)}
 #page-academic .search-row select{flex:none}
 @media (max-width:1100px){.ac-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ac-kpis .ac-kpi:first-child{grid-column:1/-1}}
+
+/* ============================================================
+   v30 — หัวข้อส่วนของแบบฟอร์มทุน (js/30-form-fixes.js)
+   หัวส่วน: เลขส่วน + ชื่อ + "ส่วนที่ x จาก y" + ความคืบหน้า
+   หัวข้อย่อย: จัดเป็นกลุ่มในกรอบพื้นอ่อน อ่านเป็นก้อนเดียวกัน
+   ============================================================ */
+.sf-section-card.sf-v2{padding:0;overflow:hidden}
+.sf-sec-head{display:flex;align-items:center;gap:16px;padding:22px 28px;
+  background:linear-gradient(180deg,#F7F9FF 0%,#fff 100%);border-bottom:1px solid var(--border)}
+.sf-sec-num{flex:none;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-heading);font-weight:700;font-size:20px;color:#fff;background:var(--blue);
+  box-shadow:0 6px 14px -6px rgba(47,92,255,.55)}
+.sf-sec-titles{flex:1;min-width:0}
+.sf-sec-titles h2{margin:0;font-family:var(--font-heading);font-size:20px;font-weight:700;line-height:1.35;color:var(--text)}
+.sf-sec-titles p{margin:2px 0 0;font-size:13px;color:var(--text3)}
+.sf-sec-progress{flex:none}
+.sf-sec-status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2)}
+.sf-sec-meter{display:block;width:140px;height:6px;border-radius:6px;background:var(--bg3);overflow:hidden}
+.sf-sec-meter>span{display:block;height:100%;border-radius:6px;background:var(--blue);transition:width .3s var(--sf-ease)}
+.sf-sec-status.is-done{color:var(--green)}
+.sf-sec-status.is-done .sf-sec-meter>span{background:var(--green)}
+.sf-sec-status.is-free{color:var(--text3);font-weight:500}
+
+.sf-sec-body{padding:26px 28px 28px;display:flex;flex-direction:column;gap:22px}
+.sf-group{border:1px solid var(--border);border-radius:14px;background:var(--bg2);padding:18px 20px 22px}
+.sf-group-title{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-family:var(--font-heading);
+  font-size:16px;font-weight:700;line-height:1.4;color:var(--blue-dk)}
+.sf-group-title::before{content:"";flex:none;width:4px;height:20px;border-radius:4px;background:var(--blue)}
+.sf-group .sf-input{background:#fff}
+.sf-group .sf-data-table .sf-cell-input{background:transparent}
+
+/* แถบขั้นตอน: แสดงชื่อทุกขั้นในบรรทัดเดียว (เดิมตัดคำเป็นแนวตั้ง "ผล/การ/เรียน") */
+.sf-stepper-wrap{margin-bottom:46px}
+.sf-step{position:relative}
+.sf-step-label,.sf-step.active .sf-step-label{position:absolute;top:40px;left:50%;transform:translateX(-50%);
+  visibility:visible;height:auto;margin:0;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:12px;line-height:1.3;color:var(--text3);font-weight:500}
+.sf-step:first-child .sf-step-label{left:0;transform:none;text-align:left}
+.sf-step:last-child .sf-step-label{left:auto;right:0;transform:none;text-align:right}
+.sf-step.complete .sf-step-label{color:var(--teal)}
+.sf-step.active .sf-step-label{color:var(--text);font-weight:700}
+
+/* ตารางผลการเรียน */
+.sf-matrix-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+.sf-matrix-hint{font-size:12px;color:var(--text3)}
+.sf-data-table .sf-cell-input.sf-invalid,.sf-data-table .sf-cell-input.sf-invalid:focus{border-color:var(--red);background:var(--red-lt)}
+
+@media (max-width:1100px){
+  .sf-step:not(.active) .sf-step-label{visibility:hidden}
+}
+@media (max-width:760px){
+  .sf-sec-head{flex-wrap:wrap;padding:18px}
+  .sf-sec-progress{width:100%}
+  .sf-sec-status{align-items:flex-start}
+  .sf-sec-meter{width:100%}
+  .sf-sec-body{padding:18px}
+  .sf-group{padding:14px}
+  .sf-stepper-wrap{margin-bottom:26px}
+}
