@@ -481,7 +481,7 @@ function sfRenderEditor(){
       </div>
       <div class="sf-editor-top-right">
         <span class="sf-save-status ${sfState.saveStatus}">${saveLabel}</span>
-        <button type="button" class="sf-btn sf-btn-ghost" data-sf-action="send-sheet">💾 บันทึกข้อมูล</button>
+        <button type="button" class="sf-btn sf-btn-ghost" data-sf-action="send-sheet">💾 บันทึกและส่งข้อมูล</button>
         <button type="button" class="sf-btn sf-btn-ghost" data-sf-action="print">👁️ ดูตัวอย่าง / พิมพ์ PDF</button>
       </div>
     </div>
@@ -496,7 +496,7 @@ function sfRenderEditor(){
         <button type="button" class="sf-btn sf-btn-secondary" data-sf-action="prev-section" ${isFirst?'disabled':''}>← ย้อนกลับ</button>
         <span class="sf-section-count">${sfState.sectionIndex+1} / ${sections.length}</span>
         ${isLast
-          ? `<button type="button" class="sf-btn sf-btn-primary" data-sf-action="send-sheet">💾 บันทึกข้อมูล</button>`
+          ? `<button type="button" class="sf-btn sf-btn-primary" data-sf-action="send-sheet">💾 บันทึกและส่งข้อมูล</button>`
           : `<button type="button" class="sf-btn sf-btn-primary" data-sf-action="next-section">ถัดไป →</button>`}
       </div>
     </main>

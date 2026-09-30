@@ -45,6 +45,7 @@
       return (Term.meta(s, key, term) || {}).submittedAt || '';
     } catch (e) { return ''; }
   }
+  const thDateTime = iso => { try { const d = new Date(iso); return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'; } catch (e) { return ''; } };
   const thDate = iso => { try { return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
 
   function rowsFor(term) {
@@ -60,12 +61,9 @@
   /* ---------- ส่วนภาพรวม ---------- */
   function overviewHtml(rows, term) {
     const total = rows.length * TASK_KEYS.length;
-    let done = 0, doing = 0;
-    rows.forEach(r => TASK_KEYS.forEach(k => {
-      const s = r.tasks[k].state;
-      if (isDone(s)) done++; else if (s === 'partial') doing++;
-    }));
-    const none = total - done - doing;
+    let done = 0;
+    rows.forEach(r => TASK_KEYS.forEach(k => { if (isDone(r.tasks[k].state)) done++; }));
+    const none = total - done;
     const pct = total ? Math.round(done / total * 100) : 0;
     const w = n => total ? (n / total * 100).toFixed(2) : 0;
     const acc = (window.Term && Term.formAccess) ? Term.formAccess() : { form1: true, form2: true };
@@ -85,23 +83,23 @@
       </div>
       <div class="ft2-ov-main">
         <div class="ft2-big"><span class="ft2-big-num">${pct}%</span>
-          <span class="ft2-big-lbl">งานเสร็จแล้ว ${done} จาก ${total} งาน<br><small>นักเรียน ${rows.length} คน × 3 งาน</small></span></div>
+          <span class="ft2-big-lbl">ส่งแล้ว ${done} จาก ${total} งาน<br><small>นักเรียน ${rows.length} คน × 3 งาน</small></span></div>
         <div class="ft2-stack-wrap">
-          <div class="ft2-stack" role="img" aria-label="เสร็จ ${done} กำลังกรอก ${doing} ยังไม่เริ่ม ${none}">
-            <span class="seg done" style="width:${w(done)}%"></span><span class="seg doing" style="width:${w(doing)}%"></span><span class="seg none" style="width:${w(none)}%"></span>
+          <div class="ft2-stack" role="img" aria-label="ส่งแล้ว ${done} ยังไม่ส่ง ${none}">
+            <span class="seg done" style="width:${w(done)}%"></span><span class="seg none" style="width:${w(none)}%"></span>
           </div>
           <div class="ft2-legend">
-            <span><i class="dot done"></i>เสร็จแล้ว ${done}</span>
-            <span><i class="dot doing"></i>กำลังกรอก ${doing}</span>
-            <span><i class="dot none"></i>ยังไม่เริ่ม ${none}</span>
+            <span><i class="dot done"></i>ส่งแล้ว ${done}</span>
+            <span><i class="dot none"></i>ยังไม่ส่ง ${none}</span>
+            <span class="ft2-legend-note">นับว่าส่งแล้วเมื่อกด "บันทึกและส่งข้อมูล"</span>
           </div>
         </div>
       </div>
       <div class="ft2-people">
         ${chip('all', 'นักเรียนทั้งหมด', rows.length)}
-        ${chip('todo', 'ยังไม่เริ่มสักงาน', cntStudents.todo)}
-        ${chip('doing', 'ทำค้างไว้', cntStudents.doing)}
-        ${chip('done', 'ครบทั้ง 3 งาน', cntStudents.done)}
+        ${chip('todo', 'ยังไม่ส่งสักงาน', cntStudents.todo)}
+        ${chip('doing', 'ส่งแล้วบางงาน', cntStudents.doing)}
+        ${chip('done', 'ส่งครบทั้ง 3 งาน', cntStudents.done)}
       </div>
     </section>`;
   }
@@ -112,18 +110,18 @@
 
   function taskCardsHtml(rows) {
     return `<section class="ft2-tasks">${TASK_KEYS.map(k => {
-      let d = 0, p = 0;
-      rows.forEach(r => { const s = r.tasks[k].state; if (isDone(s)) d++; else if (s === 'partial') p++; });
-      const n = rows.length, left = n - d, none = n - d - p;
+      let d = 0;
+      rows.forEach(r => { if (isDone(r.tasks[k].state)) d++; });
+      const n = rows.length, left = n - d, none = n - d;
       const w = x => n ? (x / n * 100).toFixed(2) : 0;
       const on = st.task === k;
       return `<article class="ft2-task ${on ? 'on' : ''}">
         <header><h3>${TASK_NAME[k]}</h3><span>${TASK_HINT[k]}</span></header>
-        <div class="ft2-task-num"><b>${d}</b> / ${n} คน เสร็จแล้ว</div>
-        <div class="ft2-stack sm"><span class="seg done" style="width:${w(d)}%"></span><span class="seg doing" style="width:${w(p)}%"></span><span class="seg none" style="width:${w(none)}%"></span></div>
+        <div class="ft2-task-num"><b>${d}</b> / ${n} คน ส่งแล้ว</div>
+        <div class="ft2-stack sm"><span class="seg done" style="width:${w(d)}%"></span><span class="seg none" style="width:${w(none)}%"></span></div>
         <div class="ft2-task-foot">
-          <span>กำลังกรอก ${p} · ยังไม่เริ่ม ${none}</span>
-          ${left ? `<button type="button" class="ft2-link" data-ft2-task="${k}">${on ? 'แสดงทุกคน' : `ดูคนที่ยังค้าง ${left} คน`}</button>` : `<span class="ft2-allok">ครบทุกคน</span>`}
+          <span>ยังไม่ส่ง ${none} คน</span>
+          ${left ? `<button type="button" class="ft2-link" data-ft2-task="${k}">${on ? 'แสดงทุกคน' : `ดูคนที่ยังไม่ส่ง ${left} คน`}</button>` : `<span class="ft2-allok">ครบทุกคน</span>`}
         </div>
       </article>`;
     }).join('')}</section>`;
@@ -132,31 +130,28 @@
   /* ---------- ตาราง ---------- */
   function cellHtml(r, k, term) {
     const t = r.tasks[k];
-    let label, detail = '', cls = t.state;
-    if (t.state === 'submitted') { label = '✓ ส่งแล้ว'; const d = submittedAt(r.s, k, term); detail = d ? thDate(d) : ''; }
-    else if (t.state === 'done') { label = k === 'sdq' ? 'ประเมินครบ' : 'กรอกครบ'; if (k === 'sdq') detail = (t.text.split('·')[1] || '').trim(); }
-    else if (t.state === 'partial') {
-      label = k === 'sdq' ? t.text : `กำลังกรอก ${Math.round(t.pct * 100)}%`;
-      if (k !== 'sdq') { const m = missingSections(r.s, k, term); if (m.length) detail = 'ค้าง: ' + m.slice(0, 2).join(', ') + (m.length > 2 ? ` +${m.length - 2}` : ''); }
+    let label, detail = '';
+    if (t.state === 'submitted') {
+      label = '✓ ส่งแล้ว';
+      const d = t.at || submittedAt(r.s, k, term);
+      detail = d ? 'ล่าสุด ' + thDateTime(d) : '';
     }
     else if (t.state === 'locked') { label = 'ปิดรับ'; }
-    else { label = 'ยังไม่เริ่ม'; }
-    const pct = isDone(t.state) ? 100 : Math.round((t.pct || 0) * 100);
+    else { label = 'ยังไม่ส่ง'; }
     const canOpen = t.state !== 'locked';
-    const tip = canOpen ? (k !== 'sdq' && t.state !== 'none' ? 'ดูตัวอย่างแบบฟอร์ม' : 'เปิดงานนี้') : '';
+    const tip = !canOpen ? '' : (k !== 'sdq' && t.state === 'submitted') ? 'ดูตัวอย่างแบบฟอร์มที่ส่ง' : 'เปิดงานนี้';
     return `<td class="ft2-cell" data-label="${TASK_NAME[k]}">
-      <button type="button" class="ft2-state s-${cls}" ${canOpen ? '' : 'disabled'} data-ft2-cell="${k}" data-idx="${r.idx}" title="${E(tip)}">
+      <button type="button" class="ft2-state s-${t.state}" ${canOpen ? '' : 'disabled'} data-ft2-cell="${k}" data-idx="${r.idx}" title="${E(tip)}">
         <span class="ft2-state-lbl">${E(label)}</span>
         ${detail ? `<span class="ft2-state-detail">${E(detail)}</span>` : ''}
-        <span class="ft2-mini"><span style="width:${pct}%"></span></span>
       </button></td>`;
   }
   function rowHtml(r, term) {
     const photo = (typeof photoEl === 'function') ? photoEl(r.s) : '';
-    const dots = TASK_KEYS.map(k => `<i class="${isDone(r.tasks[k].state) ? 'ok' : r.tasks[k].state === 'partial' ? 'half' : ''}"></i>`).join('');
+    const dots = TASK_KEYS.map(k => `<i class="${isDone(r.tasks[k].state) ? 'ok' : ''}"></i>`).join('');
     const next = r.sum.next;
     const btn = next
-      ? `<button type="button" class="ft2-btn ft2-btn-primary" data-ft2-open="${next.key}" data-idx="${r.idx}">${next.state === 'none' ? 'เริ่ม' : 'ทำต่อ'} ${next.key === 'sdq' ? 'SDQ' : 'ฟอร์ม ' + next.key.slice(-1)}</button>`
+      ? `<button type="button" class="ft2-btn ft2-btn-primary" data-ft2-open="${next.key}" data-idx="${r.idx}">ไปที่ ${next.key === 'sdq' ? 'SDQ' : 'ฟอร์ม ' + next.key.slice(-1)}</button>`
       : (r.sum.group === 'done'
           ? `<button type="button" class="ft2-btn" data-ft2-open="form1" data-idx="${r.idx}">เปิดดู</button>`
           : `<span class="ft2-wait">รอเปิดรับ</span>`);
@@ -165,7 +160,7 @@
       <td class="ft2-who" data-label="นักเรียน"><div class="ft2-who-in">${photo}
         <div><div class="ft2-name">${E(r.s.name || '(ไม่ระบุชื่อ)')}</div><div class="ft2-school">${E(r.s.school_m1 || '-')}</div></div></div></td>
       ${TASK_KEYS.map(k => cellHtml(r, k, term)).join('')}
-      <td class="ft2-sum" data-label="รวม"><div class="ft2-dots" aria-label="เสร็จ ${r.sum.doneCount} จาก 3 งาน">${dots}</div><span>${r.sum.doneCount}/3</span></td>
+      <td class="ft2-sum" data-label="รวม"><div class="ft2-dots" aria-label="ส่งแล้ว ${r.sum.doneCount} จาก 3 งาน">${dots}</div><span>${r.sum.doneCount}/3</span></td>
       <td class="ft2-act">${btn}</td>
     </tr>`;
   }
@@ -177,7 +172,7 @@
       && (!q || (r.s.name || '').toLowerCase().includes(q) || (r.s.school_m1 || '').toLowerCase().includes(q)
           || (r.s.province || '').toLowerCase().includes(q) || String(r.s.no ?? '') === q));
     const byNo = (a, b) => (a.s.no || a.idx) - (b.s.no || b.idx);
-    if (st.sort === 'behind') list.sort((a, b) => (a.pctAvg - b.pctAvg) || byNo(a, b));
+    if (st.sort === 'behind') list.sort((a, b) => (a.sum.doneCount - b.sum.doneCount) || byNo(a, b));
     else if (st.sort === 'school') list.sort((a, b) => String(a.s.school_m1 || '').localeCompare(String(b.s.school_m1 || ''), 'th') || byNo(a, b));
     else list.sort(byNo);
     return list;
@@ -189,13 +184,13 @@
     if (st.page > pages) st.page = 1;
     const slice = list.slice((st.page - 1) * PER_PAGE, st.page * PER_PAGE);
     const filterNote = st.task
-      ? `<div class="ft2-filter-note">แสดงเฉพาะคนที่ยังทำ<b>${TASK_NAME[st.task]}</b>ไม่เสร็จ <button type="button" class="ft2-link" data-ft2-task="${st.task}">ล้างตัวกรอง</button></div>` : '';
+      ? `<div class="ft2-filter-note">แสดงเฉพาะคนที่ยังไม่ส่ง<b>${TASK_NAME[st.task]}</b> <button type="button" class="ft2-link" data-ft2-task="${st.task}">ล้างตัวกรอง</button></div>` : '';
     const tools = rows.length > 1 ? `<div class="ft2-tools">
         <input type="search" class="ft2-search" data-ft2="q" placeholder="ค้นหาชื่อนักเรียน โรงเรียน จังหวัด หรือลำดับ" value="${E(st.q)}">
         <label class="ft2-sort">เรียงตาม
           <select data-ft2="sort">
             <option value="no" ${st.sort === 'no' ? 'selected' : ''}>ลำดับ</option>
-            <option value="behind" ${st.sort === 'behind' ? 'selected' : ''}>ค้างมากสุดก่อน</option>
+            <option value="behind" ${st.sort === 'behind' ? 'selected' : ''}>ยังไม่ส่งมากสุดก่อน</option>
             <option value="school" ${st.sort === 'school' ? 'selected' : ''}>ชื่อโรงเรียน</option>
           </select></label>
       </div>` : '';
@@ -217,7 +212,7 @@
           || `<tr><td colspan="7" class="ft2-empty">${rows.length ? 'ไม่พบนักเรียนตามเงื่อนไขนี้ ลองล้างตัวกรองหรือเปลี่ยนคำค้นหา' : 'ยังไม่มีรายชื่อนักเรียนในระบบ'}</td></tr>`}</tbody>
       </table></div>
       <div class="ft2-foot"><span>${list.length ? `แสดง ${(st.page - 1) * PER_PAGE + 1}–${Math.min(st.page * PER_PAGE, list.length)} จาก ${list.length} คน` : ''}</span>
-        <span class="ft2-key">กดที่ช่องสถานะเพื่อดูตัวอย่างหรือเปิดงาน</span></div>
+        <span class="ft2-key">กดช่อง "ส่งแล้ว" เพื่อดูตัวอย่าง · กดช่อง "ยังไม่ส่ง" เพื่อเปิดงาน</span></div>
       <div class="pagination">${pag}</div>
     </section>`;
   }
@@ -231,15 +226,14 @@
   function exportCsv() {
     const term = activeTerm();
     const safe = v => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-    const txt = t => t.state === 'submitted' ? 'ส่งแล้ว' : t.state === 'done' ? 'ครบ' : t.state === 'partial' ? 'กำลังกรอก' : t.state === 'locked' ? 'ปิดรับ' : 'ยังไม่เริ่ม';
-    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'จังหวัด', 'ฟอร์ม 1', 'ฟอร์ม 1 (%)', 'ฟอร์ม 1 ส่วนที่ค้าง', 'ฟอร์ม 2', 'ฟอร์ม 2 (%)', 'ฟอร์ม 2 ส่วนที่ค้าง', 'SDQ', 'SDQ รายละเอียด', 'เสร็จ (จาก 3)'];
+    const txt = t => t.state === 'submitted' ? 'ส่งแล้ว' : t.state === 'locked' ? 'ปิดรับ' : 'ยังไม่ส่ง';
+    const when = t => t.at ? thDateTime(t.at) : '';
+    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'จังหวัด', 'ฟอร์ม 1', 'ฟอร์ม 1 ส่งล่าสุด', 'ฟอร์ม 2', 'ฟอร์ม 2 ส่งล่าสุด', 'SDQ', 'SDQ ส่งล่าสุด', 'ส่งแล้ว (จาก 3)'];
     const lines = [head.map(safe).join(',')];
     rowsFor(term).sort((a, b) => (a.s.no || 0) - (b.s.no || 0)).forEach(r => {
       const f1 = r.tasks.form1, f2 = r.tasks.form2, sd = r.tasks.sdq;
       lines.push([r.s.no, r.s.name, r.s.school_m1, r.s.province,
-        txt(f1), isDone(f1.state) ? 100 : Math.round(f1.pct * 100), missingSections(r.s, 'form1', term).join(' / '),
-        txt(f2), isDone(f2.state) ? 100 : Math.round(f2.pct * 100), missingSections(r.s, 'form2', term).join(' / '),
-        txt(sd), sd.text, r.sum.doneCount].map(safe).join(','));
+        txt(f1), when(f1), txt(f2), when(f2), txt(sd), when(sd), r.sum.doneCount].map(safe).join(','));
     });
     const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -284,7 +278,7 @@
       if (c && !c.disabled) {
         const k = c.getAttribute('data-ft2-cell'), idx = +c.getAttribute('data-idx');
         const state = rowsFor(activeTerm())[idx].tasks[k].state;
-        if (k !== 'sdq' && state !== 'none' && typeof ftOpenPreview === 'function') ftOpenPreview(idx, k);
+        if (k !== 'sdq' && state === 'submitted' && typeof ftOpenPreview === 'function') ftOpenPreview(idx, k);
         else openTask(idx, k);
         return;
       }

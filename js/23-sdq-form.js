@@ -272,13 +272,11 @@
   function sdqPickerRow(s, idx) {
     const bucket = (s.sdq && s.sdq[sdqState.term]) || null;
     const res = bucket ? sdqCompute(bucket) : null;
-    let statusHtml = `<span class="badge b-gray">ยังไม่ประเมิน</span>`;
-    if (bucket && bucket.__touched) {
-      if (res.complete) {
-        statusHtml = `<span class="badge ${groupCls(res.totalGroup)}">ประเมินครบ · ${res.totalGroup}</span>`;
-      } else {
-        statusHtml = `<span class="badge b-amber">กรอกบางส่วน (${res.totalAnswered}/25)</span>`;
-      }
+    // v33: 2 สถานะ — ส่งแล้ว (กดบันทึก/ส่งผล + วันเวลาล่าสุด) หรือ ยังไม่ส่ง
+    let statusHtml = `<span class="badge b-gray">ยังไม่ส่ง</span>`;
+    if (bucket && bucket.submittedAt) {
+      const when = (typeof Term === 'object' && Term.sentLabel) ? Term.sentLabel(bucket.submittedAt) : 'ส่งแล้ว';
+      statusHtml = `<span class="badge b-green">✓ ${when}</span>${res && res.complete ? ` <span class="badge ${groupCls(res.totalGroup)}">${res.totalGroup}</span>` : ''}`;
     }
     return `<tr>
       <td>${s.no ?? ''}</td>
@@ -569,15 +567,15 @@
     const evaluated = rows.filter(r => r.bucket && r.bucket.__touched && r.res.complete);
     const partial = rows.filter(r => r.bucket && r.bucket.__touched && !r.res.complete);
     const notDone = rows.length - evaluated.length - partial.length;
+    const sentCount = rows.filter(r => r.bucket && r.bucket.submittedAt).length;   // v33: นับเฉพาะที่กดบันทึก/ส่งผลแล้ว
 
     const metric = (v, l, c) => `<div class="metric"><div class="metric-val" style="color:${c || 'var(--text)'}">${v}</div><div class="metric-lbl">${l}</div></div>`;
     const problemCount = evaluated.filter(r => r.res.totalGroup === 'มีปัญหา').length;
     const riskCount = evaluated.filter(r => r.res.totalGroup === 'เสี่ยง').length;
     document.getElementById('sdq-dash-metrics').innerHTML =
       metric(rows.length, 'นักเรียนทั้งหมด') +
-      metric(evaluated.length, 'ประเมินครบแล้ว', 'var(--green)') +
-      metric(partial.length, 'กรอกบางส่วน', partial.length ? 'var(--amber)' : 'var(--text)') +
-      metric(notDone, 'ยังไม่ประเมิน', notDone ? 'var(--red)' : 'var(--text)') +
+      metric(sentCount, 'ส่งผลแล้ว', 'var(--green)') +
+      metric(rows.length - sentCount, 'ยังไม่ส่ง', (rows.length - sentCount) ? 'var(--red)' : 'var(--text)') +
       metric(riskCount, 'กลุ่มเสี่ยง (รวม 4 ด้าน)', riskCount ? 'var(--amber)' : 'var(--text)') +
       metric(problemCount, 'กลุ่มมีปัญหา (รวม 4 ด้าน)', problemCount ? 'var(--red)' : 'var(--text)');
 

@@ -17,7 +17,7 @@ function ftOverallStatus(student){
 }
 function ftStatusMeta(status){
   if(status==='done') return {label:'✓ กรอกครบแล้ว', cls:'b-green'};
-  if(status==='partial') return {label:'◐ กรอกบางส่วน', cls:'b-amber'};
+  if(status==='partial') return {label:'◐ ส่งแล้วบางงาน', cls:'b-amber'};
   return {label:'✗ ยังไม่กรอก', cls:'b-red'};
 }
 function filterFormTrack(){
@@ -940,29 +940,22 @@ async function sfSendToSheet(btn){
   const student = sfGetStudent();
   if(!student) return;
 
-  // ── ตรวจความครบถ้วนก่อน แล้วค่อยตั้งสถานะ "กรอกครบ" ──
-  // สถานะ "กรอกครบแล้ว" จะขึ้นก็ต่อเมื่อกรอกครบทุกช่องแล้วกดบันทึกเท่านั้น
+  // ── v33: กด "บันทึกและส่งข้อมูล" = ส่งแล้ว พร้อมวันเวลาล่าสุด (ไม่บังคับกรอกครบทุกช่อง
+  //    เพราะบางช่องครูไม่มีข้อมูลให้กรอก) · กดซ้ำ = อัปเดตข้อมูลและวันเวลา ──
   const formKey = sfState.formKey;
-  const complete = sfIsFormComplete(formKey);
   if(!student[formKey]) student[formKey] = {};
   student[formKey].__touched = true;
-  student[formKey].__complete = complete;
+  student[formKey].__complete = sfIsFormComplete(formKey);   // เก็บไว้เป็นข้อมูลประกอบเท่านั้น
+  const at = (window.Term && Term.markSubmitted) ? Term.markSubmitted(student, formKey) : new Date().toISOString();
   try { saveToStorage(); } catch(e) {}           // บันทึกข้อมูล + สถานะลงเครื่อง/คลาวด์
-  try { sfRenderPage(); } catch(e) {}             // อัปเดตแท็บ/สถานะบนหน้าจอทันที
+  try { sfRenderPage(); } catch(e) {}
   try { if(typeof renderFormTrack==='function') renderFormTrack(); } catch(e) {}
 
   const formLabelShort = formKey==='form1' ? 'แบบฟอร์มที่ 1' : 'แบบฟอร์มที่ 2';
-  if(!complete){
-    const missing = sfIncompleteSections(formKey);
-    showStatus('💾 บันทึกข้อมูล'+formLabelShort+'เรียบร้อย'
-      + (missing.length ? ' · ยังกรอกไม่ครบบางช่อง สถานะจึงเป็น "กรอกบางส่วน" (ส่วนที่เหลือ: ' + missing.slice(0,4).join(', ') + (missing.length>4?' …':'') + ')'
-                        : ' · สถานะ: กรอกบางส่วน'), 'success');
-    return;   // ยังไม่ส่งขึ้น Sheet จนกว่าจะกรอกครบ (กันข้อมูลไม่สมบูรณ์ปนขึ้นชีต)
-  }
+  const sentTxt = (window.Term && Term.sentLabel) ? Term.sentLabel(at) : 'ส่งแล้ว';
 
-  // กรอกครบแล้ว → ส่งขึ้น Google Sheet ตามเดิม
   if(typeof SCRIPT_URL==='undefined' || !SCRIPT_URL){
-    showStatus('✅ '+formLabelShort+' กรอกครบและบันทึกแล้ว (ยังไม่ได้ตั้งค่า Google Sheet จึงไม่ได้ส่งออนไลน์)', 'success');
+    showStatus('✅ บันทึกและส่ง'+formLabelShort+'แล้ว · '+sentTxt.replace(/^ส่งแล้ว\s*/,''), 'success');
     return;
   }
   const original = btn ? btn.textContent : '';
@@ -987,9 +980,9 @@ async function sfSendToSheet(btn){
       fields: fields
     };
     const result = await gasPost(payload);
-    showStatus('☁️ '+formLabel+' ของ '+(student.name||'นักเรียน')+' — กรอกครบและส่งไป Google Sheet แล้ว'+(result&&result.sheetName?' (ชีต: '+result.sheetName+')':''), 'success');
+    showStatus('✅ บันทึกและส่ง'+formLabelShort+'ของ '+(student.name||'นักเรียน')+' แล้ว · '+sentTxt.replace(/^ส่งแล้ว\s*/,''), 'success');
   } catch(err){
-    showStatus('⚠️ ส่งไป Google Sheet ไม่สำเร็จ: '+err.message, 'error');
+    showStatus('💾 บันทึกและส่ง'+formLabelShort+'แล้ว (สถานะ: ส่งแล้ว) · สำเนาไป Google Sheet ยังส่งไม่ได้ ระบบจะใช้ข้อมูลในระบบเป็นหลัก ('+err.message+')', 'info');
   } finally {
     if(btn){ btn.textContent=original; btn.disabled=false; }
   }

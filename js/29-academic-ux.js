@@ -59,8 +59,7 @@
     const b = s.sdq && s.sdq[t];
     let r = null; try { r = (b && b.__touched && window.SDQ) ? SDQ.compute(b) : null; } catch (e) {}
     if (r && r.complete) return `<span class="badge ${typeof sdqGroupBadge === 'function' ? sdqGroupBadge(r.totalGroup) : 'b-gray'}">${E(r.totalGroup)}</span>`;
-    if (r) return `<span class="badge b-amber">กรอกบางส่วน (${r.totalAnswered}/25)</span>`;
-    return `<span class="badge b-gray">ยังไม่ประเมิน</span>`;
+    return `<span class="badge b-gray">ยังไม่ส่งผลประเมิน</span>`;
   }
   function allTerms() {
     const set = new Set();

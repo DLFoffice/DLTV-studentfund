@@ -113,34 +113,80 @@
     const key = t => { const m = String(t).match(/(\d)\/(\d{4})/); return m ? +m[2] * 10 + +m[1] : -1; };
     return [...set].sort((a, b) => key(a) - key(b));
   }
-  const FORM_ST = { none: ['ยังไม่กรอก', 'b-red'], partial: ['กรอกบางส่วน', 'b-amber'], filled: ['กรอกครบ', 'b-blue'], submitted: ['ส่งแล้ว', 'b-green'] };
+  /* v33: สถานะแบบฟอร์มมี 2 แบบ — "ส่งแล้ว" (กดบันทึก/ส่ง + วันเวลาล่าสุด) หรือ "ยังไม่ส่ง" */
+  function sentWhen(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+        + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    } catch (e) { return ''; }
+  }
+  function sentText(iso) {
+    if (!iso) return 'ส่งแล้ว';
+    try {
+      const d = new Date(iso);
+      return 'ส่งแล้ว ' + d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+        + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    } catch (e) { return 'ส่งแล้ว'; }
+  }
+  function formRow(s, key, t, label) {
+    const sent = window.Term && Term.state(s, key, t) === 'submitted';
+    const at = sent ? ((Term.meta(s, key, t) || {}).submittedAt || '') : '';
+    const when = sentWhen(at);
+    return `<div class="tl-row"><dt>${label}</dt><dd>
+      <span class="tl-st ${sent ? 'is-sent' : 'is-wait'}"><i aria-hidden="true">${sent ? '✓' : ''}</i>${sent ? 'ส่งแล้ว' : 'ยังไม่ส่ง'}</span>
+      ${when ? `<span class="tl-when">${esc(when)}</span>` : ''}</dd></div>`;
+  }
 
   function termSpine(s, idx) {
     const terms = termsOf(s);
     if (!terms.length) return `<div class="sdx-empty">ยังไม่มีข้อมูลภาคเรียน — เพิ่มผลการเรียนได้ที่แท็บ
       <button class="sdx-link" onclick="sdxShowGroup(2)">🎓 การศึกษา</button></div>`;
     const active = (window.Term && Term.active()) || '';
-    return `<div class="sdx-spine">${terms.map(t => {
+    const key = t => { const m = String(t).match(/(\d)\/(\d{4})/); return m ? +m[2] * 10 + +m[1] : -1; };
+    let prevGpa = null, prevYear = null;
+    const cols = terms.map((t, i) => {
+      const m = String(t).match(/(\d)\/(\d{4})/) || [];
+      const sem = m[1] || '', year = m[2] || '';
       const g = (s.semGpa || []).find(x => x.term === t);
       const p = (s.semPayments || []).find(x => x.term === t);
       const pay = p ? (p.p1 || 0) + (p.p2 || 0) : 0;
-      const st1 = window.Term ? Term.state(s, 'form1', t) : 'none';
-      const st2 = window.Term ? Term.state(s, 'form2', t) : 'none';
-      const gv = g && g.gpa > 0 ? g.gpa : null;
+      const gv = g && g.gpa > 0 ? Number(g.gpa) : null;
+      let trend = '';
+      if (gv !== null && prevGpa !== null) {
+        const d = Math.round((gv - prevGpa) * 100) / 100;
+        trend = Math.abs(d) < 0.005 ? `<span class="tl-trend same">เท่าเดิม</span>`
+          : d > 0 ? `<span class="tl-trend up">▲ ${d.toFixed(2)}</span>` : `<span class="tl-trend down">▼ ${Math.abs(d).toFixed(2)}</span>`;
+      }
+      if (gv !== null) prevGpa = gv;
       const sdqBk = s.sdq && s.sdq[t];
       let sdqR = null; try { sdqR = (sdqBk && typeof window.SDQ !== 'undefined') ? SDQ.compute(sdqBk) : null; } catch (e) {}
-      const sdqBadgeTerm = (sdqR && sdqR.complete) ? `<span class="badge ${sdqGroupBadge(sdqR.totalGroup)}">SDQ: ${sdqR.totalGroup}</span>` : '<span class="badge b-gray">ยังไม่ประเมิน SDQ</span>';
-      return `<div class="sdx-term${t === active ? ' is-active' : ''}">
-        <div class="sdx-term-head">${t} <span class="sdx-grade">${gradeFromTerm(t)}</span>${t === active ? '<span class="sdx-now">กำลังใช้งาน</span>' : ''}</div>
-        <div class="sdx-term-gpa" style="color:${gv && typeof gpaColor === 'function' ? gpaColor(gv) : 'var(--text3)'}">${gv ? gv.toFixed(2) : '—'}</div>
-        <div class="sdx-term-row">${sdqBadgeTerm}</div>
-        <div class="sdx-term-pay">${pay ? money(pay) + ' บาท' : 'ยังไม่เบิกจ่าย'}</div>
-        <div class="sdx-term-forms">
-          <span class="badge ${FORM_ST[st1][1]}">ฟอร์ม 1 · ${FORM_ST[st1][0]}</span>
-          <span class="badge ${FORM_ST[st2][1]}">ฟอร์ม 2 · ${FORM_ST[st2][0]}</span>
+      const sdqCell = (sdqBk && sdqBk.submittedAt)
+        ? ((sdqR && sdqR.complete) ? `<span class="badge ${sdqGroupBadge(sdqR.totalGroup)}">${esc(sdqR.totalGroup)}</span>`
+                                   : `<span class="tl-st is-sent"><i aria-hidden="true">✓</i>ส่งแล้ว</span>`)
+        : `<span class="tl-st is-wait"><i aria-hidden="true"></i>ยังไม่ส่ง</span>`;
+      const isActive = t === active;
+      const isFuture = active && key(t) > key(active);
+      const newYear = prevYear !== null && year !== prevYear;
+      prevYear = year;
+      return `<li class="tl-col${isActive ? ' is-active' : ''}${isFuture ? ' is-future' : ''}${newYear ? ' is-newyear' : ''}">
+        <div class="tl-node"><span class="tl-dot" aria-hidden="true"></span>${isActive ? '<span class="tl-now">ภาคเรียนปัจจุบัน</span>' : isFuture ? '<span class="tl-soon">ถัดไป</span>' : ''}</div>
+        <div class="tl-card">
+          <div class="tl-head"><span class="tl-grade">${esc(gradeFromTerm(t))}</span>
+            <span class="tl-term">ภาคเรียนที่ ${esc(sem)}/${esc(year)}</span></div>
+          <div class="tl-gpa-lbl">เกรดเฉลี่ย</div>
+          <div class="tl-gpa"><b style="color:${gv && typeof gpaColor === 'function' ? gpaColor(gv) : 'var(--text3)'}">${gv !== null ? gv.toFixed(2) : '—'}</b>${trend}</div>
+          <dl class="tl-rows">
+            <div class="tl-row"><dt>เงินทุน</dt><dd>${pay ? `<span class="tl-money">${money(pay)} บาท</span>` : '<span class="tl-muted">ยังไม่เบิกจ่าย</span>'}</dd></div>
+            <div class="tl-row"><dt>SDQ</dt><dd>${sdqCell}</dd></div>
+            ${formRow(s, 'form1', t, 'ฟอร์ม 1')}
+            ${formRow(s, 'form2', t, 'ฟอร์ม 2')}
+          </dl>
         </div>
-      </div>`;
-    }).join('')}</div>`;
+      </li>`;
+    }).join('');
+    return `<div class="tl-wrap"><ol class="tl" style="--tl-n:${terms.length}">${cols}</ol></div>`;
   }
 
   /* ══════════ แท็บภาพรวม ══════════ */
@@ -187,7 +233,7 @@
         </div>
       </div>
 
-      ${secHead('📅', 'ไทม์ไลน์ภาคเรียน', 'ผลการเรียน · เงินทุน · สถานะแบบฟอร์ม เรียงตามเวลา')}
+      ${secHead('📅', 'ไทม์ไลน์ภาคเรียน', 'เกรดเฉลี่ย เงินทุน และการส่งแบบฟอร์ม ของแต่ละภาคเรียน')}
       ${termSpine(s, idx)}
 
       ${secHead('☎️', 'ติดต่อด่วน')}
@@ -296,12 +342,13 @@
 
     const formRows = terms.length && window.Term
       ? terms.map(t => {
-          const st1 = Term.state(s, 'form1', t), st2 = Term.state(s, 'form2', t);
-          const p1 = Math.round(Term.progress(s, 'form1', t) * 100), p2 = Math.round(Term.progress(s, 'form2', t) * 100);
+          const cell = k => { const sent = Term.state(s, k, t) === 'submitted';
+            const at = sent ? ((Term.meta(s, k, t) || {}).submittedAt || '') : '';
+            return `<span class="tl-st ${sent ? 'is-sent' : 'is-wait'}"><i aria-hidden="true">${sent ? '✓' : ''}</i>${sent ? esc(sentText(at)) : 'ยังไม่ส่ง'}</span>`; };
           return `<tr${t === active ? ' class="sdx-row-now"' : ''}>
             <td><b>${t}</b>${t === active ? ' <span class="sdx-now">กำลังใช้งาน</span>' : ''}</td>
-            <td><span class="badge ${FORM_ST[st1][1]}">${FORM_ST[st1][0]}</span> <span class="sdx-pct">${p1}%</span></td>
-            <td><span class="badge ${FORM_ST[st2][1]}">${FORM_ST[st2][0]}</span> <span class="sdx-pct">${p2}%</span></td>
+            <td>${cell('form1')}</td>
+            <td>${cell('form2')}</td>
           </tr>`;
         }).join('')
       : `<tr><td colspan="3" class="sdx-empty">ยังไม่มีแบบฟอร์มของนักเรียนคนนี้</td></tr>`;

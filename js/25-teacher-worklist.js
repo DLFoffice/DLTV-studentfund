@@ -55,28 +55,20 @@
     return !(window.Term && Term.isFormOpen) || Term.isFormOpen(key);
   }
 
-  /** สถานะของงานหนึ่ง → { state: none|partial|done|submitted|locked, pct, text } */
+  /** v33: สถานะของงานหนึ่ง → { state: none|submitted|locked, pct, text, at }
+      มี 2 สถานะหลักเท่านั้น: "ส่งแล้ว" (กดบันทึก/ส่ง + วันเวลาล่าสุด) หรือ "ยังไม่ส่ง" — ไม่มี "กรอกบางส่วน" แล้ว */
+  function sentLabel(iso) { return (window.Term && Term.sentLabel) ? Term.sentLabel(iso) : 'ส่งแล้ว'; }
   function taskStatus(student, key, term) {
-    let state = 'none', pct = 0, text = 'ยังไม่เริ่ม';
+    let state = 'none', pct = 0, text = 'ยังไม่ส่ง', at = '';
     if (key === 'sdq') {
       const bucket = student.sdq && student.sdq[term];
-      if (bucket && bucket.__touched) {
-        const res = (window.SDQ && SDQ.compute) ? SDQ.compute(bucket) : { totalAnswered: 0, complete: false };
-        pct = Math.min(1, (res.totalAnswered || 0) / 25);
-        if (bucket.submittedAt) { state = 'submitted'; text = 'ส่งแล้ว'; }
-        else if (res.complete) { state = 'done'; text = 'ประเมินครบ · ' + (res.totalGroup || ''); }
-        else { state = 'partial'; text = 'ตอบแล้ว ' + (res.totalAnswered || 0) + '/25 ข้อ'; }
-      }
-    } else if (window.Term) {
-      const st = Term.state(student, key, term);
-      pct = Term.progress(student, key, term);
-      if (st === 'submitted') { state = 'submitted'; text = 'ส่งแล้ว'; pct = 1; }
-      else if (st === 'filled') { state = 'done'; text = 'กรอกครบแล้ว'; pct = 1; }
-      else if (st === 'partial') { state = 'partial'; text = 'กรอกแล้ว ' + Math.round(pct * 100) + '%'; }
-      else pct = 0;
+      if (bucket && bucket.submittedAt) { state = 'submitted'; at = bucket.submittedAt; }
+    } else if (window.Term && Term.state(student, key, term) === 'submitted') {
+      state = 'submitted'; at = (Term.meta(student, key, term) || {}).submittedAt || '';
     }
-    if (state !== 'done' && state !== 'submitted' && !formOpen(key)) { state = 'locked'; text = 'ยังไม่เปิดให้กรอก'; }
-    return { key, state, pct, text };
+    if (state === 'submitted') { pct = 1; text = sentLabel(at); }
+    else if (!formOpen(key)) { state = 'locked'; text = 'ยังไม่เปิดให้กรอก'; }
+    return { key, state, pct, text, at };
   }
 
   function studentSummary(student, term) {
@@ -85,7 +77,7 @@
     const started = tasks.some(t => t.state !== 'none' && t.state !== 'locked');
     const group = doneCount === tasks.length ? 'done' : started ? 'doing' : 'todo';
     // งานถัดไป = งานแรกที่ยังไม่ครบและเปิดให้กรอก
-    const next = tasks.find(t => (t.state === 'none' || t.state === 'partial'));
+    const next = tasks.find(t => t.state === 'none');
     return { tasks, doneCount, group, next };
   }
 
@@ -114,8 +106,14 @@
   /** ข้อความปุ่ม "ทำงานถัดไป" → { main, sub } */
   function nextLabel(sum, student, term) {
     if (!sum.next) return null;
-    const verb = sum.next.state === 'none' ? 'เริ่ม' : 'ทำต่อ: ';
-    if (sum.next.key === 'sdq') return { main: verb + 'แบบประเมิน SDQ', sub: sum.next.state === 'none' ? '25 ข้อ' : sum.next.text };
+    // v33: มีข้อมูลร่างอยู่แล้ว (ยังไม่กดส่ง) → "ทำต่อ" · ยังไม่เคยเปิด → "เริ่ม"
+    let hasDraft = false;
+    try {
+      if (sum.next.key === 'sdq') hasDraft = !!(student.sdq && student.sdq[term] && student.sdq[term].__touched);
+      else { const b = Term.bucket(student, term); hasDraft = !!(b && b[sum.next.key] && b[sum.next.key].__touched); }
+    } catch (e) {}
+    const verb = hasDraft ? 'ทำต่อและส่ง: ' : 'เริ่ม';
+    if (sum.next.key === 'sdq') return { main: verb + 'แบบประเมิน SDQ', sub: '25 ข้อ' };
     const secIdx = firstIncompleteSection(student, sum.next.key, term);
     const sec = sfGetSections(sum.next.key)[secIdx];
     return { main: verb + sum.next.title, sub: sec ? 'เริ่มที่ส่วน ' + (sec.short || sec.title) : '' };
@@ -177,8 +175,8 @@
         <div class="wl-chips" role="group" aria-label="กรองตามความคืบหน้า">
           ${chip('all', 'ทั้งหมด', all.length)}
           ${chip('todo', 'ยังไม่เริ่ม', cnt.todo)}
-          ${chip('doing', 'ทำค้างไว้', cnt.doing)}
-          ${chip('done', 'ครบทุกงาน', cnt.done)}
+          ${chip('doing', 'ส่งแล้วบางงาน', cnt.doing)}
+          ${chip('done', 'ส่งครบทุกงาน', cnt.done)}
         </div>
         <input type="search" class="sf-search wl-search" data-sf-action="search"
           placeholder="ค้นหาชื่อนักเรียน โรงเรียน หรือลำดับ" value="${esc(sfState.query || '')}">

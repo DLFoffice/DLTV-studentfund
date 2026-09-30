@@ -286,11 +286,32 @@
     }));
   }
 
-  /** none | partial | filled | submitted */
+  /** v33: none | submitted — นับว่า "ส่งแล้ว" เมื่อกดบันทึก/ส่งข้อมูลเท่านั้น (ไม่ดูว่ากรอกครบทุกช่องหรือไม่)
+      เพราะบางช่องครูไม่มีข้อมูลให้กรอก · ข้อมูลเก่าที่เคยกดบันทึกตอนกรอกครบ (__complete) นับเป็นส่งแล้ว */
   function formState(student, formKey, term) {
     if (formMeta(student, formKey, term).submittedAt) return 'submitted';
-    if (!userHasInput(student, formKey, term)) return 'none';   // เปิดฟอร์มเฉย ๆ = ยังไม่กรอก
-    return formProgress(student, formKey, term) >= 0.999 ? 'filled' : 'partial';
+    const b = bucketOf(student, term); const store = b && b[formKey];
+    if (store && store.__complete) return 'submitted';
+    return 'none';
+  }
+  /** บันทึกว่า "ส่งแล้ว" พร้อมวันเวลาล่าสุด (กดบันทึกซ้ำ = อัปเดตวันเวลา) */
+  function markSubmitted(student, formKey, term) {
+    const b = bindTerm(student, term || getActiveTerm());
+    const mk = formKey === 'form1' ? 'm1' : 'm2';
+    const prev = b[mk] || {};
+    b[mk] = {
+      submittedAt: new Date().toISOString(),
+      firstSubmittedAt: prev.firstSubmittedAt || prev.submittedAt || new Date().toISOString(),
+      submittedBy: (window.STUDENT_MODE && window.STUDENT_MODE.username) || 'staff',
+      progress: Math.round(formProgress(student, formKey, term || getActiveTerm()) * 100)
+    };
+    return b[mk].submittedAt;
+  }
+  function sentLabel(iso) {
+    if (!iso) return 'ส่งแล้ว';
+    const d = new Date(iso);
+    return 'ส่งแล้ว ' + d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+      + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
   }
 
   // สถานะที่ 15-form-tracking.js / picker ใช้ — ตอนนี้อิงภาคเรียนที่เปิดอยู่
@@ -301,8 +322,8 @@
     return {
       has1: s1 !== 'none',
       has2: s2 !== 'none',
-      done1: ['filled', 'submitted'].includes(s1),
-      done2: ['filled', 'submitted'].includes(s2),
+      done1: s1 === 'submitted',
+      done2: s2 === 'submitted',
       started1: s1 !== 'none',
       started2: s2 !== 'none',
       term: t
@@ -319,10 +340,10 @@
     if (s) {
       const st = formState(s, sfState.formKey, t);
       const meta = formMeta(s, sfState.formKey, t);
+      // v33: แสดงสถานะอย่างเดียว — ส่งด้วยปุ่ม "บันทึกและส่งข้อมูล" ของแบบฟอร์ม
       submitBtn = st === 'submitted'
-        ? `<span class="tm-submitted">✅ ส่งแล้ว ${meta.submittedAt ? '· ' + new Date(meta.submittedAt).toLocaleDateString('th-TH') : ''}</span>
-           <button type="button" class="tm-btn" id="tm-unsubmit">↩︎ แก้ไขอีกครั้ง</button>`
-        : `<button type="button" class="tm-btn tm-btn-primary" id="tm-submit">📤 ส่งแบบฟอร์มภาคเรียนนี้</button>`;
+        ? `<span class="tm-sent is-sent" title="กดบันทึกอีกครั้งเพื่ออัปเดตข้อมูลและวันเวลา">✓ ${sentLabel(meta.submittedAt)}</span>`
+        : `<span class="tm-sent is-wait">ยังไม่ส่ง · กด "บันทึกและส่งข้อมูล" เมื่อกรอกเสร็จ</span>`;
     }
     const acc = getFormAccess();
     const accCtrls = staff
@@ -555,14 +576,12 @@
   }
 
   const ST_META = {
-    none: { label: 'ยังไม่กรอก', cls: 'b-red' },
-    partial: { label: 'กรอกบางส่วน', cls: 'b-amber' },
-    filled: { label: 'กรอกครบ', cls: 'b-blue' },
+    none: { label: 'ยังไม่ส่ง', cls: 'b-gray' },
     submitted: { label: 'ส่งแล้ว', cls: 'b-green' }
   };
   function stBadge(st, pct) {
     const m = ST_META[st] || ST_META.none;
-    return `<span class="badge ${m.cls}" title="${pct}%">${m.label}${st === 'partial' ? ' ' + pct + '%' : ''}</span>`;
+    return `<span class="badge ${m.cls}">${m.label}</span>`;
   }
 
 
@@ -874,6 +893,7 @@
     active: getActiveTerm, setActive: setActiveTerm,
     bind: bindTerm, bucket: bucketOf,
     progress: formProgress, state: formState, meta: formMeta,
+    markSubmitted: markSubmitted, sentLabel: sentLabel,
     rerender: rerenderTermViews,
     formAccess: getFormAccess, isFormOpen: isFormOpen, setFormAccess: setFormAccess
   };

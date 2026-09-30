@@ -1893,3 +1893,55 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
   .uid-backdrop,.uid{transition:none}
   .uid-success .uid-icon,.uid-spin{animation:none}
 }
+
+/* ============================================================
+   v33 — ไทม์ไลน์ภาคเรียน (หน้ารายละเอียดนักเรียน) + ป้ายสถานะ "ส่งแล้ว / ยังไม่ส่ง"
+   ============================================================ */
+.tl-wrap{overflow-x:auto;padding:2px 2px 10px;margin:0 -2px}
+.tl{list-style:none;margin:0;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(224px,1fr);align-items:stretch}
+.tl-col{position:relative;padding:0 7px;display:flex;flex-direction:column}
+.tl-node{position:relative;height:24px;display:flex;align-items:center}
+.tl-node::before{content:"";position:absolute;left:-7px;right:-7px;top:50%;height:2px;margin-top:-1px;background:#C9D6F5}
+.tl-col:first-child .tl-node::before{left:18px}
+.tl-col:last-child .tl-node::before{right:calc(100% - 18px)}
+.tl-col.is-future .tl-node::before{background:repeating-linear-gradient(90deg,var(--border2) 0 6px,transparent 6px 11px)}
+.tl-dot{position:relative;z-index:1;width:14px;height:14px;margin-left:12px;border-radius:50%;background:#fff;border:3px solid #7C9BF0}
+.tl-col.is-active .tl-dot{width:18px;height:18px;margin-left:10px;border-color:var(--blue);background:var(--blue);box-shadow:0 0 0 5px var(--blue-lt)}
+.tl-col.is-future .tl-dot{border-color:var(--border2)}
+.tl-card{flex:1;margin-top:10px;border:1px solid var(--border);border-radius:14px;background:#fff;padding:14px 15px 10px;transition:box-shadow .15s}
+.tl-card:hover{box-shadow:var(--shadow)}
+.tl-col.is-active .tl-card{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt);background:linear-gradient(180deg,#F5F8FF 0,#fff 60px)}
+.tl-col.is-future .tl-card{border-style:dashed;background:var(--bg2)}
+.tl-now,.tl-soon{position:relative;z-index:1;margin-left:8px;font-size:11px;font-weight:700;border-radius:999px;padding:1px 10px;box-shadow:0 0 0 4px #fff}
+.tl-now{color:#fff;background:var(--blue)}
+.tl-soon{color:var(--text3);background:var(--bg3)}
+.tl-when{display:block;margin-top:1px;font-size:11.5px;color:var(--text3);white-space:nowrap}
+.tl-head{display:flex;align-items:center;gap:8px}
+.tl-grade{font-size:12px;font-weight:700;color:var(--blue-dk);background:var(--blue-lt);border-radius:6px;padding:1px 8px}
+.tl-term{font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.tl-gpa-lbl{margin-top:10px;font-size:11.5px;color:var(--text3)}
+.tl-gpa{display:flex;align-items:baseline;gap:8px;min-height:40px}
+.tl-gpa b{font-size:30px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.tl-trend{font-size:12px;font-weight:700;border-radius:6px;padding:1px 6px}
+.tl-trend.up{color:#15803D;background:var(--green-lt)}
+.tl-trend.down{color:#B91C1C;background:var(--red-lt)}
+.tl-trend.same{color:var(--text3);background:var(--bg3)}
+.tl-rows{margin:10px 0 0;padding-top:4px;border-top:1px solid var(--border)}
+.tl-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:6px 0;font-size:13px;min-height:34px}
+.tl-row+.tl-row{border-top:1px dashed var(--border)}
+.tl-row dt{color:var(--text3);flex:none}
+.tl-row dd{margin:0;text-align:right;min-width:0}
+.tl-money{font-weight:600;color:var(--teal);font-variant-numeric:tabular-nums}
+.tl-muted{color:var(--text3)}
+.tl-st{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.tl-st i{flex:none;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;line-height:1}
+.tl-st.is-sent{color:#15803D}
+.tl-st.is-sent i{background:var(--green);color:#fff}
+.tl-st.is-wait{color:var(--text3);font-weight:500}
+.tl-st.is-wait i{border:2px solid #CBD5E1}
+
+/* แถบภาคเรียนบนหน้าแบบฟอร์ม: สถานะการส่ง */
+.tm-sent{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px}
+.tm-sent.is-sent{background:var(--green-lt);color:#15803D}
+.tm-sent.is-wait{background:var(--bg3);color:var(--text2);font-weight:500}
+.ft2-legend-note{color:var(--text3);font-size:12px}

@@ -568,7 +568,7 @@ function renderAcademic(){
     const sdqRes = (sdqBucket && sdqBucket.__touched && typeof window.SDQ==='object') ? window.SDQ.compute(sdqBucket) : null;
     const sdqCell = (sdqRes && sdqRes.complete)
       ? `<span class="badge ${sdqGroupBadge(sdqRes.totalGroup)}" title="คะแนนรวม 4 ด้าน: ${sdqRes.totalDiff}">${sdqRes.totalGroup}</span>`
-      : (sdqRes ? `<span class="badge b-amber">กรอกบางส่วน (${sdqRes.totalAnswered}/25)</span>` : `<span class="badge b-gray">ยังไม่ประเมิน</span>`);
+      : `<span class="badge b-gray">ยังไม่ส่งผลประเมิน</span>`;
     return`<tr>
       <td>${s.no}</td>
       <td class="photo-cell">${photoEl(s)}</td>
