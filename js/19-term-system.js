@@ -302,9 +302,15 @@
       : ((!acc.form1 || !acc.form2)
           ? `<span class="tm-closed-flag">🔒 ${!acc.form1 ? 'ฟอร์ม 1 ' : ''}${!acc.form2 ? 'ฟอร์ม 2 ' : ''}ปิดรับการกรอก</span>`
           : '');
+    // v31: นักเรียนเลือกภาคเรียนเองไม่ได้ — แสดงภาคเรียนที่ผู้ดูแลกำหนดไว้ (อ่านอย่างเดียว)
+    const termCtrl = staff
+      ? `<select id="tm-select" class="tm-select" title="ภาคเรียนที่เลือกที่นี่จะเป็นภาคเรียนของทุกบัญชี รวมถึงนักเรียน">${opts}</select>
+         <span class="tm-scope">นักเรียนทุกคนจะเห็นภาคเรียนนี้</span>`
+      : `<span class="tm-term-fixed" title="ภาคเรียนนี้กำหนดโดยผู้ดูแลระบบ">${termLabel(t)}</span>
+         <span class="tm-scope">กำหนดโดยผู้ดูแลระบบ</span>`;
     return `<div class="tm-bar">
       <span class="tm-label">📅 ภาคเรียน</span>
-      <select id="tm-select" class="tm-select">${opts}</select>
+      ${termCtrl}
       ${staff ? `<button type="button" class="tm-btn" id="tm-new">➕ เปิดภาคเรียนใหม่</button>` : ''}
       ${accCtrls}
       <span class="tm-spacer"></span>
@@ -321,13 +327,12 @@
 
     const sel = document.getElementById('tm-select');
     if (sel) sel.onchange = () => {
-      if (!isStaffUser() && sel.value !== getActiveTerm()) {
-        // นักเรียนดูย้อนหลังได้ แต่ไม่เปลี่ยนภาคเรียนของทั้งระบบ
-        setActiveTerm(sel.value, { silent: true });
-      } else {
-        setActiveTerm(sel.value);
-      }
+      if (!isStaffUser()) { sel.value = getActiveTerm(); return; }   // v31: นักเรียนเปลี่ยนไม่ได้
+      if (sel.value !== getActiveTerm() && !confirm('เปลี่ยนภาคเรียนของทั้งระบบเป็น "' + termLabel(sel.value)
+          + '" ?\n\nนักเรียนทุกคนจะเห็นและกรอกแบบฟอร์มของภาคเรียนนี้')) { sel.value = getActiveTerm(); return; }
+      setActiveTerm(sel.value);
       rerenderTermViews();
+      if (typeof showStatus === 'function') showStatus('📅 ตั้งภาคเรียนของทั้งระบบเป็น ' + termLabel(sel.value) + ' แล้ว', 'success');
     };
 
     const nb = document.getElementById('tm-new');
@@ -777,10 +782,48 @@
   };
 
   /* ══════════ 8) เปิดใช้งาน ══════════ */
+  /* v31: ฟังภาคเรียน/สิทธิ์การกรอกแบบ realtime หลังล็อกอิน
+     (เดิมอ่านครั้งเดียวตอนเปิดหน้า ซึ่งมักเกิดก่อนล็อกอินเสร็จ → Rules ไม่ให้อ่าน → นักเรียนค้างภาคเก่า)
+     ผู้ดูแลเปลี่ยนภาคเรียน/เปิดปิดฟอร์ม → หน้าจอนักเรียนเปลี่ยนตามทันที */
+  let _settingsSubs = null;
+  function watchSettings() {
+    const db = fsdb(); if (!db) return false;
+    let auth = null;
+    try { auth = firebase.auth(); } catch (e) { return false; }
+    auth.onAuthStateChanged(user => {
+      if (_settingsSubs) { _settingsSubs.forEach(u => { try { u(); } catch (e) {} }); _settingsSubs = null; }
+      if (!user) return;
+      _settingsSubs = [
+        db.collection('settings').doc('activeTerm').onSnapshot(d => {
+          const v = d.exists ? d.data().term : null;
+          if (isValidTerm(v) && v !== getActiveTerm()) {
+            setActiveTerm(v, { silent: true });
+            if (!isStaffUser() && typeof sfState === 'object') sfState.sectionIndex = 0;
+            rerenderTermViews();
+            try { if (window.sdqRerenderForTerm) window.sdqRerenderForTerm(); } catch (e) {}
+          }
+        }, () => {}),
+        db.collection('settings').doc('formAccess').onSnapshot(d => {
+          if (!d.exists) return;
+          const v = d.data();
+          const next = { form1: v.form1 !== false, form2: v.form2 !== false };
+          const cur = getFormAccess();
+          if (cur.form1 === next.form1 && cur.form2 === next.form2) return;
+          _formAccess = next;
+          try { localStorage.setItem(LS_ACCESS, JSON.stringify(next)); } catch (e) {}
+          rerenderTermViews();
+        }, () => {})
+      ];
+    });
+    return true;
+  }
   function boot() {
     try { updateYearLabels(); } catch (e) {}
     pullActiveTermFromCloud();
     pullFormAccessFromCloud();
+    if (!watchSettings()) {           // Firebase ยังไม่พร้อม → ลองอีกครั้งสั้น ๆ
+      let n = 0; const t = setInterval(() => { if (watchSettings() || ++n > 20) clearInterval(t); }, 500);
+    }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

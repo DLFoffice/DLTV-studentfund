@@ -213,7 +213,7 @@
   window.sdqRenderFormPage = function () {
     const host = document.getElementById('sdq-root');
     if (!host) return;
-    if (!sdqState.term) sdqState.term = sdqTerm();
+    if (!sdqState.term || !sdqIsStaff()) sdqState.term = sdqTerm();   // v31: นักเรียนใช้ภาคเรียนที่ผู้ดูแลกำหนดเสมอ
 
     // บัญชีนักเรียน: DB.students มีแค่ระเบียนของตัวเองเสมอ (กรองมาแล้วจากชั้น Firestore)
     // ข้ามหน้าเลือกนักเรียน แล้วเปิดแบบประเมินของตัวเองตรงๆ
@@ -249,9 +249,9 @@
     <div class="toolbar">
       <div class="toolbar-title">📝 แบบประเมิน SDQ — เลือกนักเรียน</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="sdq-term-select" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
+        ${sdqIsStaff() ? `<select id="sdq-term-select" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
           ${(typeof Term === 'object' && Term.options) ? Term.options(Term.all(), sdqState.term) : (typeof Term === 'object' ? Term.all() : [sdqState.term]).map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
-        </select>
+        </select>` : `<span class="tm-term-fixed">${typeof Term === 'object' ? Term.label(sdqState.term) : sdqState.term}</span>`}
         ${toggleBtn}
       </div>
     </div>
@@ -497,8 +497,8 @@
       myView.innerHTML = `<div class="sdq-my-note">ไม่พบข้อมูลนักเรียน</div>`;
       return;
     }
-    const terms = (typeof Term === 'object' ? Term.all() : [sdqState.term]);
-    const term = sdqState.term || sdqTerm();
+    const term = sdqTerm();          // v31: นักเรียนดูผลของภาคเรียนที่ผู้ดูแลกำหนดเท่านั้น
+    sdqState.term = term;
     const bucket = student.sdq && student.sdq[term];
     const res = bucket ? sdqCompute(bucket) : null;
     const domains = Object.keys(DOMAIN_META);
@@ -528,9 +528,7 @@
       <div class="toolbar">
         <div class="toolbar-title">📈 ผลการประเมิน SDQ ของฉัน</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="sdq-my-term" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
-            ${(typeof Term === 'object' && Term.options) ? Term.options(terms, term) : terms.map(t => `<option value="${t}" ${t === term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
-          </select>
+          <span class="tm-term-fixed" title="ภาคเรียนนี้กำหนดโดยผู้ดูแลระบบ">${typeof Term === 'object' ? Term.label(term) : term}</span>
           <button class="btn btn-sm" id="sdq-my-print-btn">🖨️ พิมพ์ / PDF</button>
         </div>
       </div>
@@ -947,6 +945,15 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
+
+  // v31: ผู้ดูแลเปลี่ยนภาคเรียน → หน้า SDQ ของนักเรียนเปลี่ยนตาม
+  window.sdqRerenderForTerm = function () {
+    if (sdqIsStaff()) return;
+    sdqState.term = sdqTerm();
+    const p1 = document.getElementById('page-sdqform'), p2 = document.getElementById('page-sdqdashboard');
+    if (p1 && p1.classList.contains('active')) sdqRenderFormPage();
+    if (p2 && p2.classList.contains('active')) sdqRenderDashboard();
+  };
 
   window.SDQ = { compute: sdqCompute, items: SDQ_ITEMS, domainMeta: DOMAIN_META, isOpen: sdqGetOpen, setOpen: sdqSetOpen,
     // v16: เปิดแบบประเมินของนักเรียนคนนี้ในภาคเรียนนี้โดยตรง (ใช้จากหน้า "งานที่ต้องกรอก")
