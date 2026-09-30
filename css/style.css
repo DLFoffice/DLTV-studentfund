@@ -1945,3 +1945,4 @@ body{font-family:var(--font-body);font-size:15px;line-height:1.65;color:var(--te
 .tm-sent.is-sent{background:var(--green-lt);color:#15803D}
 .tm-sent.is-wait{background:var(--bg3);color:var(--text2);font-weight:500}
 .ft2-legend-note{color:var(--text3);font-size:12px}
+.uid-spin-lg{width:28px;height:28px;border-width:3px;border-color:rgba(47,92,255,.2);border-top-color:var(--blue)}

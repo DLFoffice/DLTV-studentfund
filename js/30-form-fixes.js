@@ -68,24 +68,113 @@
     };
   }
 
-  /* ══════════ F2) บันทึกแล้วกลับไปหน้าแรกของแบบฟอร์ม ══════════ */
-  const _prevSend = window.sfSendToSheet;
-  if (typeof _prevSend === 'function') {
-    window.sfSendToSheet = async function (btn) {
-      const idx = sfState.studentIdx;
-      const r = _prevSend.apply(this, arguments);
-      if (!r || typeof r.then !== 'function') return r;        // ถูกกันไว้ (เช่น ฟอร์มปิดรับ) → อยู่หน้าเดิม
-      try { await r; } catch (e) { return; }
-      if (sfState.studentIdx !== idx || idx === null) return;  // ผู้ใช้ไปหน้าอื่นเองแล้ว
-      sfState.studentIdx = null;
-      sfState.sectionIndex = 0;
-      sfState.lastDir = 'jump';
-      renderNow();
-      try { if (typeof renderFormTrack === 'function') renderFormTrack(); } catch (e) {}
-      const m = mainEl(); if (m) m.scrollTo({ top: 0, behavior: 'smooth' });
-      return r;
-    };
+  /* ══════════ F2) บันทึกและส่งข้อมูล → กลับไปหน้าแรกของแบบฟอร์ม (v34: เขียนใหม่ทั้งขั้นตอน) ══════════
+     ปัญหาเดิม: ขั้นตอนบันทึกรอ Google Sheet (Apps Script ช้า/ค้างได้หลายสิบวินาที) ก่อนจะกลับหน้าแรก
+     ระหว่างรอไม่มีอะไรบอกผู้ใช้ (ข้อความ "กำลังส่ง" อยู่บนปุ่มที่ถูกวาดทับไปแล้ว) และถ้าเกิดข้อผิดพลาด
+     ระหว่างทาง ระบบเงียบหาย → ผู้ใช้เห็นว่า "กดแล้วไม่บันทึก ไม่กลับหน้าแรก"
+     ใหม่:
+       1) กดปุ่ม → ขึ้นกล่อง "กำลังบันทึก…" กลางจอทันที
+       2) ตั้งสถานะ "ส่งแล้ว" + วันเวลา แล้วบันทึกลงเครื่องและคลาวด์ (รอผลจริง สูงสุด 15 วินาที)
+       3) กลับหน้ารายการงาน + กล่องยืนยันว่าบันทึกแล้ว (หรือบอกสาเหตุชัดเจนถ้าไม่สำเร็จ)
+       4) ส่งสำเนาไป Google Sheet เบื้องหลัง ไม่ทำให้หน้าจอค้าง */
+  const withTimeout = (p, ms) => Promise.race([p, new Promise(res => setTimeout(() => res({ timeout: true }), ms))]);
+
+  function savingOverlay(text) {
+    const w = document.createElement('div');
+    w.className = 'uid-backdrop in';
+    w.innerHTML = `<div class="uid uid-info" role="status" aria-live="polite">
+      <div class="uid-icon"><span class="uid-spin uid-spin-lg" aria-hidden="true"></span></div>
+      <h2 class="uid-title">${esc(text)}</h2>
+      <div class="uid-msg"><p>กรุณารอสักครู่ อย่าเพิ่งปิดหน้านี้</p></div></div>`;
+    document.body.appendChild(w);
+    return () => w.remove();
   }
+  function tell(o) {
+    if (window.UIDialog) return UIDialog.alert(o);
+    if (typeof showStatus === 'function') showStatus(o.title + ' ' + (o.message || ''), o.tone === 'success' ? 'success' : 'error');
+  }
+
+  function sheetPayload(student, fk) {
+    try {
+      if (typeof SCRIPT_URL === 'undefined' || !SCRIPT_URL || typeof gasPost !== 'function') return null;
+      const fields = sfFlattenFormForSheet(fk, student);
+      const hide = typeof SHEET_SEND_SENSITIVE !== 'undefined' && !SHEET_SEND_SENSITIVE;
+      if (hide && typeof isSensitiveLabel === 'function') fields.forEach(r => { if (isSensitiveLabel(r.label)) r.value = maskTail(r.value); });
+      return {
+        action: 'saveScholarshipForm', formType: fk,
+        formLabel: fk === 'form1' ? 'แบบฟอร์มที่ 1 - ข้อมูลรายบุคคล' : 'แบบฟอร์มที่ 2 - ผลการเรียน ความประพฤติ การใช้จ่าย',
+        studentId: hide && typeof maskTail === 'function' ? maskTail(student.id) : (student.id || ''),
+        studentNo: student.no || '', studentName: student.name || '', school: student.school_m1 || '',
+        province: student.province || '', updatedAt: new Date().toISOString(), fields
+      };
+    } catch (e) { console.warn('เตรียมข้อมูลส่ง Google Sheet ไม่สำเร็จ:', e); return null; }
+  }
+  function sendSheetInBackground(payload, label) {
+    if (!payload) return;
+    withTimeout(gasPost(payload).then(() => 'ok'), 90000)
+      .then(r => {
+        if (r && r.timeout) console.warn('Google Sheet ตอบช้าเกิน 90 วินาที:', label);
+        else console.log('📄 ส่งสำเนาไป Google Sheet แล้ว:', label);
+      })
+      .catch(e => console.warn('ส่งสำเนาไป Google Sheet ไม่สำเร็จ (ข้อมูลในระบบบันทึกแล้ว):', label, e && e.message));
+  }
+
+  let saving = false;
+  window.sfSendToSheet = async function () {
+    if (saving) return;
+    const student = (typeof sfGetStudent === 'function') ? sfGetStudent() : null;
+    if (!student) return;
+    const fk = sfState.formKey;
+    const formName = fk === 'form1' ? 'แบบฟอร์มที่ 1' : 'แบบฟอร์มที่ 2';
+    if (!isStaff() && window.Term && Term.isFormOpen && !Term.isFormOpen(fk)) {
+      tell({ tone: 'warning', title: 'แบบฟอร์มนี้ปิดรับการกรอกแล้ว', message: 'ติดต่อผู้ดูแลระบบหากต้องการแก้ไข' });
+      return;
+    }
+    saving = true;
+    // ค่าที่กำลังพิมพ์อยู่ถูกเก็บแล้วทุกตัวอักษร (input event) — ปล่อยโฟกัสเพื่อให้ช่องวันที่ ฯลฯ ยืนยันค่า
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
+    const close = savingOverlay('กำลังบันทึกและส่ง' + formName + '…');
+    let at = '', cloudNote = '', payload = null;
+    try {
+      const b = (window.Term && Term.bucket) ? Term.bucket(student, activeTerm()) : student;
+      const store = (b && b[fk]) || (student[fk] = student[fk] || {});
+      store.__touched = true;
+      try { store.__complete = sfIsFormComplete(fk); } catch (e) {}
+      at = (window.Term && Term.markSubmitted) ? Term.markSubmitted(student, fk) : new Date().toISOString();
+      payload = sheetPayload(student, fk);                 // เตรียมก่อนออกจากหน้า (อ่านค่าจากนักเรียนที่เปิดอยู่)
+      let r;
+      if (typeof window.fbSaveNow === 'function') r = await withTimeout(window.fbSaveNow(), 15000);
+      else { await saveToStorage(); r = { ok: true, cloud: false }; }
+      if (r && r.timeout) cloudNote = 'บันทึกไว้ในเครื่องแล้ว กำลังรอส่งขึ้นคลาวด์ (อินเทอร์เน็ตช้า) ระบบจะส่งให้อัตโนมัติ';
+      else if (r && r.ok === false) throw (r.error || new Error('บันทึกขึ้นคลาวด์ไม่สำเร็จ'));
+    } catch (e) {
+      close(); saving = false;
+      console.error('บันทึกแบบฟอร์มไม่สำเร็จ:', e);
+      const perm = e && e.code === 'permission-denied';
+      tell({ tone: 'danger', title: 'บันทึกไม่สำเร็จ',
+        message: (perm ? 'บัญชีนี้ไม่มีสิทธิ์บันทึกข้อมูลนี้' : 'ข้อมูลยังอยู่ในหน้าฟอร์ม ตรวจสอบอินเทอร์เน็ตแล้วกด "บันทึกและส่งข้อมูล" อีกครั้ง')
+          + '\n\nรายละเอียด: ' + ((e && (e.code || e.message)) || e) });
+      return;
+    }
+    close();
+    // กลับหน้าแรกของเมนูแบบฟอร์ม (รายการงาน)
+    sfState.studentIdx = null; sfState.sectionIndex = 0; sfState.lastDir = 'jump';
+    try { renderNow(); } catch (e) { console.error(e); }
+    try { if (typeof renderFormTrack === 'function') renderFormTrack(); } catch (e) {}
+    const m = mainEl(); if (m) m.scrollTo({ top: 0, behavior: 'smooth' });
+    saving = false;
+    tell({
+      tone: cloudNote ? 'warning' : 'success',
+      title: cloudNote ? 'บันทึกแล้ว (รอซิงก์ขึ้นคลาวด์)' : 'บันทึกและส่งข้อมูลแล้ว',
+      message: cloudNote || 'สถานะของแบบฟอร์มนี้เป็น "ส่งแล้ว" หากแก้ไขภายหลัง กดบันทึกอีกครั้งเพื่ออัปเดต',
+      details: [
+        { label: 'นักเรียน', value: student.name || '-' },
+        { label: 'แบบฟอร์ม', value: formName },
+        { label: 'ส่งเมื่อ', value: (window.Term && Term.sentLabel ? Term.sentLabel(at) : at).replace(/^ส่งแล้ว\s*/, '') }
+      ]
+    });
+    sendSheetInBackground(payload, (student.name || '') + ' · ' + formName);
+  };
 
   /* ══════════ F3) ตารางผลการเรียน ↔ หน้า "ผลการเรียน" (semGpa) ══════════ */
   const AVG_ROW = { form1: 'avg', form2: 'avg2' };
