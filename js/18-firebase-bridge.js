@@ -396,13 +396,13 @@
       footer.appendChild(row);
       document.getElementById('fb-chpass-btn').onclick = () => openPassModal(false);
       document.getElementById('fb-admin-btn').onclick = () => location.href = 'accounts.html';
-      document.getElementById('fb-logout-btn').onclick = () => { if (confirm('ออกจากระบบ?')) auth.signOut(); };
+      document.getElementById('fb-logout-btn').onclick = () => { uiAsk('ข้อมูลที่บันทึกแล้วจะยังอยู่ครบ', { tone: 'info', title: 'ออกจากระบบ?', confirmText: 'ออกจากระบบ' }).then(ok => { if (ok) auth.signOut(); }); };
     } else {
       // สำรอง: ปุ่มลอย
       const fl = document.getElementById('fb-float');
       fl.style.display = 'flex';
       document.getElementById('fb-chpass-float').onclick = () => openPassModal(false);
-      document.getElementById('fb-logout-float').onclick = () => { if (confirm('ออกจากระบบ?')) auth.signOut(); };
+      document.getElementById('fb-logout-float').onclick = () => { uiAsk('ข้อมูลที่บันทึกแล้วจะยังอยู่ครบ', { tone: 'info', title: 'ออกจากระบบ?', confirmText: 'ออกจากระบบ' }).then(ok => { if (ok) auth.signOut(); }); };
     }
 
     // ตาดูรหัสในทุกช่อง
@@ -651,8 +651,8 @@
         fbReady = true;
       } else {
         fbReady = true;
-        if (DB.students.length > 0 && confirm(
-          'ยังไม่มีข้อมูลบน Firestore\nอัปโหลดข้อมูลในเครื่อง (' + DB.students.length + ' คน) ขึ้นคลาวด์เลยหรือไม่?')) {
+        if (DB.students.length > 0 && await uiAsk('ยังไม่มีข้อมูลบนคลาวด์ (Firestore) ต้องการอัปโหลดข้อมูลที่อยู่ในเครื่องนี้ขึ้นไปเลยหรือไม่?',
+          { tone: 'info', title: 'อัปโหลดข้อมูลขึ้นคลาวด์?', details: [{ label: 'จำนวนนักเรียน', value: DB.students.length + ' คน' }], confirmText: 'อัปโหลด' })) {
           await pushAllToCloud(true);
           if (typeof showStatus === 'function') showStatus('☁️ อัปโหลดข้อมูลขึ้นคลาวด์ครบแล้ว', 'success');
         }

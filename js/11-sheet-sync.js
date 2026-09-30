@@ -489,7 +489,8 @@ async function saveAllToSheet() {
   if (!SCRIPT_URL) {
     showStatus('⚠️ ยังไม่ได้ตั้งค่า SCRIPT_URL', 'error'); return;
   }
-  if (!confirm('บันทึกข้อมูลทั้งหมด (' + DB.students.length + ' คน) ไปยัง Google Sheet?\n⚠️ จะเขียนทับข้อมูลทั้งหมดใน Sheet')) return;
+  if (!await uiAsk('ข้อมูลทั้งหมดใน Google Sheet จะถูกเขียนทับด้วยข้อมูลในระบบนี้', { tone: 'warning', title: 'บันทึกทั้งหมดไป Google Sheet?',
+      details: [{ label: 'จำนวนนักเรียน', value: DB.students.length + ' คน' }], confirmText: 'บันทึกและเขียนทับ' })) return;
   stopPolling(); _isSaving = true;
   showLoading(true, 'กำลังบันทึก ' + DB.students.length + ' คน...');
   setSyncDot('syncing');

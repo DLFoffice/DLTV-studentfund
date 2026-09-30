@@ -222,12 +222,16 @@
       const del = e.target.closest('[data-pay-del]');
       if (del) {
         const { idx, s } = cur(); const pi = +del.dataset.payDel; const p = s.semPayments[pi];
-        if (!confirm(`ลบข้อมูลการเบิกจ่ายภาคเรียน ${p && p.term || ''} ?`)) return;
-        s.semPayments.splice(pi, 1);
-        const open = openOf(s); const next = new Set(); open.forEach(i => { if (i < pi) next.add(i); else if (i > pi) next.add(i - 1); });
-        openState.set(s, next); _lastLen.set(s, s.semPayments.length);
-        renderPaymentPanelStable(idx);
-        saveWithFeedback('การลบภาคเรียน');
+        uiAsk('ข้อมูลการเบิกจ่ายของภาคเรียนนี้จะถูกลบ และกู้คืนไม่ได้', { tone: 'danger', title: 'ลบข้อมูลการเบิกจ่าย?',
+          details: [{ label: 'นักเรียน', value: s.name || '-' }, { label: 'ภาคเรียน', value: (p && p.term) || '-' }], confirmText: 'ลบข้อมูล' })
+        .then(ok => {
+          if (!ok) return;
+          s.semPayments.splice(pi, 1);
+          const open = openOf(s); const next = new Set(); open.forEach(i => { if (i < pi) next.add(i); else if (i > pi) next.add(i - 1); });
+          openState.set(s, next); _lastLen.set(s, s.semPayments.length);
+          renderPaymentPanelStable(idx);
+          saveWithFeedback('การลบภาคเรียน');
+        });
         return;
       }
       if (e.target.closest('[data-pay-add]')) { const { idx } = cur(); addSemPayment(idx); }

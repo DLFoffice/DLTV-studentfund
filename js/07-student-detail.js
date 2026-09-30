@@ -251,7 +251,7 @@ function renderPaymentPanel(idx){
           <div class="fg"><label>รายการส่วนที่ 1</label><input value="${p.item1||''}" onchange="DB.students[${idx}].semPayments[${pi}].item1=this.value;debouncedSave(${idx})"></div>
           <div class="fg"><label>ส่วนที่ 2 (บาท) — ค่าใช้จ่ายในการเรียน</label><input type="number" value="${p.p2||0}" onchange="DB.students[${idx}].semPayments[${pi}].p2=parseFloat(this.value)||0;renderPaymentPanel(${idx});renderDashboard();debouncedSave(${idx})"></div>
           <div class="fg"><label>รายการส่วนที่ 2</label><input value="${p.item2||''}" onchange="DB.students[${idx}].semPayments[${pi}].item2=this.value;debouncedSave(${idx})"></div>
-          <div class="fg" style="align-self:end"><button class="btn btn-danger btn-sm" onclick="if(confirm('ลบข้อมูลภาคเรียน ${p.term||''} นี้?')){DB.students[${idx}].semPayments.splice(${pi},1);renderPaymentPanel(${idx});saveToStorage();saveStudentToSheet(${idx})}">🗑 ลบภาคเรียน</button></div>
+          <div class="fg" style="align-self:end"><button class="btn btn-danger btn-sm" onclick="uiAsk('ข้อมูลการเบิกจ่ายภาคเรียน ${p.term||''} จะถูกลบ และกู้คืนไม่ได้',{tone:'danger',title:'ลบภาคเรียนนี้?',confirmText:'ลบ'}).then(function(ok){if(!ok)return;DB.students[${idx}].semPayments.splice(${pi},1);renderPaymentPanel(${idx});saveToStorage();saveStudentToSheet(${idx})})">🗑 ลบภาคเรียน</button></div>
         </div>
         <div style="padding:0 14px 14px;font-size:13px;color:var(--text2)">
           รวมภาคเรียนนี้: <strong style="color:var(--teal);font-size:15px">${fmt(total)} บาท</strong>
@@ -293,7 +293,7 @@ function renderGpaPanel(idx){
             ℹ️ กลุ่มการดูแล (ปกติ/เฝ้าระวัง/ต้องดูแลเป็นพิเศษ) วิเคราะห์อัตโนมัติจาก GPA ล่าสุด + ผลประเมิน SDQ ล่าสุดที่กรอกครบ
             — ไม่ต้องเลือกเอง ถ้าต้องการปรับกลุ่ม ให้ไปกรอก/แก้แบบประเมิน SDQ ของภาคเรียนนี้แทน
           </div>
-          <div class="fg"><button class="btn btn-danger btn-sm" onclick="if(confirm('ลบข้อมูลภาคเรียนนี้?')){DB.students[${idx}].semGpa.splice(${gi},1);renderGpaPanel(${idx});renderDashboard();debouncedSave(${idx})}">🗑 ลบ</button></div>
+          <div class="fg"><button class="btn btn-danger btn-sm" onclick="uiAsk('ผลการเรียนภาคเรียน ${g.term||''} จะถูกลบ และกู้คืนไม่ได้',{tone:'danger',title:'ลบผลการเรียนภาคเรียนนี้?',confirmText:'ลบ'}).then(function(ok){if(!ok)return;DB.students[${idx}].semGpa.splice(${gi},1);renderGpaPanel(${idx});renderDashboard();debouncedSave(${idx})})">🗑 ลบ</button></div>
         </div>
       </div>
     </div>`;

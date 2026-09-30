@@ -189,8 +189,9 @@ async function syncLatLngFromSheet(){
 
 // วาง JSON lat/lng จาก clipboard หรือ export จาก Sheet โดยตรง
 // รูปแบบ: [{"no":1,"lat":15.123,"lng":100.456}, ...]
-function applyLatLngJSON(){
-  const jsonStr = prompt('วาง JSON lat/lng ที่นี่\nรูปแบบ: [{"no":1,"lat":15.12,"lng":100.45}, ...]\n\n(คัดลอกจาก Google Sheet หรือ Apps Script)');
+async function applyLatLngJSON(){
+  const jsonStr = await UIDialog.prompt({ tone:'info', title:'วางพิกัด lat/lng', confirmText:'นำเข้า',
+    message:'คัดลอก JSON จาก Google Sheet หรือ Apps Script มาวาง\nรูปแบบ: [{"no":1,"lat":15.12,"lng":100.45}, ...]', placeholder:'[{"no":1,"lat":...,"lng":...}]' });
   if(!jsonStr) return;
   try{
     const data = JSON.parse(jsonStr);

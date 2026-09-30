@@ -326,8 +326,14 @@ window.saveSemData = function(){
     if(!DB.students[idx].semGpa) DB.students[idx].semGpa=[];
     // check duplicate term
     const dupIdx = DB.students[idx].semGpa.findIndex(g=>g.term===term);
+    if(dupIdx>=0 && !window._gpaDupOk){
+      window._addGpaMode=true;
+      uiAsk('นักเรียนคนนี้มีผลการเรียนของภาคเรียนนี้อยู่แล้ว ต้องการแทนที่ด้วยค่าใหม่หรือไม่?', { tone:'warning', title:'มีข้อมูลภาคเรียนนี้แล้ว',
+        details:[{label:'ภาคเรียน',value:term},{label:'GPA เดิม',value:String(DB.students[idx].semGpa[dupIdx].gpa??'-')},{label:'GPA ใหม่',value:String(gpa)}], confirmText:'แทนที่' })
+      .then(ok=>{ if(ok){ window._gpaDupOk=true; try{ window.saveSemData(); } finally { window._gpaDupOk=false; } } });
+      return;
+    }
     if(dupIdx>=0){
-      if(!confirm(`ภาคเรียน ${term} มีอยู่แล้ว ต้องการอัพเดตหรือไม่?`)) { window._addGpaMode=true; return; }
       DB.students[idx].semGpa[dupIdx]=rec;
     } else {
       DB.students[idx].semGpa.push(rec);

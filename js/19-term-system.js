@@ -87,11 +87,42 @@
     // โหมดนักเรียนถูกตั้งโดย 18-firebase-bridge.js
     return !window.STUDENT_MODE;
   }
-  async function pushActiveTermToCloud(t) {
-    if (!isStaffUser()) return;              // นักเรียนเปลี่ยนภาคเรียนของทั้งระบบไม่ได้
-    const db = fsdb(); if (!db) return;
-    try { await db.collection('settings').doc('activeTerm').set({ term: t, at: new Date().toISOString() }, { merge: true }); }
-    catch (e) { console.warn('ตั้งภาคเรียนบนคลาวด์ไม่สำเร็จ:', e.message); }
+  /** คืน 'cloud' เมื่อบันทึกขึ้นคลาวด์แล้ว · 'local' เมื่อไม่มีคลาวด์ · โยน error เมื่อไม่สำเร็จ (ถ้า opts.throws) */
+  async function pushActiveTermToCloud(t, opts) {
+    if (!isStaffUser()) return 'skip';       // นักเรียนเปลี่ยนภาคเรียนของทั้งระบบไม่ได้
+    const db = fsdb(); if (!db) return 'local';
+    try { await db.collection('settings').doc('activeTerm').set({ term: t, at: new Date().toISOString() }, { merge: true }); return 'cloud'; }
+    catch (e) {
+      console.warn('ตั้งภาคเรียนบนคลาวด์ไม่สำเร็จ:', e.message);
+      if (opts && opts.throws) throw new Error('บันทึกภาคเรียนขึ้นคลาวด์ไม่สำเร็จ (' + (e.code || e.message) + ')\nนักเรียนจะยังเห็นภาคเรียนเดิม ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง');
+      return 'error';
+    }
+  }
+  /** ผู้ดูแลเปลี่ยนภาคเรียนของทั้งระบบ — กล่องยืนยันกลางจอ + แจ้งผลชัดเจน */
+  function confirmChangeTerm(t, opts) {
+    const from = getActiveTerm();
+    const isNew = !!(opts && opts.isNew);
+    return UIDialog.confirm({
+      tone: 'warning', icon: 'term',
+      title: isNew ? 'เปิดภาคเรียนใหม่ให้ทั้งระบบ?' : 'เปลี่ยนภาคเรียนของทั้งระบบ?',
+      message: 'นักเรียนทุกคนจะเห็นและกรอกแบบฟอร์มและแบบประเมิน SDQ ของภาคเรียนนี้ทันที\n'
+        + (isNew ? 'แบบฟอร์มของภาคเรียนใหม่จะเริ่มว่างสำหรับทุกคน ข้อมูลภาคเรียนเดิมยังเก็บไว้ครบ'
+                 : 'ข้อมูลที่กรอกไว้ในภาคเรียนเดิมยังอยู่ครบ เปลี่ยนกลับได้ทุกเมื่อ'),
+      details: { from: termLabel(from), to: termLabel(t) },
+      confirmText: isNew ? 'เปิดภาคเรียนนี้' : 'เปลี่ยนภาคเรียน',
+      workingText: 'กำลังบันทึก…',
+      onConfirm: async () => {
+        setActiveTerm(t, { silent: true });
+        if (isNew) { try { saveToStorage(); } catch (e) {} }
+        rerenderTermViews();
+        const r = await pushActiveTermToCloud(t, { throws: true });
+        return {
+          title: isNew ? 'เปิดภาคเรียนใหม่แล้ว' : 'เปลี่ยนภาคเรียนแล้ว',
+          message: 'ตอนนี้ทั้งระบบใช้ ' + termLabel(t)
+            + (r === 'cloud' ? '\nหน้าจอของนักเรียนจะเปลี่ยนตามโดยอัตโนมัติ' : '\n(โหมดออฟไลน์: บันทึกไว้ในเครื่องนี้เท่านั้น)')
+        };
+      }
+    });
   }
   async function pullActiveTermFromCloud() {
     const db = fsdb(); if (!db) return;
@@ -328,23 +359,21 @@
     const sel = document.getElementById('tm-select');
     if (sel) sel.onchange = () => {
       if (!isStaffUser()) { sel.value = getActiveTerm(); return; }   // v31: นักเรียนเปลี่ยนไม่ได้
-      if (sel.value !== getActiveTerm() && !confirm('เปลี่ยนภาคเรียนของทั้งระบบเป็น "' + termLabel(sel.value)
-          + '" ?\n\nนักเรียนทุกคนจะเห็นและกรอกแบบฟอร์มของภาคเรียนนี้')) { sel.value = getActiveTerm(); return; }
-      setActiveTerm(sel.value);
-      rerenderTermViews();
-      if (typeof showStatus === 'function') showStatus('📅 ตั้งภาคเรียนของทั้งระบบเป็น ' + termLabel(sel.value) + ' แล้ว', 'success');
+      const want = sel.value;
+      sel.value = getActiveTerm();                    // ยังไม่เปลี่ยนจนกว่าจะยืนยัน
+      if (want === getActiveTerm()) return;
+      confirmChangeTerm(want);
     };
 
     const nb = document.getElementById('tm-new');
     if (nb) nb.onclick = () => {
       const suggested = nextTerm(allTerms().slice(-1)[0]);
-      const t = (prompt('เปิดภาคเรียนใหม่ (รูปแบบ 1/2569 หรือ 2/2569)', suggested) || '').trim();
-      if (!t) return;
-      if (!isValidTerm(t)) { alert('รูปแบบไม่ถูกต้อง — ต้องเป็น 1/2568 หรือ 2/2568'); return; }
-      setActiveTerm(t);
-      saveToStorage();
-      rerenderTermViews();
-      if (typeof showStatus === 'function') showStatus('✅ เปิด ' + termLabel(t) + ' แล้ว — แบบฟอร์มเริ่มต้นใหม่ทุกคน', 'success');
+      UIDialog.prompt({
+        tone: 'info', icon: 'term', title: 'เปิดภาคเรียนใหม่',
+        message: 'พิมพ์ภาคเรียน/ปีการศึกษา เช่น 1/2569 หรือ 2/2569',
+        value: suggested, placeholder: '1/2569', confirmText: 'ถัดไป',
+        validate: v => !v ? 'กรุณากรอกภาคเรียน' : !isValidTerm(v) ? 'รูปแบบไม่ถูกต้อง ต้องเป็น ภาค/ปี เช่น 1/2569' : ''
+      }).then(t => { if (t) confirmChangeTerm(t, { isNew: !allTerms().includes(t) }); });
     };
 
     const sb = document.getElementById('tm-submit');
@@ -352,7 +381,16 @@
       const s = sfGetStudent(); if (!s) return;
       const t = getActiveTerm();
       const pct = Math.round(formProgress(s, sfState.formKey, t) * 100);
-      if (pct < 100 && !confirm(`กรอกไปแล้ว ${pct}% — ยืนยันส่งแบบฟอร์มภาคเรียนนี้หรือไม่?`)) return;
+      const formName = sfState.formKey === 'form1' ? 'แบบฟอร์มที่ 1' : 'แบบฟอร์มที่ 2';
+      UIDialog.confirm({
+        tone: pct < 100 ? 'warning' : 'info',
+        title: pct < 100 ? 'แบบฟอร์มยังกรอกไม่ครบ ส่งเลยหรือไม่?' : 'ส่ง' + formName + '?',
+        message: pct < 100 ? 'ส่งได้ แต่ช่องที่ยังว่างจะไม่มีข้อมูลในเอกสาร' : 'หลังส่งแล้ว ยังกด "แก้ไขอีกครั้ง" ได้หากต้องการแก้',
+        details: [{ label: 'นักเรียน', value: s.name || '-' }, { label: 'แบบฟอร์ม', value: formName },
+                  { label: 'ภาคเรียน', value: termLabel(t) }, { label: 'กรอกแล้ว', value: pct + '%' }],
+        confirmText: 'ส่งแบบฟอร์ม'
+      }).then(ok => { if (ok) doSubmit(); });
+      function doSubmit() {
       const b = bindTerm(s, t);
       b[sfState.formKey === 'form1' ? 'm1' : 'm2'] = {
         submittedAt: new Date().toISOString(),
@@ -362,6 +400,7 @@
       saveToStorage();
       rerenderTermViews();
       if (typeof showStatus === 'function') showStatus('📤 ส่งแบบฟอร์ม ' + termLabel(t) + ' เรียบร้อย', 'success');
+      }
     };
 
     const ub = document.getElementById('tm-unsubmit');

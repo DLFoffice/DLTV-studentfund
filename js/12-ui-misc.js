@@ -166,8 +166,9 @@ function saveAndRefresh() {
 }
 
 // Override deleteStudent to also delete from Sheet
-function deleteStudent(idx) {
-  if (!confirm('ยืนยันการลบ "' + DB.students[idx].name + '" ?')) return;
+async function deleteStudent(idx) {
+  if (!await uiAsk('ข้อมูลทั้งหมดของนักเรียนคนนี้ (แบบฟอร์ม ผลการเรียน การเงิน) จะถูกลบออกจากระบบ และกู้คืนไม่ได้',
+      { tone: 'danger', title: 'ลบนักเรียนออกจากระบบ?', details: [{ label: 'นักเรียน', value: DB.students[idx].name || '-' }], confirmText: 'ลบนักเรียน' })) return;
   const sid  = DB.students[idx].id;
   const sdat = { no: DB.students[idx].no, name: DB.students[idx].name, school_m1: DB.students[idx].school_m1 };
   DB.students.splice(idx, 1);
