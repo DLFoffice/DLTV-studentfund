@@ -245,9 +245,17 @@ const SF_FORM2 = [
     { id:'achievement', type:'textarea', label:'ผลงานดีเด่น ความภาคภูมิใจในปีที่ผ่านมา', full:true },
   ]},
   { id:'behavior', title:'ข้อมูลความประพฤติ', short:'ความประพฤติ', fields:[
+    { id:'heading_behavior_detail', type:'heading', text:'รายละเอียดความประพฤติ' },
     { id:'activities_participation', type:'textarea', label:'การเข้าร่วมกิจกรรมต่าง ๆ ของสถานศึกษาในภาคเรียนปัจจุบัน', full:true },
     { id:'family_responsibility', type:'textarea', label:'งานที่ต้องรับผิดชอบดูแลช่วยเหลือครอบครัวในด้านต่าง ๆ', full:true },
     { id:'community_loyalty', type:'textarea', label:'การมีส่วนร่วมในกิจกรรมที่เป็นประโยชน์ต่อชุมชนและสังคม ตลอดจนความจงรักภักดีต่อสถาบันพระมหากษัตริย์', full:true },
+    // v35: ครูเขียนสรุปเอง → ใช้ในหน้า "สรุปสาระสำคัญ" ข้อ 2 (ถ้าเว้นว่าง ระบบใช้ข้อความจากช่องด้านบนแทนเหมือนเดิม)
+    { id:'heading_behavior_summary', type:'heading', text:'สรุปรายงานความประพฤติของนักเรียนทุนการศึกษา (ครูที่ปรึกษา/ครูผู้ดูแลสรุป)' },
+    { id:'behavior_summary', type:'textarea', rows:6, full:true,
+      label:'สรุปความประพฤติของนักเรียนในภาคเรียนนี้',
+      hint:'ข้อความนี้จะแสดงในหน้า "สรุปสาระสำคัญ" ข้อ 2 ของแบบฟอร์ม · เขียนสรุปในภาพรวม เช่น ความรับผิดชอบ การปฏิบัติตามระเบียบ การเข้าร่วมกิจกรรม จิตอาสา และจุดที่ควรพัฒนา',
+      placeholder:'เช่น นักเรียนมีความประพฤติเรียบร้อย ปฏิบัติตามระเบียบของโรงเรียน เข้าร่วมกิจกรรมของสถานศึกษาอย่างสม่ำเสมอ …',
+      draftFrom:['activities_participation','family_responsibility','community_loyalty'] },
   ]},
   { id:'finance', title:'การเงินและการรับรอง', short:'การเงิน', fields:[
     { id:'bank_name', type:'text', label:'บัญชีธนาคาร', from:s=>(s.bank&&s.bank.bankSt)||'' },
@@ -385,8 +393,20 @@ function sfRenderField(formKey, field){
         ${field.maxlength?`maxlength="${field.maxlength}"`:''} value="${sfEscapeHtml(displayValue)}" placeholder=" "></label>`;
   }
   if(field.type==='textarea'){
-    return `<label class="${wrapClass}"><span class="sf-label">${sfEscapeHtml(field.label)}</span>
-      <textarea class="sf-input sf-textarea" data-sf-field="${field.id}" rows="3" placeholder=" ">${sfEscapeHtml(value)}</textarea></label>`;
+    // v35: รองรับคำอธิบายใต้ชื่อช่อง (hint), จำนวนบรรทัด (rows) และปุ่ม "สร้างร่างจากช่องอื่น" (draftFrom)
+    const hint = field.hint ? `<span class="sf-hint">${sfEscapeHtml(field.hint)}</span>` : '';
+    const ta = `<textarea class="sf-input sf-textarea" id="sf-ta-${field.id}" data-sf-field="${field.id}" rows="${field.rows||3}" placeholder="${sfEscapeHtml(field.placeholder||' ')}">${sfEscapeHtml(value)}</textarea>`;
+    if(field.draftFrom){
+      return `<div class="${wrapClass} sf-summary-field">
+        <label class="sf-label" for="sf-ta-${field.id}">${sfEscapeHtml(field.label)}</label>${hint}
+        ${ta}
+        <div class="sf-summary-tools">
+          <button type="button" class="sf-btn-draft" data-sf-draft="${field.id}">✍️ สร้างร่างจากข้อมูลความประพฤติด้านบน</button>
+          <span class="sf-summary-count" data-sf-count="${field.id}">${String(value||'').length} ตัวอักษร</span>
+        </div></div>`;
+    }
+    return `<label class="${wrapClass}"><span class="sf-label">${sfEscapeHtml(field.label)}</span>${hint}
+      ${ta}</label>`;
   }
   if(field.type==='radio'){
     const opts = field.options.map(opt=>`

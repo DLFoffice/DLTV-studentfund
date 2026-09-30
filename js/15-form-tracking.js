@@ -620,7 +620,7 @@ function sfPrintForm2(student){
     ปัจจุบันได้รับความช่วยเหลือจากโรงเรียนด้าน<br>
     <div>${sfEscapeHtml(sfPText(f,'current_help'))||'&nbsp;'}</div>
     <div class="sfp-section-title">2. สรุปรายงานความประพฤติของนักเรียนทุนการศึกษา</div>
-    <div>${sfEscapeHtml([sfPText(f,'activities_participation'), sfPText(f,'community_loyalty')].filter(Boolean).join(' / '))||'&nbsp;'}</div>
+    <div>${sfEscapeHtml(sfPText(f,'behavior_summary') || [sfPText(f,'activities_participation'), sfPText(f,'community_loyalty')].filter(Boolean).join(' / '))||'&nbsp;'}</div>
     <div class="sfp-section-title">3. สรุปรายงานการใช้จ่ายเงินทุนการศึกษา</div>
     จากเงินทุนการศึกษาที่ได้รับจำนวนรวมเป็นเงินทั้งสิ้น ${sfFill(sfPMoney(f,'total_received'),80)} บาท ได้เบิกจ่ายไปแล้วจนถึงปัจจุบันรวมทั้งสิ้น ${sfFill(sfPMoney(f,'total_disbursed'),80)} บาท แยกเป็น<br>
     3.1 เงินทุนส่วนที่ 1 ค่าใช้จ่ายที่สถานศึกษาเรียกเก็บ ${sfFill(sfPMoney(f,'part1_amount'),80)} บาท<br>

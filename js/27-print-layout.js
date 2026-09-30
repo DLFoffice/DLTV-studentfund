@@ -276,7 +276,7 @@
       ${paraF('ปัญหาอุปสรรคที่ส่งผลต่อการเรียน', f, 'learning_problems')}
       ${paraF('ปัจจุบันได้รับความช่วยเหลือจากโรงเรียนด้าน', f, 'current_help')}
       <h3><span class="pf-no">2</span>สรุปรายงานความประพฤติของนักเรียนทุนการศึกษา</h3>
-      ${para('', [T(f, 'activities_participation'), T(f, 'community_loyalty')].filter(Boolean).join('\n'))}
+      ${para('', T(f, 'behavior_summary') || [T(f, 'activities_participation'), T(f, 'community_loyalty')].filter(Boolean).join('\n'))}
       <h3><span class="pf-no">3</span>สรุปรายงานการใช้จ่ายเงินทุนการศึกษา</h3>
       <table class="pf-table pf-money">
         <tbody>

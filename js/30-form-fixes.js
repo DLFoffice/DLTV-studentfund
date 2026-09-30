@@ -453,5 +453,54 @@
     };
   }
 
+  /* ══════════ F5) v35 สรุปรายงานความประพฤติ: ปุ่มสร้างร่าง + ตัวนับตัวอักษร ══════════ */
+  const DRAFT_TOPIC = {
+    activities_participation: 'ด้านการเข้าร่วมกิจกรรมของสถานศึกษา',
+    family_responsibility: 'ด้านความรับผิดชอบต่อครอบครัว',
+    community_loyalty: 'ด้านการมีส่วนร่วมในกิจกรรมเพื่อชุมชนและสังคม และความจงรักภักดีต่อสถาบันพระมหากษัตริย์'
+  };
+  function buildDraft(field) {
+    const fk = sfState.formKey;
+    // รวมหลายบรรทัด/หัวข้อย่อย (•, -, 1.) เป็นประโยคเดียวคั่นด้วยจุลภาค
+    const clean = t => String(t || '').split(/\n+/)
+      .map(x => x.replace(/^\s*(?:[•\-*·]|\d+[.)])\s*/, '').trim()).filter(Boolean).join(', ')
+      .replace(/\s{2,}/g, ' ').trim();
+    const parts = (field.draftFrom || []).map(id => {
+      const v = clean(sfGetValue(fk, id, sfFindField(fk, id)));
+      return v ? (DRAFT_TOPIC[id] ? DRAFT_TOPIC[id] + ': ' : '') + v : '';
+    }).filter(Boolean);
+    return parts.join('\n');
+  }
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest && e.target.closest('[data-sf-draft]');
+    if (!btn) return;
+    e.preventDefault();
+    const id = btn.getAttribute('data-sf-draft');
+    const field = sfFindField(sfState.formKey, id);
+    const ta = document.querySelector(`#sf-root textarea[data-sf-field="${id}"]`);
+    if (!field || !ta) return;
+    const draft = buildDraft(field);
+    if (!draft) {
+      if (window.UIDialog) UIDialog.alert({ tone: 'info', title: 'ยังไม่มีข้อมูลให้สร้างร่าง',
+        message: 'กรอกช่องรายละเอียดความประพฤติด้านบนก่อน แล้วกดปุ่มนี้อีกครั้ง หรือพิมพ์สรุปเองได้เลย' });
+      return;
+    }
+    if (ta.value.trim() && window.uiAsk) {
+      const ok = await uiAsk('ข้อความสรุปที่พิมพ์ไว้จะถูกแทนที่ด้วยร่างใหม่จากช่องรายละเอียดด้านบน',
+        { tone: 'warning', title: 'แทนที่ข้อความสรุปเดิม?', confirmText: 'แทนที่ด้วยร่างใหม่' });
+      if (!ok) return;
+    }
+    ta.value = draft;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));   // ให้ระบบฟอร์มบันทึกค่าเหมือนพิมพ์เอง
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  });
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (!t || !t.matches || !t.matches('#sf-root textarea[data-sf-field]')) return;
+    const c = document.querySelector(`[data-sf-count="${t.getAttribute('data-sf-field')}"]`);
+    if (c) c.textContent = t.value.length + ' ตัวอักษร';
+  });
+
   console.log('🛠️ 30-form-fixes: พิมพ์ไม่หลุด · บันทึกแล้วกลับหน้าแรก · ผลการเรียนเชื่อมหน้า "ผลการเรียน" · หัวข้อใหม่');
 })();
