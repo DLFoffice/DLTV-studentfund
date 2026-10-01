@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1A46">
+<title>{{TITLE}}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- ไฟล์นี้สร้างอัตโนมัติจาก manual.md ด้วย tools/build-manual.py — แก้เนื้อหาที่ manual.md -->
+<style>
+:root{--navy:#0B1A46;--navy-0:#060E2B;--blue:#2F5CFF;--blue-dk:#1E3FD1;--blue-lt:#EEF2FF;--gold:#FFC531;--cyan:#5CC8FF;
+  --ink:#1A1F36;--text2:#4B5568;--muted:#6B7287;--line:#E3E8F2;--bg:#F4F6FB;--ease:cubic-bezier(.16,1,.3,1)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;font-family:'Noto Sans Thai',sans-serif;color:var(--ink);background:var(--bg);line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--blue-dk)}
+/* หัวหน้า */
+.mn-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px clamp(16px,3vw,32px);
+  padding-top:max(12px,env(safe-area-inset-top));color:#fff;
+  background:radial-gradient(500px 200px at 0% 0%,rgba(47,92,255,.8),transparent 70%),linear-gradient(120deg,#122E86,var(--navy) 60%,var(--navy-0));
+  box-shadow:0 8px 24px -14px rgba(6,14,43,.8)}
+.mn-top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue),#7C5CFF,var(--gold));opacity:.8}
+.mn-logo{width:38px;height:38px;flex:none;border-radius:10px;background:#fff;padding:3px;object-fit:contain}
+.mn-brand{min-width:0}
+.mn-brand b{display:block;font-size:15.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mn-brand span{font-size:11.5px;color:rgba(255,255,255,.65)}
+.mn-spacer{flex:1}
+.mn-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;
+  border-radius:10px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;transition:background .2s}
+.mn-btn:hover{background:rgba(255,255,255,.2)}
+.mn-btn.solid{background:#fff;color:var(--blue-dk);border-color:#fff}
+.mn-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+/* โครง */
+.mn-wrap{display:grid;grid-template-columns:290px minmax(0,1fr);gap:28px;max-width:1240px;margin:0 auto;padding:24px clamp(14px,3vw,32px) 60px}
+.mn-side{position:sticky;top:84px;align-self:start;max-height:calc(100vh - 100px);overflow:auto;padding-right:4px}
+.mn-search{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;font:inherit;font-size:14px;background:#fff}
+.mn-search:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(47,92,255,.14)}
+.mn-roles{display:flex;gap:6px;margin:10px 0 12px;flex-wrap:wrap}
+.mn-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;color:var(--text2);cursor:pointer}
+.mn-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.mn-toc ul{list-style:none;margin:0;padding:0}
+.mn-toc .lv2>a{display:block;padding:6px 10px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none}
+.mn-toc .lv2 ul a{display:block;padding:3px 10px 3px 22px;font-size:12.5px;color:var(--muted);text-decoration:none;border-radius:8px}
+.mn-toc a:hover{background:var(--blue-lt);color:var(--blue-dk)}
+.mn-toc a.on{background:var(--blue-lt);color:var(--blue-dk)}
+.mn-toc .lv2[hidden]{display:none}
+/* เนื้อหา */
+.mn-main{min-width:0}
+.mn-hero{position:relative;overflow:hidden;border-radius:20px;padding:26px 28px;color:#fff;margin-bottom:22px;
+  background:radial-gradient(420px 260px at 0% 0%,rgba(47,92,255,.9),transparent 65%),linear-gradient(120deg,#122E86,var(--navy) 60%,var(--navy-0))}
+.mn-hero h1{margin:0;font-size:clamp(22px,2.6vw,30px);line-height:1.3}
+.mn-hero p{margin:6px 0 0;color:rgba(255,255,255,.75);font-size:14px}
+.mn-hero .mn-quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.mn-sec{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px clamp(16px,3vw,30px);margin-bottom:18px;
+  box-shadow:0 1px 2px rgba(15,26,64,.04),0 10px 26px -16px rgba(15,26,64,.18)}
+.mn-sec[hidden]{display:none}
+.mn-sec h2{margin:0 0 10px;font-size:21px;line-height:1.4;color:var(--navy);display:flex;align-items:center;gap:10px}
+.mn-sec h2::before{content:"";width:5px;height:22px;border-radius:4px;background:linear-gradient(var(--blue),var(--cyan));flex:none}
+.mn-sec h3{margin:22px 0 6px;font-size:16.5px;color:var(--blue-dk)}
+.mn-sec p{margin:8px 0}
+.mn-sec ul,.mn-sec ol{margin:8px 0;padding-left:1.5em}
+.mn-sec li{margin:3px 0}
+.mn-sec strong{color:var(--ink)}
+.mn-tw{overflow-x:auto;margin:10px 0;border:1px solid var(--line);border-radius:12px}
+.mn-sec table{width:100%;border-collapse:collapse;font-size:14px}
+.mn-sec th{background:#F2F5FC;color:var(--text2);text-align:left;font-weight:700;padding:9px 12px;white-space:nowrap;border-bottom:1px solid var(--line)}
+.mn-sec td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+.mn-sec tr:hover td{background:#FAFBFF}
+mark{background:#FFE7A3;border-radius:3px;padding:0 2px}
+.mn-empty{display:none;padding:30px;text-align:center;color:var(--muted);background:#fff;border-radius:16px;border:1px dashed var(--line)}
+.mn-foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:20px}
+.mn-totop{position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));width:44px;height:44px;border-radius:50%;border:none;
+  background:var(--blue);color:#fff;font-size:18px;cursor:pointer;box-shadow:0 10px 22px -8px rgba(47,92,255,.8);opacity:0;pointer-events:none;transition:opacity .25s}
+.mn-totop.show{opacity:1;pointer-events:auto}
+.mn-menu{display:none}
+@media (max-width:900px){
+  .mn-wrap{grid-template-columns:1fr}
+  .mn-side{position:fixed;inset:0 auto 0 0;z-index:30;width:min(320px,86vw);max-height:none;background:#fff;padding:16px;padding-top:max(16px,env(safe-area-inset-top));
+    box-shadow:0 0 40px rgba(6,14,43,.4);transform:translateX(-105%);transition:transform .3s var(--ease)}
+  .mn-side.open{transform:none}
+  .mn-menu{display:inline-flex}
+  .mn-hide-sm{display:none}
+}
+@media print{
+  .mn-top,.mn-side,.mn-totop,.mn-quick{display:none!important}
+  .mn-wrap{display:block;padding:0}
+  .mn-sec{box-shadow:none;break-inside:auto;border:none;padding:0 0 10px}
+  .mn-hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.mn-side{transition:none}}
+</style>
+</head>
+<body>
+<header class="mn-top">
+  <button class="mn-btn mn-menu" id="mn-menu" aria-label="สารบัญ" aria-controls="mn-side" aria-expanded="false">☰ สารบัญ</button>
+  <img class="mn-logo" src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt="">
+  <div class="mn-brand"><b>คู่มือการใช้งานระบบ</b><span>DLTV Fund · ระบบดูแลนักเรียนทุนฯ</span></div>
+  <div class="mn-spacer"></div>
+  <button class="mn-btn mn-hide-sm" onclick="window.print()">🖨️ พิมพ์ / PDF</button>
+  <a class="mn-btn solid" href="index.html">← กลับเข้าระบบ</a>
+</header>
+
+<div class="mn-wrap">
+  <aside class="mn-side" id="mn-side" aria-label="สารบัญ">
+    <input type="search" class="mn-search" id="mn-q" placeholder="ค้นหาในคู่มือ เช่น ลืมรหัส, SDQ, ย้ายโรงเรียน">
+    <div class="mn-roles" role="group" aria-label="แสดงหัวข้อสำหรับ">
+      <button class="mn-chip on" data-role="all">ทั้งหมด</button>
+      <button class="mn-chip" data-role="admin">ผู้ดูแลระบบ</button>
+      <button class="mn-chip" data-role="user">ครูผู้ดูแล</button>
+    </div>
+    <nav class="mn-toc">{{TOC}}</nav>
+  </aside>
+
+  <main class="mn-main" id="mn-main">
+    <div class="mn-hero">
+      <h1>{{TITLE}}</h1>
+      <p>สำหรับผู้ดูแลระบบ เจ้าหน้าที่ และครูผู้ดูแลนักเรียนทุน · ปรับปรุงล่าสุด {{STAMP}}</p>
+      <div class="mn-quick">
+        <button class="mn-btn solid" data-go="m-10" data-role-set="user">ครูผู้ดูแล: เริ่มที่นี่</button>
+        <button class="mn-btn" data-go="m-3" data-role-set="admin">ผู้ดูแลระบบ: เริ่มที่นี่</button>
+        <button class="mn-btn" data-go="m-11">แก้ปัญหาที่พบบ่อย</button>
+      </div>
+    </div>
+    {{BODY}}
+    <div class="mn-empty" id="mn-empty">ไม่พบหัวข้อที่ตรงกับคำค้นหา ลองใช้คำอื่น หรือเลือก "ทั้งหมด"</div>
+    <div class="mn-foot">© DLTV Fund · มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
+  </main>
+</div>
+<button class="mn-totop" id="mn-totop" aria-label="กลับขึ้นด้านบน">↑</button>
+
+<script>
+(function(){
+  'use strict';
+  const secs=[...document.querySelectorAll('.mn-sec')];
+  const tocItems=[...document.querySelectorAll('.mn-toc .lv2')];
+  const q=document.getElementById('mn-q'), empty=document.getElementById('mn-empty');
+  const original=new Map(secs.map(s=>[s,s.innerHTML]));
+  let role='all';
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  function apply(){
+    const term=q.value.trim();
+    let shown=0;
+    secs.forEach(s=>{
+      s.innerHTML=original.get(s);
+      const okRole=role==='all'||s.dataset.role===role||s.dataset.role==='all';
+      const okText=!term||s.textContent.toLowerCase().includes(term.toLowerCase());
+      s.hidden=!(okRole&&okText);
+      if(!s.hidden){shown++; if(term) highlight(s,term);}
+    });
+    tocItems.forEach(li=>{const id=li.querySelector('a').getAttribute('href').slice(1);
+      const sec=document.querySelector('.mn-sec[data-sec="'+id+'"]'); li.hidden=sec?sec.hidden:false;});
+    empty.style.display=shown?'none':'block';
+  }
+  function highlight(root,term){
+    const re=new RegExp(esc(term),'gi');
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    const nodes=[]; while(walker.nextNode()) if(re.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{const span=document.createElement('span');
+      span.innerHTML=n.nodeValue.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(new RegExp(esc(term),'gi'),m=>'<mark>'+m+'</mark>');
+      n.replaceWith(span);});
+  }
+  q.addEventListener('input',apply);
+  document.querySelectorAll('.mn-chip').forEach(c=>c.onclick=()=>{
+    role=c.dataset.role; document.querySelectorAll('.mn-chip').forEach(x=>x.classList.toggle('on',x===c)); apply();});
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.roleSet){const c=document.querySelector('.mn-chip[data-role="'+b.dataset.roleSet+'"]'); if(c) c.click();}
+    const t=document.getElementById(b.dataset.go); if(t) t.scrollIntoView({block:'start'});});
+  // ไฮไลต์หัวข้อที่กำลังอ่าน
+  const links=new Map([...document.querySelectorAll('.mn-toc a')].map(a=>[a.getAttribute('href').slice(1),a]));
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
+    links.forEach(a=>a.classList.remove('on')); const a=links.get(e.target.id); if(a) a.classList.add('on');}});},
+    {rootMargin:'-90px 0px -70% 0px'});
+  document.querySelectorAll('.mn-sec h2[id], .mn-sec h3[id]').forEach(h=>io.observe(h));
+  // เมนูมือถือ
+  const side=document.getElementById('mn-side'), mb=document.getElementById('mn-menu');
+  mb.onclick=()=>{const o=side.classList.toggle('open'); mb.setAttribute('aria-expanded',o);};
+  side.addEventListener('click',e=>{if(e.target.closest('a')&&matchMedia('(max-width:900px)').matches){side.classList.remove('open');mb.setAttribute('aria-expanded','false');}});
+  // กลับขึ้นบน
+  const top=document.getElementById('mn-totop');
+  addEventListener('scroll',()=>top.classList.toggle('show',scrollY>600),{passive:true});
+  top.onclick=()=>scrollTo({top:0});
+  // เปิดจากระบบด้วย ?role=user → แสดงส่วนครูผู้ดูแลก่อน
+  const r=new URLSearchParams(location.search).get('role');
+  if(r){const c=document.querySelector('.mn-chip[data-role="'+r+'"]'); if(c) c.click();}
+})();
+</script>
+</body>
+</html>

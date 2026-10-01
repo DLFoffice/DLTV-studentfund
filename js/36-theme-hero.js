@@ -20,9 +20,14 @@
     (function tick(n) { const k = Math.min(1, (n - t0) / dur), e = 1 - Math.pow(1 - k, 3);
       el.textContent = Math.round(from + (to - from) * e) + (suffix || ''); if (k < 1) requestAnimationFrame(tick); })(t0);
   }
+  /* กันหน้าเพี้ยน: ถ้าเบราว์เซอร์ยังใช้ style.css รุ่นเก่า (แคช) ซึ่งยังไม่มีสไตล์ของแบนเนอร์ จะไม่แสดงแบนเนอร์ */
+  function themeCssReady() {
+    try { return getComputedStyle(document.documentElement).getPropertyValue('--lg-ease').trim() !== ''; } catch (e) { return false; }
+  }
   function render() {
     const page = document.getElementById('page-dashboard');
     if (!page || window.STUDENT_MODE) return;
+    if (!themeCssReady()) { const old = page.querySelector('.hx'); if (old) old.remove(); return; }
     let el = page.querySelector('.hx');
     if (!el) { el = document.createElement('section'); el.className = 'hx'; page.insertBefore(el, page.firstChild); }
     const st = stats();
@@ -42,7 +47,7 @@
         </div>
       </div>
       <div class="hx-prog" role="img" aria-label="ส่งงานภาคเรียนนี้แล้ว ${st.pct}%">
-        <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" class="bgc"/>
+        <svg viewBox="0 0 120 120" width="138" height="138" aria-hidden="true"><circle cx="60" cy="60" r="50" class="bgc"/>
           <circle cx="60" cy="60" r="50" class="fgc" style="stroke-dasharray:314.16;stroke-dashoffset:314.16"/></svg>
         <div class="hx-prog-in"><b data-hx-pct>0%</b><span>ส่งงานแล้ว</span><small>${st.done}/${st.total} งาน</small></div>
       </div>`;
@@ -56,6 +61,11 @@
     const nav = document.querySelector(`.nav-btn[onclick*="'${p}'"]`) || document.getElementById(p === 'sdqdashboard' ? 'sdq-nav-dash' : '');
     showPage(p, nav);
   });
+  // ลิงก์คู่มือท้ายแถบเมนู: บัญชีครูผู้ดูแลเปิดคู่มือที่ส่วนของครูก่อน
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('#sidebar-manual'); if (!a) return;
+    a.href = window.STUDENT_MODE ? 'manual.html?role=user' : 'manual.html';
+  }, true);
   const _rd = window.renderDashboard;
   if (typeof _rd === 'function') window.renderDashboard = function () { const r = _rd.apply(this, arguments); try { render(); } catch (e) { console.warn(e); } return r; };
   window.addEventListener('dltv:students-loaded', () => setTimeout(() => { try { render(); } catch (e) {} }, 200));

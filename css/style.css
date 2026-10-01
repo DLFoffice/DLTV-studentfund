@@ -2503,3 +2503,14 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .hx-prog-in small{font-size:11px;color:rgba(255,255,255,.55)}
 @media (max-width:900px){.hx{flex-direction:column;align-items:flex-start;padding:22px}.hx-orbit{display:none}.hx-prog{align-self:center}}
 @media (prefers-reduced-motion:reduce){.hx,.hx-stars,.hx-orbit span,.hx h2 span{animation:none}.hx-prog .fgc{transition:none}}
+
+/* v42 — ลิงก์คู่มือการใช้งานระบบ (ล่างสุดของแถบเมนู) */
+.sidebar-manual{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;border-radius:12px;text-decoration:none;
+  color:#fff;font-size:13.5px;font-weight:600;background:linear-gradient(100deg,rgba(255,197,49,.18),rgba(255,197,49,.06));
+  border:1px solid rgba(255,197,49,.35);transition:background .25s,transform .25s var(--lg-ease,ease),border-color .25s}
+.sidebar-manual:hover{background:linear-gradient(100deg,rgba(255,197,49,.3),rgba(255,197,49,.12));border-color:rgba(255,197,49,.6);transform:translateY(-1px)}
+.sidebar-manual:focus-visible{outline:2px solid var(--lg-gold,#FFC531);outline-offset:2px}
+.sidebar-manual .sm-ic{font-size:15px;width:22px;text-align:center}
+.sidebar-manual .sm-txt{flex:1}
+.sidebar-manual .sm-go{color:var(--lg-gold,#FFC531);font-size:13px;transition:transform .25s}
+.sidebar-manual:hover .sm-go{transform:translate(2px,-2px)}
