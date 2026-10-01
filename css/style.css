@@ -2297,3 +2297,37 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .sp-keep{break-before:auto}
 .sp-avoid{break-inside:avoid;page-break-inside:avoid;display:block}
 @media print{ .sp-doc{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+
+/* v39 — ประวัติสถานศึกษา / การย้ายโรงเรียน */
+.sh-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:16px 18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.sh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.sh-title{font-size:15px;font-weight:700;color:var(--text)}
+.sh-status{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;font-weight:600;padding:4px 12px;border-radius:999px}
+.sh-status.same{background:var(--green-lt);color:#15803D}
+.sh-status.moved{background:#FEF3E1;color:#B45309}
+.sh-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sh-list{list-style:none;margin:14px 0 0;padding:0 0 0 6px;position:relative}
+.sh-list::before{content:"";position:absolute;left:11px;top:8px;bottom:8px;width:2px;background:var(--border2)}
+.sh-item{position:relative;display:flex;gap:14px;padding:6px 0}
+.sh-dot{position:relative;z-index:1;flex:none;width:12px;height:12px;margin-top:5px;border-radius:50%;background:#fff;border:3px solid #94A3B8}
+.sh-item.is-cur .sh-dot{border-color:var(--blue);background:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
+.sh-body{flex:1;min-width:0}
+.sh-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sh-top b{font-size:14px;color:var(--text)}
+.sh-tag{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--bg3);color:var(--text3)}
+.sh-tag.cur{background:var(--blue);color:#fff}
+.sh-meta,.sh-when{font-size:12.5px;color:var(--text2);margin-top:2px}
+.sh-reason{font-size:12.5px;color:var(--text3);margin-top:2px}
+.sh-hint{margin:10px 0 0;font-size:12px;color:var(--text3);line-height:1.6}
+.sh-dlg{max-width:620px;text-align:left}
+.sh-dlg .uid-icon{font-size:26px}
+.sh-dlg .uid-title,.sh-dlg .uid-msg{text-align:center}
+.sh-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sh-form label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text2)}
+.sh-form label em{color:var(--red);font-style:normal}
+.sh-form .w2{grid-column:1/-1}
+.sh-form input[type=text],.sh-form select{padding:9px 11px;border:1px solid var(--border2);border-radius:10px;font:inherit;font-size:14px;font-weight:400;color:var(--text);background:#fff}
+.sh-form input:focus,.sh-form select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+.sh-check{flex-direction:row!important;align-items:flex-start;gap:8px!important;font-weight:400!important;line-height:1.5}
+.sh-check input{margin-top:3px}
+@media (max-width:560px){.sh-form{grid-template-columns:1fr}}

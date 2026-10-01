@@ -199,6 +199,8 @@ function exportFilteredStudents(){
   const curGrade = actT ? gradeFromTerm(actT) : '';
   const curYear = actT ? String(actT).split('/')[1] || '' : '';
   const cards = rows.map(s=>{
+    // v39: ระดับชั้นปัจจุบันยึดภาคเรียนที่จ่ายเงินทุนล่าสุด
+    const cgx = (typeof currentGradeOf==='function') ? currentGradeOf(s) : { grade: curGrade, year: curYear };
     const g = getLatestGpa(s)||{}; const cg = careOf.get(s); const sa = s.school_m1_addr||{};
     const c = stdContactsOf(s);
     const src = safeUrl(s.photoUrl ? fixDriveUrl(s.photoUrl) : '');
@@ -222,8 +224,8 @@ function exportFilteredStudents(){
         <h3>ข้อมูลการศึกษา</h3>
         <dl class="rs-grid">
           <div class="w2"><dt>โรงเรียน</dt><dd>${val(s.school_m1)}</dd></div>
-          <div><dt>ระดับชั้นปัจจุบัน</dt><dd>${val(curGrade)}</dd></div>
-          <div><dt>ปีการศึกษา</dt><dd>${val(curYear)}</dd></div>
+          <div><dt>ระดับชั้นปัจจุบัน</dt><dd>${val(cgx.grade)}</dd></div>
+          <div><dt>ปีการศึกษา</dt><dd>${val(cgx.year)}</dd></div>
           <div><dt>อำเภอ</dt><dd>${val(sa.amphoe)}</dd></div>
           <div><dt>จังหวัด</dt><dd>${val(stdProvKey(s.province))}</dd></div>
           <div class="w2"><dt>สังกัด</dt><dd>${val(s.org)}</dd></div>

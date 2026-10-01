@@ -50,10 +50,16 @@
     const photo = src ? `<img class="sp-photo" src="${E(src)}" alt="" onerror="this.outerHTML='<div class=&quot;sp-photo sp-noimg&quot;>${ini}</div>'">` : `<div class="sp-photo sp-noimg">${ini}</div>`;
     const age = (typeof calcAge === 'function') ? calcAge(s.dob) : '';
     const idMasked = (typeof maskId === 'function' && s.id) ? maskId(s.id) : '';
+    // v39: ระดับชั้นปัจจุบัน = ภาคเรียนที่จ่ายเงินทุนล่าสุด · สถานะ/ประวัติการย้ายสถานศึกษา
+    const cg = (typeof currentGradeOf === 'function') ? currentGradeOf(s) : { grade: actT ? grade(actT) : '', term: actT, source: 'active' };
+    const shSt = window.SchoolHistory ? SchoolHistory.status(s) : null;
+    const shRows = (window.SchoolHistory && shSt && shSt.moved) ? SchoolHistory.periods(s).map(p => `<tr${p.current ? ' class="sp-now"' : ''}>
+        <td><b>${E(p.school || '-')}</b>${p.current ? ' <small>(ปัจจุบัน)</small>' : ''}</td><td>${E([p.amphoe, p.province].filter(Boolean).join(' / ') || '-')}</td>
+        <td>${E(p.fromTerm || '-')} – ${E(p.toTerm || 'ปัจจุบัน')}</td><td class="sm">${val(p.reason)}</td></tr>`).join('') : '';
 
     // ผลการเรียน
     const gpas = (s.semGpa || []).filter(g => g && g.term && Number(g.gpa) > 0).sort((a, b) => tkey(a.term) - tkey(b.term));
-    let prev = Number(s.gpa_p6) > 0 ? Number(s.gpa_p6) : null;
+    let prev = null;      // v39: ไม่เทียบกับ GPA ป.6 (ไม่แสดง ป.6 ใน PDF)
     const gpaRows = gpas.map(g => {
       const v = Number(g.gpa);
       const d = prev !== null ? Math.round((v - prev) * 100) / 100 : null;
@@ -98,6 +104,7 @@
     };
     const formRows = terms.map(t => `<tr${t === actT ? ' class="sp-now"' : ''}><td>${E(t)} ${E(grade(t))}${t === actT ? ' <small>(ปัจจุบัน)</small>' : ''}</td><td>${st('form1', t)}</td><td>${st('form2', t)}</td><td>${st('sdq', t)}</td></tr>`).join('');
 
+    let secNo = 0; const n = () => ++secNo;
     const printed = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const qs = v => String(v).replace(/["\\\n\r]/g, ' ');
     return `<style>
@@ -110,7 +117,7 @@
       <header class="sp-head">
         <div><div class="sp-org">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
           <h1>รายงานข้อมูลนักเรียนทุนการศึกษา (รายบุคคล)</h1>
-          <div class="sp-sub">ข้อมูล ณ ${E(window.Term && actT ? Term.label(actT) : '')}</div></div>
+          <div class="sp-sub">ข้อมูล ณ วันที่ ${E(new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }))}</div></div>
         <div class="sp-no">ลำดับทุน<b>${E(s.no ?? '-')}</b></div>
       </header>
 
@@ -126,16 +133,19 @@
           <dl class="sp-grid">
             <div><dt>เลขประจำตัวประชาชน</dt><dd>${val(idMasked)}</dd></div>
             <div><dt>วันเกิด</dt><dd>${val(thDate(s.dob))}${age && age !== '-' ? ` <small>(${E(age)})</small>` : ''}</dd></div>
-            <div><dt>GPA ป.6</dt><dd>${Number(s.gpa_p6) > 0 ? E(s.gpa_p6) : val('')}</dd></div>
+            <div><dt>ระดับชั้นปัจจุบัน</dt><dd>${val(cg.grade)}${cg.source === 'payment' ? ` <small>(ตามการจ่ายทุนล่าสุด ${E(cg.term)})</small>` : ''}</dd></div>
             <div class="w2"><dt>โรงเรียน</dt><dd>${val(s.school_m1)}</dd></div>
-            <div><dt>ระดับชั้นปัจจุบัน</dt><dd>${val(actT ? grade(actT) : '')}</dd></div>
+            <div><dt>สถานะสถานศึกษา</dt><dd>${shSt ? (shSt.moved ? `<span class="sp-chip risk wide">ย้าย ${shSt.count} ครั้ง</span>` : '<span class="sp-chip ok wide">เรียนที่เดิม</span>') : val('')}</dd></div>
             <div><dt>อำเภอ / จังหวัด</dt><dd>${val([sa.amphoe, s.province].filter(Boolean).join(' / '))}</dd></div>
             <div class="w2"><dt>สังกัด</dt><dd>${val(s.org)}</dd></div>
           </dl>
         </div>
       </section>
 
-      <h3><span>1</span>ผู้ติดต่อ</h3>
+      ${shRows ? `<h3><span>${n()}</span>ประวัติสถานศึกษา</h3>
+      <table class="sp-table"><thead><tr><th>สถานศึกษา</th><th>อำเภอ / จังหวัด</th><th>ช่วงภาคเรียน</th><th>เหตุผลที่ย้ายมา</th></tr></thead><tbody>${shRows}</tbody></table>` : ''}
+
+      <h3><span>${n()}</span>ผู้ติดต่อ</h3>
       <table class="sp-table sp-contacts"><tbody>
         <tr><th>นักเรียน</th><td>${val(s.name)}</td><td class="tel">${val(c.student.phone)}</td></tr>
         <tr><th>ผู้ปกครอง</th><td>${val(c.parent.name)}</td><td class="tel">${val(c.parent.phone)}</td></tr>
@@ -144,16 +154,16 @@
         <tr><th>ผู้อำนวยการ</th><td>${val(c.director.name)}</td><td class="tel">${val(c.director.phone)}</td></tr>
       </tbody></table>
 
-      <h3><span>2</span>ผลการเรียนรายภาคเรียน</h3>
+      <h3><span>${n()}</span>ผลการเรียนรายภาคเรียน</h3>
       ${gpaRows ? `<table class="sp-table"><thead><tr><th>ภาคเรียน</th><th>ชั้น</th><th class="r">เกรดเฉลี่ย</th><th>เทียบภาคก่อน</th><th>วิชาที่ควรพัฒนา</th></tr></thead><tbody>${gpaRows}</tbody></table>`
         : '<p class="sp-none">ยังไม่มีข้อมูลผลการเรียน</p>'}
 
-      <h3><span>3</span>ผลการประเมิน SDQ (ส่งผลแล้ว)</h3>
+      <h3><span>${n()}</span>ผลการประเมิน SDQ (ส่งผลแล้ว)</h3>
       ${sdqRows ? `<table class="sp-table"><thead><tr><th>ภาคเรียน</th><th class="c">อารมณ์</th><th class="c">เกเร</th><th class="c">สมาธิสั้น</th><th class="c">เพื่อน</th><th class="c">สัมพันธภาพ</th><th>รวม 4 ด้าน</th></tr></thead><tbody>${sdqRows}</tbody></table>
         <p class="sp-note">ตัวเลข = คะแนนรายด้าน (เต็ม 10) · สีเขียว ปกติ/จุดแข็ง · สีส้ม เสี่ยง · สีแดง มีปัญหา</p>`
         : '<p class="sp-none">ยังไม่มีผลการประเมิน SDQ ที่ส่งแล้ว</p>'}
 
-      <h3 class="sp-keep"><span>4</span>ข้อมูลการเงิน</h3>
+      <h3 class="sp-keep"><span>${n()}</span>ข้อมูลการเงิน</h3>
       ${pays.length ? `
       <div class="sp-avoid"><div class="sp-sub-h">สรุปตามระดับชั้น</div>
       <table class="sp-table sp-money"><thead><tr><th>ระดับชั้น</th><th class="r">จำนวนภาคเรียน</th><th class="r">ส่วนที่ 1 (บาท)</th><th class="r">ส่วนที่ 2 (บาท)</th><th class="r">รวม (บาท)</th></tr></thead>
@@ -165,10 +175,10 @@
       <p class="sp-note">ส่วนที่ 1 = ค่าใช้จ่ายที่สถานศึกษาเรียกเก็บ (ค่าบำรุงการศึกษา) · ส่วนที่ 2 = ค่าใช้จ่ายในการเรียน/ครองชีพ</p>`
         : '<p class="sp-none">ยังไม่มีข้อมูลการเบิกจ่าย</p>'}
 
-      <h3 class="sp-keep"><span>5</span>สถานะการส่งแบบฟอร์มรายภาคเรียน</h3>
+      <h3 class="sp-keep"><span>${n()}</span>สถานะการส่งแบบฟอร์มรายภาคเรียน</h3>
       ${formRows ? `<table class="sp-table"><thead><tr><th>ภาคเรียน</th><th>แบบฟอร์มที่ 1</th><th>แบบฟอร์มที่ 2</th><th>แบบประเมิน SDQ</th></tr></thead><tbody>${formRows}</tbody></table>` : '<p class="sp-none">ยังไม่มีข้อมูล</p>'}
 
-      ${s.behavior ? `<h3 class="sp-keep"><span>6</span>บันทึกพฤติกรรม/ข้อสังเกต</h3><div class="sp-para">${E(s.behavior)}</div>` : ''}
+      ${s.behavior ? `<h3 class="sp-keep"><span>${n()}</span>บันทึกพฤติกรรม/ข้อสังเกต</h3><div class="sp-para">${E(s.behavior)}</div>` : ''}
     </article>`;
   }
 
