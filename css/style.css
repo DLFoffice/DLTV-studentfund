@@ -2198,3 +2198,102 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
   .sq2-kpis{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){.sq2-pop .sq2-q-no{animation:none}.sq2-meter>span,.sq2-dom-bar span{transition:none}}
+
+/* ============================================================
+   v38 — ปฏิทินเลือกวันที่แบบ พ.ศ. (js/34-thai-datepicker.js)
+   ============================================================ */
+.thdp-hidden{display:none!important}
+.thdp-wrap{position:relative;display:block;width:100%}
+.thdp-wrap .thdp-input{width:100%;padding-right:40px!important}
+.thdp-input.thdp-bad{border-color:var(--red)!important;background:var(--red-lt)!important}
+.thdp-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer}
+.thdp-btn:hover:not(:disabled){background:var(--blue-lt);color:var(--blue)}
+.thdp-btn:disabled{opacity:.4;cursor:default}
+.thdp-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.thdp-wrap.is-open .thdp-input{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+.thdp-pop{position:fixed;z-index:10050;width:296px;background:#fff;border:1px solid var(--border2);border-radius:14px;
+  box-shadow:0 18px 40px -12px rgba(15,26,64,.3);padding:12px;display:none;font-family:inherit}
+.thdp-pop.open{display:block;animation:thdpIn .14s ease-out}
+@keyframes thdpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.thdp-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.thdp-nav{width:30px;height:30px;flex:none;border:1px solid var(--border2);background:#fff;border-radius:8px;font-size:18px;line-height:1;color:var(--text2);cursor:pointer}
+.thdp-nav:hover{border-color:var(--blue);color:var(--blue)}
+.thdp-sel{flex:1;min-width:0;padding:5px 6px;border:1px solid var(--border2);border-radius:8px;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);background:#fff}
+.thdp-sel[data-sel="y"]{flex:0 0 76px}
+.thdp-dow,.thdp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.thdp-dow span{text-align:center;font-size:11.5px;font-weight:600;color:var(--text3);padding:4px 0}
+.thdp-dow .sun{color:#DC2626}
+.thdp-day{height:34px;border:none;background:transparent;border-radius:8px;font:inherit;font-size:13.5px;color:var(--text);cursor:pointer;font-variant-numeric:tabular-nums}
+.thdp-day:hover{background:var(--blue-lt)}
+.thdp-day.is-today{box-shadow:inset 0 0 0 1.5px var(--blue);font-weight:700}
+.thdp-day.is-sel{background:var(--blue);color:#fff;font-weight:700}
+.thdp-day:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.thdp-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.thdp-link{border:none;background:none;padding:4px 6px;font:inherit;font-size:13px;color:var(--text2);cursor:pointer;border-radius:6px}
+.thdp-link:hover{background:var(--bg3)}
+.thdp-link.strong{color:var(--blue);font-weight:700}
+.thdp-hint{font-size:11.5px;color:var(--text3)}
+@media (prefers-reduced-motion:reduce){.thdp-pop.open{animation:none}}
+
+/* v38 — สรุปเงินทุนตามระดับชั้น (แท็บการเงิน) */
+.pay-gsum-title{font-size:13px;font-weight:700;color:var(--text);margin:12px 2px 6px}
+.pay-gsum-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+.pay-gsum{width:100%;border-collapse:collapse;font-size:13px}
+.pay-gsum th{background:var(--bg2);color:var(--text3);font-weight:600;font-size:12px;text-align:left;padding:8px 12px;white-space:nowrap}
+.pay-gsum td{padding:8px 12px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+.pay-gsum td small{color:var(--text3);font-weight:400;margin-left:4px}
+.pay-gsum .r{text-align:right}
+.pay-gsum tfoot td{background:var(--blue-lt);color:var(--blue-dk);font-weight:700}
+.pay-grade-sum{margin-left:auto;font-weight:600;color:var(--text2);font-size:12px}
+
+/* v38 — PDF รายบุคคล */
+.sp-doc{page:spdoc;width:100%;max-width:184mm;font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:10pt;line-height:1.45;color:#111827;background:#fff}
+.sp-doc *{box-sizing:border-box}
+.sp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1E3A6E;padding-bottom:3mm;margin-bottom:4mm}
+.sp-org{font-size:9pt;color:#475569}
+.sp-head h1{margin:1mm 0 0;font-size:16pt;color:#1E3A6E;line-height:1.25}
+.sp-sub{font-size:9pt;color:#64748B}
+.sp-no{text-align:center;font-size:8.5pt;color:#475569}
+.sp-no b{display:block;font-size:18pt;color:#fff;background:#1E3A6E;border-radius:4px;padding:0 8px;margin-top:1mm}
+.sp-profile{display:flex;gap:5mm;padding:4mm;border:1px solid #CBD5E1;border-radius:6px;background:#F8FAFD;break-inside:avoid}
+.sp-photo{width:30mm;height:38mm;object-fit:cover;border-radius:4px;border:2px solid #fff;box-shadow:0 0 0 1px #CBD5E1;flex:none;background:#E2E8F0}
+.sp-noimg{display:flex;align-items:center;justify-content:center;font-size:20pt;font-weight:700;color:#1E3A6E}
+.sp-pmain{flex:1;min-width:0}
+.sp-pmain h2{margin:0;font-size:14pt;color:#0F172A}
+.sp-pmain h2 small{font-size:10pt;color:#64748B;font-weight:400}
+.sp-badges{display:flex;gap:2mm;flex-wrap:wrap;margin:1.5mm 0 2.5mm}
+.sp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5mm 4mm;margin:0}
+.sp-grid .w2{grid-column:span 2}
+.sp-grid dt{font-size:8pt;color:#64748B}
+.sp-grid dd{margin:0;font-weight:600}
+.sp-grid dd small{font-weight:400;color:#64748B}
+.sp-doc h3{display:flex;align-items:center;gap:2mm;margin:5mm 0 2mm;font-size:11.5pt;color:#1E3A6E;break-after:avoid}
+.sp-doc h3 span{display:inline-flex;align-items:center;justify-content:center;width:5.5mm;height:5.5mm;border-radius:3px;background:#1E3A6E;color:#fff;font-size:9pt}
+.sp-sub-h{font-size:9.5pt;font-weight:700;color:#334155;margin:2mm 0 1mm}
+.sp-table{width:100%;border-collapse:collapse;font-size:9.5pt;break-inside:auto}
+.sp-table th{background:#EEF2F8;color:#334155;font-weight:700;text-align:left;padding:1.4mm 2mm;border:1px solid #CBD5E1}
+.sp-table td{padding:1.3mm 2mm;border:1px solid #DCE3EE;vertical-align:top}
+.sp-table tr{break-inside:avoid}
+.sp-table .r{text-align:right;font-variant-numeric:tabular-nums}
+.sp-table .c{text-align:center}
+.sp-table .sm{font-size:8.5pt;color:#475569}
+.sp-table small{color:#64748B}
+.sp-contacts th{width:34mm}
+.sp-contacts .tel{width:34mm;font-variant-numeric:tabular-nums}
+.sp-table tfoot td,.sp-table .sp-total td{background:#E8EEFC;font-weight:700;color:#1E3A6E}
+.sp-sep td{background:#F6F8FC;font-weight:700;color:#1E3A6E;font-size:9pt}
+.sp-now td{background:#F5F8FF}
+.sp-chip{display:inline-block;min-width:7mm;text-align:center;padding:0.3mm 2mm;border-radius:3mm;font-weight:700;font-size:9pt;border:1px solid currentColor}
+.sp-chip.wide{min-width:0}
+.sp-chip.ok{color:#15803D;background:#ECF8F1}.sp-chip.risk{color:#B45309;background:#FEF6E7}.sp-chip.prob{color:#B91C1C;background:#FDEEEE}
+.sp-chip.na{color:#64748B;background:#F1F5F9}.sp-chip.info{color:#1E3A6E;background:#EEF2FF}
+.sp-tr{font-size:8.5pt;color:#64748B}.sp-tr.up{color:#15803D;font-weight:700}.sp-tr.down{color:#B91C1C;font-weight:700}
+.sp-ok{color:#15803D;font-weight:600}.sp-wait{color:#94A3B8}
+.sp-empty{color:#94A3B8}
+.sp-none{margin:0;padding:2mm 3mm;border:1px dashed #CBD5E1;border-radius:4px;color:#64748B;font-size:9.5pt}
+.sp-note{margin:1mm 0 0;font-size:8pt;color:#64748B}
+.sp-para{padding:2mm 3mm;border:1px solid #DCE3EE;border-radius:4px;white-space:pre-wrap}
+.sp-keep{break-before:auto}
+.sp-avoid{break-inside:avoid;page-break-inside:avoid;display:block}
+@media print{ .sp-doc{-webkit-print-color-adjust:exact;print-color-adjust:exact} }

@@ -327,6 +327,11 @@ function sfSetupEventsOnce(){
 ============================================================ */
 function sfFormatDatePrint(raw){
   if(!raw) return '';
+  // v38: เอกสาร/PDF แสดงวันที่เป็น พ.ศ. (วว/ดด/ปปปป) ให้ตรงกับปฏิทินในระบบ
+  if(typeof normDateISO==='function'){
+    const n = normDateISO(raw);
+    if(n){ const [y,m,d] = n.split('-'); return `${d}/${m}/${+y+543}`; }
+  }
   const s = String(raw).trim();
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if(dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;

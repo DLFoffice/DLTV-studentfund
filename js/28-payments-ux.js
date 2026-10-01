@@ -130,6 +130,30 @@
         <span class="pay-rec-hint">พิมพ์ตัวเลขแล้วกด Tab ไปช่องถัดไปได้เลย — ระบบบันทึกให้อัตโนมัติ</span></div>`;
   }
 
+  /* v38: สรุปเงินทุนตามระดับชั้น (ม.1, ม.2, …) ของนักเรียน 1 คน */
+  function gradeSummary(s) {
+    const map = new Map();
+    (s.semPayments || []).forEach(p => {
+      const lv = (typeof gradeLevelOf === 'function' && p.term) ? gradeLevelOf(p.term) : 0;
+      const g = map.get(lv) || { lv, n: 0, p1: 0, p2: 0 };
+      g.n++; g.p1 += num(p.p1); g.p2 += num(p.p2); map.set(lv, g);
+    });
+    return [...map.values()].sort((a, b) => a.lv - b.lv);
+  }
+  function gradeSumHtml(s) {
+    const rows = gradeSummary(s);
+    if (!rows.length) return '';
+    const t = rows.reduce((a, g) => ({ n: a.n + g.n, p1: a.p1 + g.p1, p2: a.p2 + g.p2 }), { n: 0, p1: 0, p2: 0 });
+    const name = lv => lv ? `${E(gradeName(lv))} <small>ปีการศึกษา ${gradeYear(lv)}</small>` : 'ไม่ระบุภาคเรียน';
+    return `<div class="pay-gsum-title">สรุปเงินทุนตามระดับชั้น</div>
+      <div class="pay-gsum-wrap"><table class="pay-gsum">
+        <thead><tr><th>ระดับชั้น</th><th class="r">ภาคเรียน</th><th class="r">ส่วนที่ 1</th><th class="r">ส่วนที่ 2</th><th class="r">รวม (บาท)</th></tr></thead>
+        <tbody>${rows.map(g => `<tr><td>${name(g.lv)}</td><td class="r">${g.n}</td><td class="r">${money(g.p1)}</td><td class="r">${money(g.p2)}</td><td class="r"><b>${money(g.p1 + g.p2)}</b></td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>รวมทั้งหมด</td><td class="r">${t.n}</td><td class="r">${money(t.p1)}</td><td class="r">${money(t.p2)}</td><td class="r"><b>${money(t.p1 + t.p2)}</b></td></tr></tfoot>
+      </table></div>`;
+  }
+  window.StudentFinance = { gradeSummary, total: s => (s.semPayments || []).reduce((a, p) => a + payTotal(p), 0) };
+
   function renderPaymentPanelStable(idx) {
     const s = DB.students[idx]; if (!s) return;
     const host = document.getElementById('st-panel-4'); if (!host) return;
@@ -147,12 +171,14 @@
     let html = recs.length ? `<div class="pay-grand">
         <div><div class="pay-grand-t">💰 ยอดรวมทุกภาคเรียน</div><div class="pay-grand-v" data-live="grand">${money(grand)} บาท</div></div>
         <div class="pay-grand-r"><div>${recs.length} ภาคเรียน</div><div data-live="grand-split">ส่วนที่ 1: ${money(sum1)} + ส่วนที่ 2: ${money(sum2)}</div></div>
-      </div>` : '<div class="pay-empty">ยังไม่มีรายการเบิกจ่าย กดปุ่มด้านล่างเพื่อเพิ่มภาคเรียน</div>';
+      </div><div class="pay-gsum-card" data-live="grade-sum">${gradeSumHtml(s)}</div>
+      <div class="pay-gsum-title" style="margin-top:14px">รายภาคเรียน</div>` : '<div class="pay-empty">ยังไม่มีรายการเบิกจ่าย กดปุ่มด้านล่างเพื่อเพิ่มภาคเรียน</div>';
     let lastLv = null;
+    const lvTotal = new Map(); gradeSummary(s).forEach(g => lvTotal.set(g.lv, g.p1 + g.p2));
     html += '<div class="sem-records">' + order.map(pi => {
       const p = recs[pi];
       const lv = (typeof gradeLevelOf === 'function' && p.term) ? gradeLevelOf(p.term) : null;
-      const head = (lv && lv !== lastLv) ? `<div class="pay-grade-sep">${E(gradeName(lv))} · ปีการศึกษา ${gradeYear(lv)}</div>` : '';
+      const head = (lv && lv !== lastLv) ? `<div class="pay-grade-sep">${E(gradeName(lv))} · ปีการศึกษา ${gradeYear(lv)}<span class="pay-grade-sum">รวม ${money(lvTotal.get(lv) || 0)} บาท</span></div>` : '';
       lastLv = lv;
       return head + `<div class="sem-record" data-pi="${pi}">
         <div class="sem-record-header" data-pay-toggle="${pi}" role="button" tabindex="0" aria-expanded="${open.has(pi)}">
@@ -182,6 +208,7 @@
     set('total', money(total) + ' บาท'); set('head-total', money(total) + ' บาท');
     const recs = s.semPayments;
     const g = host.querySelector('[data-live="grand"]'); if (g) g.textContent = money(recs.reduce((a, x) => a + payTotal(x), 0)) + ' บาท';
+    const gsum = host.querySelector('[data-live="grade-sum"]'); if (gsum) gsum.innerHTML = gradeSumHtml(s);
     const gs = host.querySelector('[data-live="grand-split"]');
     if (gs) gs.textContent = `ส่วนที่ 1: ${money(recs.reduce((a, x) => a + num(x.p1), 0))} + ส่วนที่ 2: ${money(recs.reduce((a, x) => a + num(x.p2), 0))}`;
   }
