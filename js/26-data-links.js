@@ -56,11 +56,10 @@
     nickname: 'nickname', dob: 'dob', school_name: 'school_m1',
     bank_name: 'bank.bankSt', bank_branch: 'bank.branchSt',
     account_name: 'bank.accNameSt', account_no: 'bank.accNoSt',
-    teacher_position: 'mentor.position', teacher_phone: 'mentor.phone',
-    teacher_name: (s, v) => {
-      const p = (typeof sfSplitName === 'function') ? sfSplitName(v) : { first: v, last: '' };
-      setPath(s, 'mentor.firstName', p.first || ''); setPath(s, 'mentor.lastName', p.last || '');
-    },
+    // v36: ครูที่ปรึกษาในแบบฟอร์ม = ครูที่ปรึกษาของโรงเรียน (school_m1_addr.advisor*)
+    //      ไม่ใช่ "พี่เลี้ยง" (s.mentor = บุคลากรของมูลนิธิฯ) — แยกกันเด็ดขาด
+    teacher_name: 'school_m1_addr.advisorM1', teacher_position: 'school_m1_addr.advisorPosM1',
+    teacher_phone: 'school_m1_addr.telAdvisorM1',
   };
   const LINKS = {
     form1: Object.assign({}, COMMON, {
@@ -289,12 +288,75 @@
 
   // (ง) ข้อมูลจากคลาวด์มาถึง (ครั้งแรก + ทุกครั้งที่เครื่องอื่นแก้) → กระทบยอดทั้งระบบ
   //     setTimeout: รอให้ตัวเชื่อม Firebase ตั้งสถานะ "พร้อมบันทึก" ก่อน จึงจะส่งขึ้นคลาวด์ได้
+  /* v36: ย้าย "ครูที่ปรึกษา" ออกจาก "พี่เลี้ยง"
+     ระบบรุ่นก่อนเชื่อมช่องครูที่ปรึกษาในแบบฟอร์มเข้ากับพี่เลี้ยง (s.mentor) ทำให้
+       (1) ฟอร์มเติมชื่อพี่เลี้ยงเป็นครูที่ปรึกษาให้อัตโนมัติ และ (2) ครูแก้ชื่อในฟอร์ม → ไปเขียนทับพี่เลี้ยง
+     ขั้นตอน (ทำครั้งเดียวต่อคน · จำไว้ที่ school_m1_addr.advisorMigrated):
+       • ตั้งครูที่ปรึกษาของโรงเรียน (ถ้ายังว่าง) จากค่าที่ครูพิมพ์เองในแบบฟอร์ม (ล่าสุดก่อน)
+       • ช่องครูที่ปรึกษาในฟอร์มภาคปัจจุบันที่ "ระบบเติมจากพี่เลี้ยง" และครูไม่ได้แก้ → เปลี่ยนเป็นครูที่ปรึกษาจริง (หรือว่าง)
+       • ไม่แก้ข้อมูลพี่เลี้ยง (ถ้าเคยถูกเขียนทับ จะมีป้ายเตือนในหน้ารายละเอียดให้ตรวจ) */
+  const ADV = { teacher_name: 'advisorM1', teacher_position: 'advisorPosM1', teacher_phone: 'telAdvisorM1' };
+  function migrateAdvisor(s) {
+    const sa = s.school_m1_addr = (s.school_m1_addr && typeof s.school_m1_addr === 'object') ? s.school_m1_addr : {};
+    if (sa.advisorMigrated) return false;
+    const m = s.mentor || {};
+    const mentorVal = { teacher_name: joinName(m.firstName, m.lastName), teacher_position: m.position || '', teacher_phone: m.phone || '' };
+    const buckets = Object.keys(s.forms || {}).sort((a, b) => (window.Term && Term.cmp) ? Term.cmp(b, a) : 0)
+      .map(t => s.forms[t]).filter(Boolean);
+    const stores = [];
+    buckets.forEach(b => ['form2', 'form1'].forEach(k => { if (b[k] && typeof b[k] === 'object') stores.push(b[k]); }));
+    Object.keys(ADV).forEach(fid => {
+      if (!isBlank(sa[ADV[fid]])) return;
+      for (const st of stores) {
+        const v = st[fid]; if (isBlank(v) || typeof v === 'object') continue;
+        const edited = st.__ed && st.__ed[fid];
+        if (edited || !same(v, mentorVal[fid])) { sa[ADV[fid]] = String(v).trim(); break; }
+      }
+    });
+    const t = activeTerm();
+    const cur = t && s.forms && s.forms[t];
+    if (cur) ['form1', 'form2'].forEach(k => {
+      const st = cur[k]; if (!st || typeof st !== 'object') return;
+      Object.keys(ADV).forEach(fid => {
+        const edited = st.__ed && st.__ed[fid];
+        if (!edited && !isBlank(st[fid]) && !isBlank(mentorVal[fid]) && same(st[fid], mentorVal[fid])) {
+          st[fid] = sa[ADV[fid]] || '';
+          meta(st).__pf[fid] = st[fid];
+        }
+      });
+    });
+    // วันเกิดในทะเบียนที่เพี้ยนเป็นเวลา UTC (ผ่าน Google Sheet) → YYYY-MM-DD
+    if (s.dob && typeof normDateISO === 'function') { const d = normDateISO(s.dob); if (d && d !== s.dob) s.dob = d; }
+    sa.advisorMigrated = true;
+    return true;
+  }
+  function migrateAll(reason) {
+    if (!isStaff()) return 0;
+    let n = 0;
+    (DB.students || []).forEach(s => { try { if (migrateAdvisor(s)) n++; } catch (e) { console.warn('migrate advisor', e); } });
+    if (n) console.log('🧭 แยกครูที่ปรึกษาออกจากพี่เลี้ยง: ' + n + ' คน (' + reason + ')');
+    return n;
+  }
+  // วันเกิดเพี้ยนรูปแบบ → แก้ทุกครั้งที่โหลด (ไม่ขึ้นกับการย้ายข้อมูลครั้งเดียวด้านบน)
+  function normalizeDobs() {
+    let n = 0;
+    if (typeof normDateISO !== 'function') return 0;
+    (DB.students || []).forEach(s => { if (s.dob) { const d = normDateISO(s.dob); if (d && d !== s.dob) { s.dob = d; n++; } } });
+    return n;
+  }
+
   window.addEventListener('dltv:students-loaded', e => {
     if (e.detail && e.detail.studentMode) return;
-    setTimeout(() => reconcileAll('cloud'), 50);
+    setTimeout(() => {
+      const n = migrateAll('cloud') + (isStaff() ? normalizeDobs() : 0);
+      if (!reconcileAll('cloud') && n) { try { saveToStorage(); } catch (e) {} }
+    }, 50);
   });
   // โหมดไม่ใช้ Firebase (localStorage): กระทบยอดหนึ่งครั้งตอนเปิดแอป
-  if (!window.FB_NO_LOCAL_STUDENT_CACHE) setTimeout(() => reconcileAll('local'), 300);
+  if (!window.FB_NO_LOCAL_STUDENT_CACHE) setTimeout(() => {
+    const n = migrateAll('local') + normalizeDobs();
+    if (!reconcileAll('local') && n) { try { saveToStorage(); } catch (e) {} }
+  }, 300);
 
   // หลังครูแก้ข้อมูลในหน้ารายละเอียด/ผลการเรียนแล้วกดบันทึก → ฟอร์มภาคปัจจุบันตามทันที
   const _origSave = window.saveToStorage;

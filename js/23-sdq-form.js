@@ -230,73 +230,124 @@
     sdqBindEditorEvents(host);
   };
 
+  /* ══════════ v37: หน้าแบบประเมิน SDQ รูปแบบใหม่ ══════════
+     • หน้าแรก: แถบความคืบหน้าการส่งผล + ตัวกรอง (ทั้งหมด/ยังไม่ส่ง/ส่งแล้ว) + รายชื่อแบบการ์ด
+     • หน้ากรอก: ข้อคำถามแบบการ์ด ปุ่มคำตอบมีข้อความ (ไม่จริง/ค่อนข้างจริง/จริง) กดง่ายบนมือถือ
+       + แผงผลการประเมินแบบสด (คะแนนรวม 4 ด้านพร้อมแถบเกณฑ์ + ผลรายด้าน)
+       + แถบล่าง "ตอบแล้ว x/25" และปุ่ม "บันทึกและส่งผล"
+     • บันทึกแล้ว → บันทึกขึ้นคลาวด์จริง → กลับหน้าแรก + สรุปผลในกล่องกลางจอ */
+  const termLabelOf = t => (typeof Term === 'object' && Term.label) ? Term.label(t) : t;
+  const DOMAIN_ORDER = ['emotional', 'conduct', 'hyper', 'peer', 'prosocial'];
+  const sentWhen = iso => (typeof Term === 'object' && Term.sentLabel) ? Term.sentLabel(iso) : 'ส่งแล้ว';
+  const gKey = g => (g === 'ปกติ' || g === 'จุดแข็ง') ? 'ok' : g === 'เสี่ยง' ? 'risk' : 'prob';
+  function avatar(s) {
+    if (typeof photoEl === 'function') return `<span class="sq2-avwrap">${photoEl(s, 'sq2-av', 'sq2-av sq2-av-txt')}</span>`;
+    return `<span class="sq2-avwrap"><span class="sq2-av sq2-av-txt">${sdqEsc(String(s.name || '?').slice(0, 1))}</span></span>`;
+  }
+  if (!('pick' in sdqState)) sdqState.pick = 'all';
+
   function sdqPickerHtml() {
     const open = sdqGetOpen();
-    const students = sdqStudents();
+    const term = sdqState.term;
+    const all = sdqStudents().map((s, idx) => {
+      const b = (s.sdq && s.sdq[term]) || null;
+      return { s, idx, b, sent: !!(b && b.submittedAt) };
+    });
+    const sent = all.filter(r => r.sent).length;
+    const pct = all.length ? Math.round(sent / all.length * 100) : 0;
     const q = sdqState.search.trim().toLowerCase();
-    const rows = students
-      .map((s, idx) => ({ s, idx }))
-      .filter(r => !q || (r.s.name || '').toLowerCase().includes(q) || (r.s.school_m1 || '').toLowerCase().includes(q))
+    const list = all
+      .filter(r => sdqState.pick === 'all' || (sdqState.pick === 'sent' ? r.sent : !r.sent))
+      .filter(r => !q || (r.s.name || '').toLowerCase().includes(q) || (r.s.school_m1 || '').toLowerCase().includes(q) || String(r.s.no) === q)
       .sort((a, b) => (a.s.no || 0) - (b.s.no || 0));
-
-    const banner = !open && sdqIsStaff()
-      ? `<div class="sdq-banner sdq-banner-closed">🔒 ฟอร์ม SDQ ถูกปิดใช้งานอยู่ (นักเรียนหรือครูท่านอื่นจะกรอกไม่ได้ — คุณยังดู/แก้ไขได้ในฐานะผู้ดูแล)</div>` : '';
-    const toggleBtn = sdqIsStaff()
-      ? `<button class="btn ${open ? '' : 'btn-primary'}" id="sdq-toggle-btn">${open ? '🔒 ปิดการใช้งานฟอร์ม' : '🔓 เปิดการใช้งานฟอร์ม'}</button>`
-      : '';
-
-    return `
-    <div class="toolbar">
-      <div class="toolbar-title">📝 แบบประเมิน SDQ — เลือกนักเรียน</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${sdqIsStaff() ? `<select id="sdq-term-select" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)">
-          ${(typeof Term === 'object' && Term.options) ? Term.options(Term.all(), sdqState.term) : (typeof Term === 'object' ? Term.all() : [sdqState.term]).map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('')}
-        </select>` : `<span class="tm-term-fixed">${typeof Term === 'object' ? Term.label(sdqState.term) : sdqState.term}</span>`}
-        ${toggleBtn}
-      </div>
-    </div>
-    ${banner}
-    <div class="search-row">
-      <input type="text" id="sdq-search" placeholder="🔍 ค้นหาชื่อนักเรียน / โรงเรียน..." value="${sdqEsc(sdqState.search)}">
-    </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th style="width:60px">ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>สถานะการประเมิน (${typeof Term === 'object' ? Term.label(sdqState.term) : sdqState.term})</th><th style="width:120px">จัดการ</th></tr></thead>
-        <tbody>
-          ${rows.map(r => sdqPickerRow(r.s, r.idx)).join('') || `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">ไม่พบนักเรียน</td></tr>`}
-        </tbody>
-      </table>
+    const chip = (k, t, n) => `<button type="button" class="sq2-chip ${sdqState.pick === k ? 'on' : ''}" data-sq2-pick="${k}" aria-pressed="${sdqState.pick === k}">${t} <b>${n}</b></button>`;
+    const termCtrl = sdqIsStaff()
+      ? `<select id="sdq-term-select" class="sq2-select" aria-label="ภาคเรียน">${(typeof Term === 'object' && Term.options) ? Term.options(Term.all(), term) : `<option>${sdqEsc(term)}</option>`}</select>`
+      : `<span class="tm-term-fixed">${sdqEsc(termLabelOf(term))}</span>`;
+    return `<div class="sq2">
+      <header class="sq2-head">
+        <div><h2>แบบประเมิน SDQ</h2><p>ฉบับครูเป็นผู้ประเมิน · 25 ข้อ · ${sdqEsc(termLabelOf(term))}</p></div>
+        <div class="sq2-head-tools">${termCtrl}
+          ${sdqIsStaff() ? `<button class="sq2-btn ${open ? '' : 'sq2-btn-primary'}" id="sdq-toggle-btn">${open ? '🔒 ปิดรับการประเมิน' : '🔓 เปิดรับการประเมิน'}</button>` : ''}</div>
+      </header>
+      ${!open && sdqIsStaff() ? `<div class="sq2-banner">ฟอร์ม SDQ ปิดรับอยู่ — ครูท่านอื่นและนักเรียนกรอกไม่ได้ (คุณยังดู/แก้ไขได้ในฐานะผู้ดูแล)</div>` : ''}
+      <section class="sq2-card sq2-progress">
+        <div class="sq2-progress-num"><b>${sent}</b> / ${all.length} คน</div>
+        <div class="sq2-progress-main">
+          <div class="sq2-progress-lbl">ส่งผลการประเมินแล้ว ${pct}%</div>
+          <div class="sq2-meter"><span style="width:${pct}%"></span></div>
+        </div>
+      </section>
+      <section class="sq2-card sq2-listcard">
+        <div class="sq2-tools">
+          <div class="sq2-chips">${chip('all', 'ทั้งหมด', all.length)}${chip('todo', 'ยังไม่ส่ง', all.length - sent)}${chip('sent', 'ส่งแล้ว', sent)}</div>
+          <input type="search" id="sdq-search" class="sq2-search" placeholder="ค้นหาชื่อนักเรียน โรงเรียน หรือลำดับ" value="${sdqEsc(sdqState.search)}">
+        </div>
+        <ul class="sq2-plist">${list.map(sdqPickerRow).join('') || `<li class="sq2-empty">ไม่พบนักเรียนตามเงื่อนไขนี้</li>`}</ul>
+      </section>
     </div>`;
   }
 
-  function sdqPickerRow(s, idx) {
-    const bucket = (s.sdq && s.sdq[sdqState.term]) || null;
-    const res = bucket ? sdqCompute(bucket) : null;
-    // v33: 2 สถานะ — ส่งแล้ว (กดบันทึก/ส่งผล + วันเวลาล่าสุด) หรือ ยังไม่ส่ง
-    let statusHtml = `<span class="badge b-gray">ยังไม่ส่ง</span>`;
-    if (bucket && bucket.submittedAt) {
-      const when = (typeof Term === 'object' && Term.sentLabel) ? Term.sentLabel(bucket.submittedAt) : 'ส่งแล้ว';
-      statusHtml = `<span class="badge b-green">✓ ${when}</span>${res && res.complete ? ` <span class="badge ${groupCls(res.totalGroup)}">${res.totalGroup}</span>` : ''}`;
-    }
-    return `<tr>
-      <td>${s.no ?? ''}</td>
-      <td style="font-weight:600">${sdqEsc(s.name || '')}<div style="font-size:11px;color:var(--text3)">${sdqEsc(s.nickname || '')}</div></td>
-      <td style="font-size:12px">${sdqEsc(s.school_m1 || '-')}</td>
-      <td>${statusHtml}</td>
-      <td><button class="btn btn-sm" data-sdq-open="${idx}">📝 ประเมิน</button></td>
-    </tr>`;
+  function sdqPickerRow(r) {
+    const { s, idx, b, sent } = r;
+    const res = b ? sdqCompute(b) : null;
+    const status = sent
+      ? `<span class="sq2-st is-sent">✓ ${sdqEsc(sentWhen(b.submittedAt))}</span>${res && res.complete ? `<span class="sq2-g g-${gKey(res.totalGroup)}">${res.totalGroup} · ${res.totalDiff} คะแนน</span>` : ''}`
+      : `<span class="sq2-st is-wait">ยังไม่ส่ง</span>${b && b.__touched && res ? `<span class="sq2-draft">มีร่างที่บันทึกไว้ ${res.totalAnswered}/25 ข้อ</span>` : ''}`;
+    const btn = sent ? 'แก้ไข' : (b && b.__touched ? 'ทำต่อ' : 'เริ่มประเมิน');
+    return `<li class="sq2-prow">
+      <span class="sq2-no">${sdqEsc(s.no ?? '')}</span>
+      ${avatar(s)}
+      <div class="sq2-pwho"><b>${sdqEsc(s.name || '')}</b><span>${sdqEsc(s.school_m1 || '-')}${s.nickname ? ' · ' + sdqEsc(s.nickname) : ''}</span></div>
+      <div class="sq2-pstatus">${status}</div>
+      <button type="button" class="sq2-btn ${sent ? '' : 'sq2-btn-primary'}" data-sdq-open="${idx}">${btn}</button>
+    </li>`;
   }
 
   function sdqBindPickerEvents(host) {
     const term = document.getElementById('sdq-term-select');
     if (term) term.onchange = () => { sdqState.term = term.value; sdqRenderFormPage(); };
     const search = document.getElementById('sdq-search');
-    if (search) search.oninput = () => { sdqState.search = search.value; sdqRenderFormPage(); };
+    if (search) search.oninput = () => {
+      sdqState.search = search.value;
+      const pos = search.selectionStart;
+      sdqRenderFormPage();
+      const s2 = document.getElementById('sdq-search');
+      if (s2) { s2.focus(); s2.setSelectionRange(pos, pos); }
+    };
     const toggle = document.getElementById('sdq-toggle-btn');
     if (toggle) toggle.onclick = () => sdqSetOpen(!sdqGetOpen());
+    host.querySelectorAll('[data-sq2-pick]').forEach(b => { b.onclick = () => { sdqState.pick = b.getAttribute('data-sq2-pick'); sdqRenderFormPage(); }; });
     host.querySelectorAll('[data-sdq-open]').forEach(btn => {
-      btn.onclick = () => { sdqState.studentIdx = Number(btn.getAttribute('data-sdq-open')); sdqRenderFormPage(); };
+      btn.onclick = () => { sdqState.studentIdx = Number(btn.getAttribute('data-sdq-open')); sdqRenderFormPage(); const m = document.querySelector('.main'); if (m) m.scrollTop = 0; };
     });
+  }
+
+  /* ---------- แผงผลการประเมิน (อัปเดตสด) ---------- */
+  function sdqResultHtml(res) {
+    const pos = Math.min(100, res.totalDiff / 40 * 100);
+    const total = res.complete
+      ? `<div class="sq2-total">
+          <div class="sq2-total-top"><span class="sq2-total-num">${res.totalDiff}</span><span class="sq2-total-of">/ 40 คะแนน</span>
+            <span class="sq2-g g-${gKey(res.totalGroup)}">${res.totalGroup}</span></div>
+          <div class="sq2-gauge" aria-hidden="true"><span class="z ok" style="width:40%"></span><span class="z risk" style="width:5%"></span><span class="z prob" style="width:55%"></span>
+            <i style="left:${pos}%"></i></div>
+          <div class="sq2-gauge-lbl"><span>ปกติ 0–15</span><span>เสี่ยง 16–17</span><span>มีปัญหา 18–40</span></div>
+        </div>`
+      : `<div class="sq2-total is-wait"><b>ตอบแล้ว ${res.totalAnswered} จาก 25 ข้อ</b><span>ตอบให้ครบเพื่อดูผลรวม 4 ด้าน</span>
+          <div class="sq2-meter"><span style="width:${res.totalAnswered / 25 * 100}%"></span></div></div>`;
+    const doms = DOMAIN_ORDER.map(d => {
+      const m = DOMAIN_META[d], sc = res.domainScore[d], g = res.groups[d];
+      const answered = res.answeredCount[d] >= 5;
+      return `<li class="sq2-dom">
+        <div class="sq2-dom-top"><span>${sdqEsc(m.short)}${m.isStrength ? ' <small>(จุดแข็ง)</small>' : ''}</span>
+          ${answered ? `<span class="sq2-g g-${gKey(g)}">${g}</span>` : `<span class="sq2-g g-na">รอคำตอบ</span>`}</div>
+        <div class="sq2-dom-bar"><span class="${answered ? 'g-' + gKey(g) : 'g-na'}" style="width:${sc * 10}%"></span></div>
+        <div class="sq2-dom-score">${sc} / 10</div>
+      </li>`;
+    }).join('');
+    return `<h3 class="sq2-side-title">ผลการประเมิน</h3><p class="sq2-side-sub">คำนวณอัตโนมัติตามเกณฑ์ SDQ ฉบับครู</p>
+      ${total}<ul class="sq2-doms">${doms}</ul>`;
   }
 
   function sdqEditorHtml() {
@@ -306,93 +357,70 @@
     const locked = !open && sdqIsStaff() === false;
     const data = sdqBucket(student, sdqState.term, true);
     const res = sdqCompute(data);
-
-    const itemsHtml = SDQ_ITEMS.map((it, rowIdx) => {
+    const dis = locked ? 'disabled' : '';
+    const qs = SDQ_ITEMS.map(it => {
       const cur = data.answers[it.id];
-      return `<tr class="sdq-row-anim" style="animation-delay:${Math.min(rowIdx * 18, 260)}ms">
-        <td style="text-align:center;color:var(--text3)">${it.id}</td>
-        <td>${sdqEsc(it.text)}</td>
-        ${CHOICES.map((c, i) => `<td class="sdq-choice-cell sdq-choice-c${i} ${Number(cur) === i ? 'sdq-choice-selected' : ''}" style="text-align:center">
-          <label class="sdq-pill sdq-pill-${i} ${Number(cur) === i ? 'sdq-pill-on' : ''} ${locked ? 'sdq-pill-disabled' : ''}">
-            <input type="radio" name="sdq-item-${it.id}" data-sdq-item="${it.id}" value="${i}" ${Number(cur) === i ? 'checked' : ''} ${locked ? 'disabled' : ''}>
-            <span class="sdq-pill-dot"></span>
-          </label>
-        </td>`).join('')}
-      </tr>`;
+      const has = cur !== undefined && cur !== null && cur !== '';
+      return `<li class="sq2-q ${has ? 'is-done' : ''}" id="sq2-q-${it.id}">
+        <span class="sq2-q-no">${it.id}</span>
+        <div class="sq2-q-text">${sdqEsc(it.text)}</div>
+        <div class="sq2-seg" role="radiogroup" aria-label="ข้อ ${it.id}">
+          ${CHOICES.map((c, i) => `<label class="sq2-opt o${i}"><input type="radio" name="sdq-item-${it.id}" data-sdq-item="${it.id}" value="${i}" ${has && Number(cur) === i ? 'checked' : ''} ${dis}><span>${c}</span></label>`).join('')}
+        </div>
+      </li>`;
     }).join('');
-
     const showImpact = data.overall && data.overall !== '1';
     const impactAreas = [['home', 'ความเป็นอยู่ที่บ้าน'], ['friends', 'การคบเพื่อน'], ['classroom', 'การเรียนในห้องเรียน'], ['leisure', 'กิจกรรมยามว่าง']];
+    const opt = (list, cur) => list.map(o => `<option value="${o}" ${cur === o ? 'selected' : ''}>${o || '— ยังไม่ระบุ —'}</option>`).join('');
+    const sentNote = data.submittedAt ? `<span class="sq2-st is-sent">✓ ${sdqEsc(sentWhen(data.submittedAt))}</span>` : `<span class="sq2-st is-wait">ยังไม่ส่ง</span>`;
+    return `<div class="sq2 sq2-editor">
+      <header class="sq2-ed-head">
+        ${sdqIsStaff() ? `<button type="button" class="sq2-btn sq2-back" id="sdq-back-btn">← รายชื่อ</button>` : ''}
+        ${avatar(student)}
+        <div class="sq2-ed-who"><h2>${sdqEsc(student.name || '')}</h2>
+          <p>${sdqEsc(student.school_m1 || '-')} · ${sdqEsc(termLabelOf(sdqState.term))} ${sentNote}</p></div>
+        <button type="button" class="sq2-btn" id="sdq-print-btn">🖨️ พิมพ์ / PDF</button>
+      </header>
+      ${!sdqIsStaff() ? `<div class="sq2-note">นักเรียนเห็นเฉพาะแบบประเมินและผลของตัวเองเท่านั้น</div>` : ''}
+      ${locked ? `<div class="sq2-banner">ฟอร์มนี้ปิดรับอยู่ ไม่สามารถกรอกหรือแก้ไขได้ในขณะนี้</div>` : ''}
 
-    return `
-    <div class="sf-editor sdq-editor">
-      <div class="sf-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-        ${sdqIsStaff() ? `<button class="btn btn-sm" id="sdq-back-btn">← กลับรายชื่อ</button>` : ''}
-        <div style="font-weight:700;font-family:'Noto Sans Thai',sans-serif;flex:1">แบบประเมิน SDQ (ฉบับครูเป็นผู้ประเมิน) — ${sdqEsc(student.name || '')}</div>
-        <button class="btn btn-sm" id="sdq-print-btn">🖨️ พิมพ์ / PDF</button>
+      <section class="sq2-card sq2-meta">
+        <label>ระดับชั้น<input type="text" id="sdq-f-grade" value="${sdqEsc(data.grade || '')}" placeholder="เช่น ม.1/1" ${dis}></label>
+        <label>ภาคเรียน<input type="text" value="${sdqEsc(sdqState.term)}" readonly tabindex="-1" class="is-ro"></label>
+        <label>ผู้ประเมิน (ครู)<input type="text" id="sdq-f-evaluator" value="${sdqEsc(data.evaluator || '')}" placeholder="ชื่อ-สกุลครูผู้ประเมิน" ${dis}></label>
+        <label>วันที่ประเมิน<input type="date" id="sdq-f-date" value="${sdqEsc((typeof normDateISO === 'function' ? normDateISO(data.date) : data.date) || '')}" ${dis}></label>
+      </section>
+
+      <div class="sq2-layout">
+        <section class="sq2-card sq2-qs">
+          <div class="sq2-qs-head">
+            <div><h3>ข้อคำถาม 25 ข้อ</h3><p>เลือกคำตอบที่ตรงกับพฤติกรรมของนักเรียนในช่วง 6 เดือนที่ผ่านมา</p></div>
+            <div class="sq2-count"><b id="sq2-count">${res.totalAnswered}</b>/25<div class="sq2-meter sm"><span id="sq2-count-bar" style="width:${res.totalAnswered / 25 * 100}%"></span></div></div>
+          </div>
+          <ol class="sq2-qlist">${qs}</ol>
+        </section>
+        <aside class="sq2-side"><div class="sq2-card sq2-result" id="sq2-result">${sdqResultHtml(res)}</div></aside>
       </div>
-      ${!sdqIsStaff() ? `<div class="sdq-my-note">🔒 นักเรียนเห็นเฉพาะแบบประเมินและผลของตัวเองเท่านั้น</div>` : ''}
-      ${locked ? `<div class="sdq-banner sdq-banner-closed">🔒 ฟอร์มนี้ถูกปิดใช้งานอยู่ ไม่สามารถกรอก/แก้ไขได้ในขณะนี้</div>` : ''}
 
-      <div class="sdq-topfields">
-        <label>ระดับชั้น <input type="text" id="sdq-f-grade" value="${sdqEsc(data.grade || '')}" placeholder="เช่น ม.1/1" ${locked ? 'disabled' : ''}></label>
-        <label>ภาคเรียน <input type="text" id="sdq-f-term" value="${sdqEsc(data.term || sdqState.term)}" placeholder="เช่น 1/2568" ${locked ? 'disabled' : ''}></label>
-        <label>ผู้ประเมิน (ครู) <input type="text" id="sdq-f-evaluator" value="${sdqEsc(data.evaluator || '')}" placeholder="ชื่อ-สกุลครูผู้ประเมิน" ${locked ? 'disabled' : ''}></label>
-        <label>วันที่ประเมิน <input type="date" id="sdq-f-date" value="${sdqEsc(data.date || '')}" ${locked ? 'disabled' : ''}></label>
-      </div>
-
-      <table class="sdq-table">
-        <colgroup>
-          <col style="width:32px">
-          <col>
-          <col style="width:78px"><col style="width:78px"><col style="width:78px">
-        </colgroup>
-        <thead><tr><th></th><th style="text-align:left">รายการประเมิน</th>${CHOICES.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-        <tbody>${itemsHtml}</tbody>
-      </table>
-
-      <div class="sdq-result-box">
-        <div class="sdq-result-title">ผลการประเมิน (คำนวณอัตโนมัติ) ${res.totalAnswered < 25 ? `<span class="badge b-amber">กรอกแล้ว ${res.totalAnswered}/25 ข้อ</span>` : `<span class="badge ${groupCls(res.totalGroup)}">รวม 4 ด้าน: ${res.totalGroup} (${res.totalDiff} คะแนน)</span>`}</div>
-        <div class="sdq-result-grid">
-          ${Object.keys(DOMAIN_META).map(d => `
-            <div class="sdq-result-card sdq-domain-${DOMAIN_META[d].color}">
-              <div class="sdq-result-card-lbl">${DOMAIN_META[d].short}</div>
-              <div class="sdq-result-card-val">${res.domainScore[d]}</div>
-              <span class="badge ${groupCls(res.groups[d])}">${res.groups[d]}</span>
-            </div>`).join('')}
+      <details class="sq2-card sq2-impact" ${data.overall ? 'open' : ''}>
+        <summary><span>ส่วนเสริม: ผลกระทบต่อชีวิตประจำวัน</span><small>ไม่บังคับ</small></summary>
+        <div class="sq2-impact-body">
+          <label>โดยรวมแล้ว นักเรียนมีปัญหาด้านอารมณ์ สมาธิ พฤติกรรม หรือความสามารถเข้ากับผู้อื่นหรือไม่
+            <select id="sdq-f-overall" ${dis}>
+              <option value="">— ยังไม่ระบุ —</option>
+              ${[['1', 'ไม่'], ['2', 'ใช่ มีปัญหาเล็กน้อย'], ['3', 'ใช่ มีปัญหาชัดเจน'], ['4', 'ใช่ มีปัญหาอย่างมาก']].map(([v, t]) => `<option value="${v}" ${data.overall === v ? 'selected' : ''}>${v}. ${t}</option>`).join('')}
+            </select></label>
+          <div id="sdq-impact-detail" class="sq2-impact-grid" style="display:${showImpact ? '' : 'none'}">
+            <label>ปัญหานี้ทำให้นักเรียนรู้สึกไม่สบายใจหรือไม่<select id="sdq-f-distress" ${dis}>${opt(['', 'ไม่เลย', 'เล็กน้อย', 'ค่อนข้างมาก', 'มาก'], data.distress)}</select></label>
+            ${impactAreas.map(([k, lbl]) => `<label>รบกวนด้าน "${lbl}"<select data-sdq-impact="${k}" ${dis}>${opt(['', 'ไม่เลย', 'เล็กน้อย', 'ค่อนข้างมาก', 'มาก'], (data.impact || {})[k])}</select></label>`).join('')}
+            <div class="sq2-impact-sum" id="sq2-impact-sum">${res.impactGroup ? `สรุปผลกระทบ: <span class="sq2-g g-${gKey(res.impactGroup)}">${res.impactGroup}</span> (คะแนน ${res.impactScore})` : ''}</div>
+          </div>
         </div>
-      </div>
+      </details>
 
-      <div class="sdq-impact-box">
-        <div class="sdq-result-title">ส่วนเสริม: ผลกระทบต่อชีวิตประจำวัน (ไม่บังคับ)</div>
-        <label>โดยรวมแล้ว นักเรียนมีปัญหาด้านอารมณ์ สมาธิ พฤติกรรม หรือความสามารถเข้ากับผู้อื่นหรือไม่
-          <select id="sdq-f-overall" ${locked ? 'disabled' : ''}>
-            <option value="">— ยังไม่ระบุ —</option>
-            <option value="1" ${data.overall === '1' ? 'selected' : ''}>1. ไม่</option>
-            <option value="2" ${data.overall === '2' ? 'selected' : ''}>2. ใช่ มีปัญหาเล็กน้อย</option>
-            <option value="3" ${data.overall === '3' ? 'selected' : ''}>3. ใช่ มีปัญหาชัดเจน</option>
-            <option value="4" ${data.overall === '4' ? 'selected' : ''}>4. ใช่ มีปัญหาอย่างมาก</option>
-          </select>
-        </label>
-        <div id="sdq-impact-detail" style="display:${showImpact ? 'block' : 'none'}">
-          <label>ปัญหานี้ทำให้นักเรียนรู้สึกไม่สบายใจหรือไม่
-            <select id="sdq-f-distress" ${locked ? 'disabled' : ''}>
-              ${['', 'ไม่เลย', 'เล็กน้อย', 'ค่อนข้างมาก', 'มาก'].map(o => `<option value="${o}" ${data.distress === o ? 'selected' : ''}>${o || '— ยังไม่ระบุ —'}</option>`).join('')}
-            </select>
-          </label>
-          ${impactAreas.map(([k, lbl]) => `
-            <label>รบกวนชีวิตประจำวันด้าน "${lbl}" หรือไม่
-              <select data-sdq-impact="${k}" ${locked ? 'disabled' : ''}>
-                ${['', 'ไม่เลย', 'เล็กน้อย', 'ค่อนข้างมาก', 'มาก'].map(o => `<option value="${o}" ${(data.impact || {})[k] === o ? 'selected' : ''}>${o || '— ยังไม่ระบุ —'}</option>`).join('')}
-              </select>
-            </label>`).join('')}
-          ${res.impactGroup ? `<div style="margin-top:8px">สรุป: <span class="badge ${groupCls(res.impactGroup)}">${res.impactGroup}</span> (คะแนน ${res.impactScore})</div>` : ''}
-        </div>
-      </div>
-
-      <div class="sdq-actions">
-        <span class="sf-save-status" id="sdq-save-status">พร้อมบันทึกอัตโนมัติ</span>
-        <button class="btn btn-primary" id="sdq-submit-btn" ${locked ? 'disabled' : ''}>✅ บันทึก / ส่งผลการประเมิน</button>
+      <div class="sq2-actionbar">
+        <div class="sq2-action-status"><span id="sdq-save-status">ระบบบันทึกร่างให้อัตโนมัติระหว่างกรอก</span></div>
+        <button type="button" class="sq2-btn sq2-btn-primary sq2-btn-lg" id="sdq-submit-btn" ${dis}>💾 บันทึกและส่งผลการประเมิน</button>
       </div>
     </div>`;
   }
@@ -403,77 +431,105 @@
     if (back) back.onclick = () => { sdqState.studentIdx = null; sdqRenderFormPage(); };
     const printBtn = document.getElementById('sdq-print-btn');
     if (printBtn) printBtn.onclick = () => sdqPrintCurrent();
-
     function data() { return sdqBucket(student, sdqState.term, true); }
-    function markTouched() { data().__touched = true; }
-
-    ['grade', 'term', 'evaluator', 'date'].forEach(f => {
+    function touched() { data().__touched = true; sdqPersist(); }
+    ['grade', 'evaluator', 'date'].forEach(f => {
       const el = document.getElementById('sdq-f-' + f);
-      if (el) el.oninput = () => { data()[f] = el.value; markTouched(); sdqPersist(); };
+      if (el) el.oninput = () => { data()[f] = el.value; touched(); };
     });
     host.querySelectorAll('[data-sdq-item]').forEach(inp => {
       inp.onchange = () => {
         data().answers[Number(inp.getAttribute('data-sdq-item'))] = Number(inp.value);
-        markTouched(); sdqPersist();
-        const row = inp.closest('tr');
-        if (row) {
-          row.querySelectorAll('.sdq-choice-cell').forEach(td => td.classList.remove('sdq-choice-selected'));
-          row.querySelectorAll('.sdq-pill').forEach(l => l.classList.remove('sdq-pill-on'));
-          const cell = inp.closest('.sdq-choice-cell');
-          const pill = inp.closest('.sdq-pill');
-          if (cell) {
-            cell.classList.add('sdq-choice-selected', 'sdq-pop');
-            setTimeout(() => cell.classList.remove('sdq-pop'), 260);
-          }
-          if (pill) pill.classList.add('sdq-pill-on');
-        }
+        touched();
+        const li = inp.closest('.sq2-q');
+        if (li) { li.classList.add('is-done'); li.classList.remove('is-missing'); li.classList.remove('sq2-pop'); void li.offsetWidth; li.classList.add('sq2-pop'); }
         sdqRefreshResultInline(host, data());
       };
     });
     const overall = document.getElementById('sdq-f-overall');
     if (overall) overall.onchange = () => {
-      data().overall = overall.value; markTouched(); sdqPersist();
-      sdqRenderFormPage();
+      data().overall = overall.value; touched();
+      const det = document.getElementById('sdq-impact-detail');
+      if (det) det.style.display = overall.value && overall.value !== '1' ? '' : 'none';
+      sdqRefreshResultInline(host, data());
     };
     const distress = document.getElementById('sdq-f-distress');
-    if (distress) distress.onchange = () => { data().distress = distress.value; markTouched(); sdqPersist(); sdqRefreshResultInline(host, data()); };
+    if (distress) distress.onchange = () => { data().distress = distress.value; touched(); sdqRefreshResultInline(host, data()); };
     host.querySelectorAll('[data-sdq-impact]').forEach(sel => {
-      sel.onchange = () => {
-        const d = data(); if (!d.impact) d.impact = {};
-        d.impact[sel.getAttribute('data-sdq-impact')] = sel.value;
-        markTouched(); sdqPersist();
-        sdqRefreshResultInline(host, d);
-      };
+      sel.onchange = () => { const d = data(); if (!d.impact) d.impact = {}; d.impact[sel.getAttribute('data-sdq-impact')] = sel.value; touched(); sdqRefreshResultInline(host, d); };
     });
     const submitBtn = document.getElementById('sdq-submit-btn');
-    if (submitBtn) submitBtn.onclick = () => {
-      const d = data();
-      const res = sdqCompute(d);
-      if (!res.complete) { if (typeof showStatus === 'function') showStatus('⚠️ กรุณาประเมินให้ครบทั้ง 25 ข้อก่อนบันทึกผล', 'error'); return; }
-      d.submittedAt = new Date().toISOString();
-      d.__touched = true;
-      sdqPersist();
-      if (typeof showStatus === 'function') showStatus('✅ บันทึกผลการประเมิน SDQ แล้ว', 'success');
-      sdqRenderFormPage();
-    };
+    if (submitBtn) submitBtn.onclick = () => sdqSubmit(student);
   }
 
   function sdqRefreshResultInline(host, data) {
     const res = sdqCompute(data);
-    const box = host.querySelector('.sdq-result-box');
-    if (!box) return;
-    box.querySelector('.sdq-result-title').innerHTML =
-      `ผลการประเมิน (คำนวณอัตโนมัติ) ${res.totalAnswered < 25 ? `<span class="badge b-amber">กรอกแล้ว ${res.totalAnswered}/25 ข้อ</span>` : `<span class="badge ${groupCls(res.totalGroup)}">รวม 4 ด้าน: ${res.totalGroup} (${res.totalDiff} คะแนน)</span>`}`;
-    box.querySelectorAll('.sdq-result-card').forEach((card, i) => {
-      const d = Object.keys(DOMAIN_META)[i];
-      const valEl = card.querySelector('.sdq-result-card-val');
-      if (valEl.textContent !== String(res.domainScore[d])) {
-        valEl.textContent = res.domainScore[d];
-        card.classList.remove('sdq-pulse'); void card.offsetWidth; card.classList.add('sdq-pulse');
-      }
-      const b = card.querySelector('.badge');
-      b.className = 'badge ' + groupCls(res.groups[d]);
-      b.textContent = res.groups[d];
+    const box = document.getElementById('sq2-result');
+    if (box) box.innerHTML = sdqResultHtml(res);
+    const c = document.getElementById('sq2-count'); if (c) c.textContent = res.totalAnswered;
+    const bar = document.getElementById('sq2-count-bar'); if (bar) bar.style.width = (res.totalAnswered / 25 * 100) + '%';
+    const imp = document.getElementById('sq2-impact-sum');
+    if (imp) imp.innerHTML = res.impactGroup ? `สรุปผลกระทบ: <span class="sq2-g g-${gKey(res.impactGroup)}">${res.impactGroup}</span> (คะแนน ${res.impactScore})` : '';
+  }
+
+  /* ---------- บันทึกและส่งผล → กลับหน้าแรก ---------- */
+  let _sqSaving = false;
+  async function sdqSubmit(student) {
+    if (_sqSaving || !student) return;
+    const d = sdqBucket(student, sdqState.term, true);
+    const res = sdqCompute(d);
+    const tell = o => (window.UIDialog ? UIDialog.alert(o) : (typeof showStatus === 'function' && showStatus(o.title, o.tone === 'success' ? 'success' : 'error')));
+    if (!res.complete) {
+      const missing = SDQ_ITEMS.filter(it => { const v = d.answers[it.id]; return v === undefined || v === null || v === ''; }).map(it => it.id);
+      document.querySelectorAll('.sq2-q').forEach(li => li.classList.remove('is-missing'));
+      missing.forEach(id => { const li = document.getElementById('sq2-q-' + id); if (li) li.classList.add('is-missing'); });
+      const first = document.getElementById('sq2-q-' + missing[0]);
+      tell({ tone: 'warning', title: `ยังตอบไม่ครบ (เหลือ ${missing.length} ข้อ)`,
+        message: 'ข้อที่ยังไม่ได้ตอบมีกรอบสีส้ม ระบบจะพาไปที่ข้อแรกที่ยังว่าง',
+        details: [{ label: 'ข้อที่ยังไม่ตอบ', value: missing.slice(0, 12).join(', ') + (missing.length > 12 ? ' …' : '') }] })
+        .then(() => { if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+      return;
+    }
+    _sqSaving = true;
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
+    const close = window.UIDialog && UIDialog.busy ? UIDialog.busy('กำลังบันทึกผลการประเมิน SDQ…') : () => {};
+    const prevAt = d.submittedAt;
+    d.submittedAt = new Date().toISOString();
+    d.__touched = true;
+    let note = '';
+    try {
+      let r;
+      const timeout = new Promise(ok => setTimeout(() => ok({ timeout: true }), 15000));
+      if (typeof window.fbSaveNow === 'function') r = await Promise.race([window.fbSaveNow(), timeout]);
+      else { await saveToStorage(); r = { ok: true }; }
+      if (r && r.timeout) note = 'บันทึกไว้ในเครื่องแล้ว กำลังรอส่งขึ้นคลาวด์ (อินเทอร์เน็ตช้า) ระบบจะส่งให้อัตโนมัติ';
+      else if (r && r.ok === false) throw (r.error || new Error('บันทึกขึ้นคลาวด์ไม่สำเร็จ'));
+    } catch (e) {
+      d.submittedAt = prevAt || '';
+      close(); _sqSaving = false;
+      tell({ tone: 'danger', title: 'บันทึกไม่สำเร็จ', message: 'คำตอบยังอยู่ในหน้านี้ ตรวจสอบอินเทอร์เน็ตแล้วกดบันทึกอีกครั้ง\n\nรายละเอียด: ' + ((e && (e.code || e.message)) || e) });
+      return;
+    }
+    close(); _sqSaving = false;
+    const name = student.name || '';
+    const term = sdqState.term;
+    sdqState.studentIdx = null;
+    if (sdqIsStaff()) {
+      sdqRenderFormPage();
+    } else {
+      showPage('scholarform', document.querySelector('.nav-btn[onclick*="scholarform"]'));   // หน้าแรกของบัญชีนักเรียน
+    }
+    const m = document.querySelector('.main'); if (m) m.scrollTo({ top: 0, behavior: 'smooth' });
+    tell({
+      tone: note ? 'warning' : 'success',
+      title: note ? 'บันทึกแล้ว (รอซิงก์ขึ้นคลาวด์)' : 'บันทึกและส่งผลการประเมินแล้ว',
+      message: note || 'แก้ไขภายหลังได้ โดยเปิดแบบประเมินแล้วกดบันทึกอีกครั้ง',
+      details: [
+        { label: 'นักเรียน', value: name },
+        { label: 'ภาคเรียน', value: termLabelOf(term) },
+        { label: 'ผลรวม 4 ด้าน', value: `${res.totalGroup} (${res.totalDiff} คะแนน)` },
+        { label: 'ส่งเมื่อ', value: sentWhen(d.submittedAt).replace(/^ส่งแล้ว\s*/, '') }
+      ]
     });
   }
 
@@ -538,139 +594,174 @@
     if (printBtn) printBtn.onclick = () => sdqPrintFor(student, term);
   }
 
+  /* ══════════ v37: Dashboard สรุปผล SDQ รูปแบบใหม่ ══════════
+     KPI 4 ใบ · ผลรายด้าน (แถบสัดส่วน) · กลุ่มรวม 4 ด้าน (โดนัท) · นักเรียนที่ควรติดตาม · ตารางพร้อมตัวกรอง
+     นับเฉพาะแบบประเมินที่ "ส่งผลแล้ว" และตอบครบ 25 ข้อ (สอดคล้องกับสถานะ ส่งแล้ว/ยังไม่ส่ง) */
+  if (!('dashQ' in sdqState)) { sdqState.dashQ = ''; sdqState.dashG = 'all'; }
+  function sdqDashRows(term) {
+    return sdqStudents().map((s, idx) => {
+      const b = s.sdq && s.sdq[term];
+      const res = b ? sdqCompute(b) : null;
+      return { s, idx, b, res, done: !!(b && b.submittedAt && res && res.complete) };
+    });
+  }
   window.sdqRenderDashboard = function () {
     const host = document.getElementById('page-sdqdashboard');
     if (!host) return;
     if (!sdqState.term) sdqState.term = sdqTerm();
-
-    // บัญชีนักเรียน: แสดงเฉพาะผลของตัวเอง ไม่ใช่ dashboard รวมทั้งโรงเรียน
     if (!sdqIsStaff()) { sdqRenderMyDashboard(); return; }
-
-    const staffView = document.getElementById('sdq-dash-staff-view');
+    const view = document.getElementById('sdq-dash-staff-view');
     const myView = document.getElementById('sdq-dash-my-view');
-    if (staffView) staffView.style.display = '';
-    if (myView) myView.style.display = 'none';
+    if (!view) return;
+    view.style.display = ''; if (myView) myView.style.display = 'none';
+    const term = sdqState.dashTerm || sdqState.term;
+    const rows = sdqDashRows(term);
+    const done = rows.filter(r => r.done);
+    const N = rows.length, D = done.length;
+    const cnt = { ok: 0, risk: 0, prob: 0 };
+    done.forEach(r => cnt[gKey(r.res.totalGroup)]++);
+    const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+    const kpi = (cls, label, val, sub, barPct) => `<div class="sq2-kpi k-${cls}">
+        <div class="sq2-kpi-lbl">${label}</div>
+        <div class="sq2-kpi-val">${val}</div>
+        <div class="sq2-kpi-sub">${sub}</div>
+        <div class="sq2-meter sm"><span style="width:${barPct}%"></span></div></div>`;
 
-    const sel = document.getElementById('sdq-dash-term');
-    if (sel) {
-      sel.innerHTML = (typeof Term === 'object' && Term.options) ? Term.options(Term.all(), sdqState.term)
-        : (typeof Term === 'object' ? Term.all() : [sdqState.term])
-        .map(t => `<option value="${t}" ${t === sdqState.term ? 'selected' : ''}>${typeof Term === 'object' ? Term.label(t) : t}</option>`).join('');
-    }
-    const term = (sel && sel.value) || sdqState.term;
+    // ผลรายด้าน
+    const domRows = DOMAIN_ORDER.map(d => {
+      const c = { ok: 0, risk: 0, prob: 0 };
+      done.forEach(r => c[gKey(r.res.groups[d])]++);
+      const m = DOMAIN_META[d];
+      const seg = (k, lbl) => c[k] ? `<span class="seg g-${k}" style="flex:${c[k]}" title="${lbl} ${c[k]} คน">${c[k]}</span>` : '';
+      return `<li class="sq2-drow">
+        <div class="sq2-drow-lbl">${sdqEsc(m.short)}${m.isStrength ? '<small>จุดแข็ง</small>' : ''}</div>
+        <div class="sq2-stack">${D ? seg('ok', m.isStrength ? 'มีจุดแข็ง' : 'ปกติ') + seg('risk', 'เสี่ยง') + seg('prob', m.isStrength ? 'ไม่มีจุดแข็ง' : 'มีปัญหา') : '<span class="seg g-na" style="flex:1">ยังไม่มีข้อมูล</span>'}</div>
+        <div class="sq2-drow-n">${c.risk + c.prob ? `<b>${c.risk + c.prob}</b> คนต้องดูแล` : '<span class="ok">ไม่มี</span>'}</div>
+      </li>`;
+    }).join('');
 
-    const rows = sdqStudents().map(s => {
-      const bucket = s.sdq && s.sdq[term];
-      const res = bucket ? sdqCompute(bucket) : null;
-      return { s, bucket, res };
-    });
-    const evaluated = rows.filter(r => r.bucket && r.bucket.__touched && r.res.complete);
-    const partial = rows.filter(r => r.bucket && r.bucket.__touched && !r.res.complete);
-    const notDone = rows.length - evaluated.length - partial.length;
-    const sentCount = rows.filter(r => r.bucket && r.bucket.submittedAt).length;   // v33: นับเฉพาะที่กดบันทึก/ส่งผลแล้ว
+    // โดนัท
+    const a1 = D ? cnt.ok / D * 360 : 0, a2 = D ? (cnt.ok + cnt.risk) / D * 360 : 0;
+    const donut = D
+      ? `conic-gradient(var(--sq-ok) 0 ${a1}deg, var(--sq-risk) ${a1}deg ${a2}deg, var(--sq-prob) ${a2}deg 360deg)`
+      : 'conic-gradient(#E2E8F0 0 360deg)';
 
-    const metric = (v, l, c) => `<div class="metric"><div class="metric-val" style="color:${c || 'var(--text)'}">${v}</div><div class="metric-lbl">${l}</div></div>`;
-    const problemCount = evaluated.filter(r => r.res.totalGroup === 'มีปัญหา').length;
-    const riskCount = evaluated.filter(r => r.res.totalGroup === 'เสี่ยง').length;
-    document.getElementById('sdq-dash-metrics').innerHTML =
-      metric(rows.length, 'นักเรียนทั้งหมด') +
-      metric(sentCount, 'ส่งผลแล้ว', 'var(--green)') +
-      metric(rows.length - sentCount, 'ยังไม่ส่ง', (rows.length - sentCount) ? 'var(--red)' : 'var(--text)') +
-      metric(riskCount, 'กลุ่มเสี่ยง (รวม 4 ด้าน)', riskCount ? 'var(--amber)' : 'var(--text)') +
-      metric(problemCount, 'กลุ่มมีปัญหา (รวม 4 ด้าน)', problemCount ? 'var(--red)' : 'var(--text)');
+    // นักเรียนที่ควรติดตาม
+    const watch = done.filter(r => r.res.totalGroup !== 'ปกติ' || DIFF_DOMAINS.some(d => r.res.groups[d] === 'มีปัญหา'))
+      .sort((a, b) => b.res.totalDiff - a.res.totalDiff);
+    const watchHtml = watch.length ? watch.slice(0, 8).map(r => {
+      const flags = DOMAIN_ORDER.filter(d => gKey(r.res.groups[d]) !== 'ok')
+        .map(d => `<span class="sq2-g g-${gKey(r.res.groups[d])}">${sdqEsc(DOMAIN_META[d].short)}</span>`).join('');
+      return `<li class="sq2-watch-row">
+        ${avatar(r.s)}
+        <div class="sq2-pwho"><b>${sdqEsc(r.s.name || '')}</b><span>${sdqEsc(r.s.school_m1 || '-')}</span></div>
+        <div class="sq2-watch-flags"><span class="sq2-g g-${gKey(r.res.totalGroup)} strong">รวม ${r.res.totalDiff} · ${r.res.totalGroup}</span>${flags}</div>
+        <div class="sq2-watch-act"><button type="button" class="sq2-btn" data-sq2-open="${r.idx}">ดูผล</button><button type="button" class="sq2-btn" data-sq2-print="${r.idx}">PDF</button></div>
+      </li>`;
+    }).join('') + (watch.length > 8 ? `<li class="sq2-more">และอีก ${watch.length - 8} คน — กรองตาราง "เสี่ยง" หรือ "มีปัญหา" ด้านล่าง</li>` : '')
+      : `<li class="sq2-empty">${D ? 'ไม่มีนักเรียนในกลุ่มเสี่ยงหรือมีปัญหา' : 'ยังไม่มีผลการประเมินที่ส่งแล้วในภาคเรียนนี้'}</li>`;
 
-    // กราฟแท่ง: จำนวนนักเรียนแต่ละกลุ่ม แยกตามด้าน
-    const domains = Object.keys(DOMAIN_META);
-    const groupLabels = { normal: 'ปกติ/จุดแข็ง', risk: 'เสี่ยง', problem: 'มีปัญหา/ไม่มีจุดแข็ง' };
-    const counts = { normal: [], risk: [], problem: [] };
-    domains.forEach(d => {
-      let n = 0, r = 0, p = 0;
-      evaluated.forEach(row => {
-        const g = row.res.groups[d];
-        if (g === 'ปกติ' || g === 'จุดแข็ง') n++;
-        else if (g === 'เสี่ยง') r++;
-        else p++;
-      });
-      counts.normal.push(n); counts.risk.push(r); counts.problem.push(p);
-    });
-    const ctx = document.getElementById('sdq-chart-domains');
-    if (ctx && typeof Chart !== 'undefined') {
-      if (_sdqCharts.domains) _sdqCharts.domains.destroy();
-      _sdqCharts.domains = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: domains.map(d => DOMAIN_META[d].short),
-          datasets: [
-            { label: groupLabels.normal, data: counts.normal, backgroundColor: '#16A34A' },
-            { label: groupLabels.risk, data: counts.risk, backgroundColor: '#D97706' },
-            { label: groupLabels.problem, data: counts.problem, backgroundColor: '#DC2626' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'bottom' } } }
-      });
-    }
-
-    // กราฟวงกลม: กลุ่มรวม 4 ด้าน
-    const pieCtx = document.getElementById('sdq-chart-total');
-    if (pieCtx && typeof Chart !== 'undefined') {
-      const nOk = evaluated.filter(r => r.res.totalGroup === 'ปกติ').length;
-      if (_sdqCharts.total) _sdqCharts.total.destroy();
-      _sdqCharts.total = new Chart(pieCtx, {
-        type: 'doughnut',
-        data: { labels: ['ปกติ', 'เสี่ยง', 'มีปัญหา'], datasets: [{ data: [nOk, riskCount, problemCount], backgroundColor: ['#16A34A', '#D97706', '#DC2626'] }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-      });
-    }
-
-    // ตารางรายคน
-    const q = (document.getElementById('sdq-dash-search')?.value || '').trim().toLowerCase();
-    const fg = document.getElementById('sdq-dash-filter')?.value || '';
-    let tRows = rows.filter(r => !q || (r.s.name || '').toLowerCase().includes(q) || (r.s.school_m1 || '').toLowerCase().includes(q));
-    if (fg) tRows = tRows.filter(r => r.res && r.res.totalGroup === fg);
-    tRows = tRows.sort((a, b) => (a.s.no || 0) - (b.s.no || 0));
-
-    document.getElementById('sdq-dash-tbody').innerHTML = tRows.map(r => {
-      const idx = DB.students.indexOf(r.s);
-      if (!r.bucket || !r.bucket.__touched) {
-        return `<tr><td>${r.s.no ?? ''}</td><td style="font-weight:600">${sdqEsc(r.s.name || '')}</td><td style="font-size:12px">${sdqEsc(r.s.school_m1 || '-')}</td>
-          <td colspan="6"><span class="badge b-gray">ยังไม่ประเมิน</span></td>
-          <td><button class="btn btn-sm" data-sdq-dash-open="${idx}">📝 ประเมิน</button></td></tr>`;
-      }
+    // ตาราง
+    const q = sdqState.dashQ.trim().toLowerCase();
+    const G = sdqState.dashG;
+    const tRows = rows
+      .filter(r => G === 'all' || (G === 'todo' ? !r.done : (r.done && gKey(r.res.totalGroup) === G)))
+      .filter(r => !q || (r.s.name || '').toLowerCase().includes(q) || (r.s.school_m1 || '').toLowerCase().includes(q) || String(r.s.no) === q)
+      .sort((a, b) => (a.s.no || 0) - (b.s.no || 0));
+    const chip = (k, t, n) => `<button type="button" class="sq2-chip ${G === k ? 'on' : ''} c-${k}" data-sq2-g="${k}" aria-pressed="${G === k}">${t} <b>${n}</b></button>`;
+    const body = tRows.map(r => {
+      if (!r.done) return `<tr class="is-todo"><td class="n">${sdqEsc(r.s.no ?? '')}</td>
+        <td><div class="sq2-tw">${avatar(r.s)}<div><b>${sdqEsc(r.s.name || '')}</b><span>${sdqEsc(r.s.school_m1 || '-')}</span></div></div></td>
+        <td colspan="6"><span class="sq2-st is-wait">ยังไม่ส่งผล</span></td>
+        <td class="act"><button type="button" class="sq2-btn sq2-btn-primary" data-sq2-open="${r.idx}">ประเมิน</button></td></tr>`;
       const res = r.res;
-      return `<tr>
-        <td>${r.s.no ?? ''}</td>
-        <td style="font-weight:600">${sdqEsc(r.s.name || '')}</td>
-        <td style="font-size:12px">${sdqEsc(r.s.school_m1 || '-')}</td>
-        ${domains.map(d => `<td><span class="badge ${groupCls(res.groups[d])}" title="${res.domainScore[d]} คะแนน">${res.groups[d]}</span></td>`).join('')}
-        <td><span class="badge ${groupCls(res.totalGroup)}">${res.totalGroup} (${res.totalDiff})</span></td>
-        <td><button class="btn btn-sm" data-sdq-dash-open="${idx}">แก้ไข</button> <button class="btn btn-sm" data-sdq-dash-print="${idx}">🖨️ PDF</button></td>
-      </tr>`;
-    }).join('') || `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3)">ไม่มีข้อมูล</td></tr>`;
+      return `<tr><td class="n">${sdqEsc(r.s.no ?? '')}</td>
+        <td><div class="sq2-tw">${avatar(r.s)}<div><b>${sdqEsc(r.s.name || '')}</b><span>${sdqEsc(r.s.school_m1 || '-')}</span></div></div></td>
+        ${DOMAIN_ORDER.map(d => `<td><span class="sq2-dchip g-${gKey(res.groups[d])}" title="${sdqEsc(DOMAIN_META[d].label)}: ${res.groups[d]}">${res.domainScore[d]}</span></td>`).join('')}
+        <td><div class="sq2-tot"><span class="sq2-g g-${gKey(res.totalGroup)}">${res.totalGroup}</span><b>${res.totalDiff}</b><small>/40</small></div></td>
+        <td class="act"><button type="button" class="sq2-btn" data-sq2-open="${r.idx}">แก้ไข</button><button type="button" class="sq2-btn" data-sq2-print="${r.idx}">PDF</button></td></tr>`;
+    }).join('') || `<tr><td colspan="9" class="sq2-empty">ไม่พบนักเรียนตามเงื่อนไขนี้</td></tr>`;
 
-    host.querySelectorAll('[data-sdq-dash-open]').forEach(btn => {
-      btn.onclick = () => {
-        sdqState.studentIdx = Number(btn.getAttribute('data-sdq-dash-open'));
-        sdqState.term = term;
-        const navBtn = [...document.querySelectorAll('#sidebar-nav .nav-btn')].find(b => (b.getAttribute('onclick') || '').includes("'sdqform'"));
-        showPage('sdqform', navBtn);
-      };
-    });
-    host.querySelectorAll('[data-sdq-dash-print]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = Number(btn.getAttribute('data-sdq-dash-print'));
-        sdqPrintFor(DB.students[idx], term);
-      };
-    });
+    const focusSearch = document.activeElement && document.activeElement.id === 'sq2-dash-q' ? document.activeElement.selectionStart : null;
+    view.innerHTML = `<div class="sq2 sq2-dash">
+      <header class="sq2-head">
+        <div><h2>สรุปผลการประเมิน SDQ</h2><p>${sdqEsc(termLabelOf(term))} · นับเฉพาะแบบประเมินที่ส่งผลแล้ว</p></div>
+        <div class="sq2-head-tools">
+          <select id="sdq-dash-term" class="sq2-select" aria-label="ภาคเรียน">${(typeof Term === 'object' && Term.options) ? Term.options(Term.all(), term) : `<option>${sdqEsc(term)}</option>`}</select>
+          <button type="button" class="sq2-btn" data-sq2-csv>ส่งออก CSV</button>
+        </div>
+      </header>
+      <section class="sq2-kpis">
+        ${kpi('blue', 'ส่งผลแล้ว', `${D}<small>/${N}</small>`, `${pct(D, N)}% ของนักเรียนทั้งหมด · ยังไม่ส่ง ${N - D} คน`, pct(D, N))}
+        ${kpi('ok', 'ปกติ', cnt.ok, `${pct(cnt.ok, D)}% ของผู้ที่ส่งผลแล้ว`, pct(cnt.ok, D))}
+        ${kpi('risk', 'เสี่ยง', cnt.risk, `${pct(cnt.risk, D)}% · ควรเฝ้าระวัง`, pct(cnt.risk, D))}
+        ${kpi('prob', 'มีปัญหา', cnt.prob, `${pct(cnt.prob, D)}% · ควรช่วยเหลือ/ส่งต่อ`, pct(cnt.prob, D))}
+      </section>
+      <section class="sq2-dash-grid">
+        <div class="sq2-card">
+          <div class="sq2-card-head"><h3>ผลรายด้าน</h3><p>สัดส่วนนักเรียนในแต่ละกลุ่ม จาก ${D} คนที่ส่งผลแล้ว</p></div>
+          <ul class="sq2-drows">${domRows}</ul>
+          <div class="sq2-legend"><span><i class="g-ok"></i>ปกติ / มีจุดแข็ง</span><span><i class="g-risk"></i>เสี่ยง</span><span><i class="g-prob"></i>มีปัญหา / ไม่มีจุดแข็ง</span></div>
+        </div>
+        <div class="sq2-card sq2-donut-card">
+          <div class="sq2-card-head"><h3>กลุ่มรวม 4 ด้าน</h3><p>อารมณ์ · เกเร · สมาธิสั้น · เพื่อน</p></div>
+          <div class="sq2-donut-wrap">
+            <div class="sq2-donut" style="background:${donut}" role="img" aria-label="ปกติ ${cnt.ok} เสี่ยง ${cnt.risk} มีปัญหา ${cnt.prob}"><div><b>${D}</b><span>คน</span></div></div>
+            <ul class="sq2-donut-legend">
+              <li><i class="g-ok"></i>ปกติ<b>${cnt.ok}</b><small>${pct(cnt.ok, D)}%</small></li>
+              <li><i class="g-risk"></i>เสี่ยง<b>${cnt.risk}</b><small>${pct(cnt.risk, D)}%</small></li>
+              <li><i class="g-prob"></i>มีปัญหา<b>${cnt.prob}</b><small>${pct(cnt.prob, D)}%</small></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section class="sq2-card sq2-watch">
+        <div class="sq2-card-head"><h3>นักเรียนที่ควรติดตาม</h3><p>กลุ่มรวมเสี่ยง/มีปัญหา หรือมีปัญหาบางด้าน · เรียงจากคะแนนรวมมากไปน้อย</p></div>
+        <ul class="sq2-watch-list">${watchHtml}</ul>
+      </section>
+      <section class="sq2-card sq2-tablecard">
+        <div class="sq2-tools">
+          <div class="sq2-chips">${chip('all', 'ทั้งหมด', N)}${chip('ok', 'ปกติ', cnt.ok)}${chip('risk', 'เสี่ยง', cnt.risk)}${chip('prob', 'มีปัญหา', cnt.prob)}${chip('todo', 'ยังไม่ส่ง', N - D)}</div>
+          <input type="search" id="sq2-dash-q" class="sq2-search" placeholder="ค้นหาชื่อนักเรียน โรงเรียน หรือลำดับ" value="${sdqEsc(sdqState.dashQ)}">
+        </div>
+        <div class="sq2-twrap"><table class="sq2-table">
+          <thead><tr><th>ลำดับ</th><th>นักเรียน</th>${DOMAIN_ORDER.map(d => `<th title="${sdqEsc(DOMAIN_META[d].label)}">${sdqEsc(DOMAIN_META[d].short)}</th>`).join('')}<th>รวม 4 ด้าน</th><th></th></tr></thead>
+          <tbody>${body}</tbody></table></div>
+        <div class="sq2-tfoot">ตัวเลขในช่อง = คะแนนรายด้าน (เต็ม 10) · สีบอกกลุ่ม: <span class="sq2-dchip g-ok">ปกติ</span> <span class="sq2-dchip g-risk">เสี่ยง</span> <span class="sq2-dchip g-prob">มีปัญหา</span></div>
+      </section>
+    </div>`;
+    if (focusSearch !== null) { const i = document.getElementById('sq2-dash-q'); if (i) { i.focus(); i.setSelectionRange(focusSearch, focusSearch); } }
+    sdqBindDash(view);
   };
 
+  function sdqBindDash(view) {
+    if (view.dataset.sq2Bound) return;
+    view.dataset.sq2Bound = '1';
+    view.addEventListener('click', e => {
+      const t = e.target.closest('button'); if (!t) return;
+      const term = sdqState.dashTerm || sdqState.term;
+      if (t.hasAttribute('data-sq2-g')) { sdqState.dashG = t.getAttribute('data-sq2-g'); sdqRenderDashboard(); return; }
+      if (t.hasAttribute('data-sq2-csv')) { sdqExportDashboardCSV(); return; }
+      if (t.hasAttribute('data-sq2-open')) {
+        sdqState.studentIdx = Number(t.getAttribute('data-sq2-open'));
+        sdqState.term = term;
+        showPage('sdqform', document.getElementById('sdq-nav-form'));
+        return;
+      }
+      if (t.hasAttribute('data-sq2-print')) sdqPrintFor(DB.students[Number(t.getAttribute('data-sq2-print'))], term);
+    });
+    view.addEventListener('input', e => { if (e.target.id === 'sq2-dash-q') { sdqState.dashQ = e.target.value; sdqRenderDashboard(); } });
+    view.addEventListener('change', e => { if (e.target.id === 'sdq-dash-term') { sdqState.dashTerm = e.target.value; sdqRenderDashboard(); } });
+  }
+
   window.sdqExportDashboardCSV = function () {
-    const term = document.getElementById('sdq-dash-term')?.value || sdqState.term;
+    const term = document.getElementById('sdq-dash-term')?.value || sdqState.dashTerm || sdqState.term;
     const domains = Object.keys(DOMAIN_META);
     const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', ...domains.map(d => DOMAIN_META[d].short + ' (คะแนน)'), ...domains.map(d => DOMAIN_META[d].short + ' (กลุ่ม)'), 'รวม 4 ด้าน (คะแนน)', 'รวม 4 ด้าน (กลุ่ม)'];
     const esc = v => '"' + String(v ?? '').replace(/"/g, '""').replace(/^[=+\-@]/, "'$&") + '"';
     const body = sdqStudents().map(s => {
       const bucket = s.sdq && s.sdq[term];
-      if (!bucket || !bucket.__touched) return null;
+      if (!bucket || !bucket.submittedAt) return null;     // v37: เฉพาะที่ส่งผลแล้ว
       const res = sdqCompute(bucket);
       return [s.no, s.name, s.school_m1 || '', ...domains.map(d => res.domainScore[d]), ...domains.map(d => res.groups[d]), res.totalDiff, res.totalGroup].map(esc).join(',');
     }).filter(Boolean);
@@ -795,41 +886,7 @@
       const p2 = document.createElement('div');
       p2.id = 'page-sdqdashboard'; p2.className = 'page'; p2.style.display = 'none';
       p2.innerHTML = `
-        <div id="sdq-dash-staff-view">
-          <div class="toolbar">
-            <div class="toolbar-title">📈 สรุปผลการประเมิน SDQ</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <select id="sdq-dash-term" onchange="sdqRenderDashboard()" style="padding:7px 10px;border-radius:var(--rad);border:1px solid var(--border2);font-family:'Noto Sans Thai',sans-serif;font-size:13px;background:var(--bg4)"></select>
-              <button class="btn btn-sm" onclick="sdqExportDashboardCSV()">⬇️ ส่งออก CSV</button>
-            </div>
-          </div>
-          <div class="metrics" id="sdq-dash-metrics" style="margin-bottom:16px"></div>
-          <div class="chart-grid" style="grid-template-columns:1.4fr 1fr">
-            <div class="chart-card">
-              <div class="chart-header"><div class="chart-title">จำนวนนักเรียนแยกตามด้าน</div></div>
-              <div style="position:relative;height:220px"><canvas id="sdq-chart-domains"></canvas></div>
-            </div>
-            <div class="chart-card">
-              <div class="chart-header"><div class="chart-title">กลุ่มโดยรวม (4 ด้าน)</div></div>
-              <div style="position:relative;height:220px"><canvas id="sdq-chart-total"></canvas></div>
-            </div>
-          </div>
-          <div class="search-row">
-            <input type="text" id="sdq-dash-search" placeholder="🔍 ค้นหาชื่อนักเรียน / โรงเรียน..." oninput="sdqRenderDashboard()">
-            <select id="sdq-dash-filter" onchange="sdqRenderDashboard()">
-              <option value="">กลุ่ม (ทั้งหมด)</option>
-              <option value="ปกติ">ปกติ</option>
-              <option value="เสี่ยง">เสี่ยง</option>
-              <option value="มีปัญหา">มีปัญหา</option>
-            </select>
-          </div>
-          <div class="tbl-wrap">
-            <table>
-              <thead><tr><th>ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>อารมณ์</th><th>เกเร</th><th>ไม่อยู่นิ่ง</th><th>เพื่อน</th><th>สัมพันธภาพทางสังคม</th><th>รวม 4 ด้าน</th><th style="width:150px">จัดการ</th></tr></thead>
-              <tbody id="sdq-dash-tbody"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="sdq-dash-staff-view"></div>
         <div id="sdq-dash-my-view" style="display:none"></div>`;
       main.appendChild(p1);
       main.appendChild(p2);

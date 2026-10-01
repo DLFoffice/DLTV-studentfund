@@ -186,6 +186,17 @@
     alert: o => open('alert', typeof o === 'string' ? { message: o } : o),
     prompt: o => open('prompt', typeof o === 'string' ? { message: o } : o),
   };
+  /** v37: กล่อง "กำลังทำงาน…" กลางจอ (ปิดด้วยฟังก์ชันที่คืนกลับ) */
+  UIDialog.busy = function (title, message) {
+    const w = document.createElement('div');
+    w.className = 'uid-backdrop in';
+    w.innerHTML = `<div class="uid uid-info" role="status" aria-live="polite">
+      <div class="uid-icon"><span class="uid-spin uid-spin-lg" aria-hidden="true"></span></div>
+      <h2 class="uid-title">${E(title || 'กำลังบันทึก…')}</h2>
+      <div class="uid-msg"><p>${E(message || 'กรุณารอสักครู่ อย่าเพิ่งปิดหน้านี้')}</p></div></div>`;
+    document.body.appendChild(w);
+    return () => w.remove();
+  };
   window.UIDialog = UIDialog;
   window.uiAsk = (message, opts) => UIDialog.confirm(Object.assign({ message }, opts || {}));
 

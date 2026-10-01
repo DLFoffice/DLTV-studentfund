@@ -160,11 +160,13 @@ function stdContactsOf(s){
   let f1 = {}, f2 = {};
   try { const b = window.Term && Term.bucket(s, Term.active()); if (b) { f1 = b.form1 || {}; f2 = b.form2 || {}; } } catch (e) {}
   const pick = (...v) => { for (const x of v) { const t = String(x ?? '').trim(); if (t) return t; } return ''; };
-  const teacherName = pick([m.firstName, m.lastName].filter(Boolean).join(' '), sa.advisorM1, f2.teacher_name, f1.teacher_name);
+  // v36: ครูที่ปรึกษา = ครูของโรงเรียน (ไม่ใช่พี่เลี้ยงของมูลนิธิฯ)
+  const teacherName = pick(sa.advisorM1, f2.teacher_name, f1.teacher_name);
   return {
     student:  { name: pick(s.nickname ? `${s.name} (${s.nickname})` : s.name), phone: pick(s.phone, f1.cur_phone) },
     parent:   { name: pick(s.parent), phone: pick(s.parentPhone, f1.guardian_phone) },
-    teacher:  { name: teacherName, phone: pick(m.phone, sa.telAdvisorM1, f2.teacher_phone, f1.teacher_phone), extra: pick(m.position, f2.teacher_position, f1.teacher_position) },
+    teacher:  { name: teacherName, phone: pick(sa.telAdvisorM1, f2.teacher_phone, f1.teacher_phone), extra: pick(sa.advisorPosM1, f2.teacher_position, f1.teacher_position) },
+    mentor:   { name: pick([m.firstName, m.lastName].filter(Boolean).join(' ')), phone: pick(m.phone), extra: pick(m.position) },
     director: { name: pick(sa.directorM1, f2.director_name), phone: pick(sa.telDirectorM1) },
   };
 }
@@ -232,6 +234,7 @@ function exportFilteredStudents(){
             <tr><th>นักเรียน</th><td>${val(s.name)}</td><td>${tel(c.student.phone)}</td></tr>
             <tr><th>ผู้ปกครอง</th><td>${val(c.parent.name)}</td><td>${tel(c.parent.phone)}</td></tr>
             <tr><th>ครูที่ปรึกษา</th><td>${val(c.teacher.name)}${c.teacher.extra?`<div class="rs-role">${E(c.teacher.extra)}</div>`:''}</td><td>${tel(c.teacher.phone)}</td></tr>
+            <tr><th>พี่เลี้ยง (มูลนิธิฯ)</th><td>${val(c.mentor.name)}${c.mentor.extra?`<div class="rs-role">${E(c.mentor.extra)}</div>`:''}</td><td>${tel(c.mentor.phone)}</td></tr>
             <tr><th>ผู้อำนวยการ</th><td>${val(c.director.name)}</td><td>${tel(c.director.phone)}</td></tr>
           </tbody>
         </table>
@@ -336,7 +339,7 @@ function renderStudents(){
         <td class="photo-cell">${photoEl(s)}</td>
         <td><div style="font-weight:600">${escHtml(s.name||'(ยังไม่ระบุชื่อ)')}</div><div style="font-size:11px;color:var(--text3)">${escHtml(s.nickname)}</div></td>
         <td style="font-family:'Noto Sans Thai',monospace;font-size:11px">${escHtml(maskId(s.id))}</td>
-        <td style="font-size:12px">${escHtml(s.dob||'-')}<div style="font-size:11px;color:var(--blue);font-weight:600">${escHtml(calcAge(s.dob))}</div></td>
+        <td style="font-size:12px">${escHtml((()=>{const d=normDateISO(s.dob);return d?new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}):(s.dob||'-');})())}<div style="font-size:11px;color:var(--blue);font-weight:600">${escHtml(calcAge(s.dob))}</div></td>
         <td style="font-size:12px">${escHtml(s.phone||'-')}</td>
         <td style="font-size:12px">${escHtml(s.school_m1)}</td>
         <td><span class="badge b-blue">${escHtml(s.province)}</span></td>

@@ -138,7 +138,32 @@ function maskId(id){
   // แสดงรูปแบบ: 1-xxxx-xxxxx-xx-5 (เห็นแค่หลักแรกและหลักสุดท้าย)
   return s[0]+'-xxxx-xxxxx-xx-'+s[12];
 }
+/* v36: แปลงวันที่ทุกรูปแบบที่พบในข้อมูล → "YYYY-MM-DD" (ค.ศ.) สำหรับช่อง <input type="date">
+   รองรับ: 2012-05-03 · 2555-05-03 (พ.ศ.) · 2012-05-02T17:00:00.000Z (ผ่าน Google Sheet แล้วกลายเป็นเวลา UTC)
+           3/5/2555 · 03-05-2012 · 3 พ.ค. 2555 ไม่รองรับ (คืนค่าว่าง) */
+function normDateISO(raw){
+  if(raw===undefined||raw===null) return '';
+  const s = String(raw).trim();
+  if(!s) return '';
+  const pad = n => String(n).padStart(2,'0');
+  const ce = y => { y = +y; return y > 2400 ? y - 543 : y; };
+  const ok = (y,m,d) => y>1900 && y<2200 && m>=1 && m<=12 && d>=1 && d<=31;
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  if(m){ const y=ce(m[1]); return ok(y,+m[2],+m[3]) ? `${y}-${pad(m[2])}-${pad(m[3])}` : ''; }
+  m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(s);
+  if(m){
+    const t = Date.parse(s.length===16 ? s+':00Z' : (m[7] ? s : s+'Z'));
+    if(isNaN(t)) return '';
+    const b = new Date(t + 7*3600*1000);       // เวลาประเทศไทย
+    const y = ce(b.getUTCFullYear());
+    return `${y}-${pad(b.getUTCMonth()+1)}-${pad(b.getUTCDate())}`;
+  }
+  m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(s);
+  if(m){ const y=ce(m[3]); return ok(y,+m[2],+m[1]) ? `${y}-${pad(m[2])}-${pad(m[1])}` : ''; }
+  return '';
+}
 function calcAge(dob){
+  dob = normDateISO(dob) || dob;
   if(!dob) return '-';
   const parts = String(dob).split('-');
   if(parts.length < 3) return '-';

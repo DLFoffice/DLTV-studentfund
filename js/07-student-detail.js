@@ -35,7 +35,7 @@ function openStudentDetail(idx){
         <div class="fg"><label>ชื่อ-สกุล</label><input value="${s.name||''}" onchange="DB.students[${idx}].name=this.value;refreshModalHeader(${idx})"></div>
         <div class="fg"><label>ชื่อเล่น</label><input value="${s.nickname||''}" onchange="DB.students[${idx}].nickname=this.value;refreshModalHeader(${idx})"></div>
         <div class="fg"><label>เลขบัตรประชาชน</label><input id="id-input-${idx}"value="${maskId(s.id)}"data-real-value="${s.id||''}"style="font-family:'Noto Sans Thai',monospace"title="คลิกเพื่อแก้ไข"onfocus="this.value=this.dataset.realValue;this.select()"onblur="document.getElementById('id-input-${idx}').dataset.realValue=this.value.replace(/\D/g,'');this.value=maskId(this.value)"onchange="document.getElementById('id-input-${idx}').dataset.realValue=this.value.replace(/\D/g,'')"></div>
-        <div class="fg"><label>วันเดือนปีเกิด</label><input type="date" value="${s.dob||''}" onchange="DB.students[${idx}].dob=this.value"></div>
+        <div class="fg"><label>วันเดือนปีเกิด</label><input type="date" value="${normDateISO(s.dob)}" onchange="DB.students[${idx}].dob=this.value"></div>
         <div class="fg"><label>อายุ (Age)</label><input readonly value="${calcAge(s.dob)}" style="background:var(--bg2);color:var(--text2);cursor:default" title="คำนวณอัตโนมัติจากวันเกิด"></div>
         <div class="fg"><label>โทรศัพท์นักเรียน</label><input value="${s.phone||''}" onchange="DB.students[${idx}].phone=this.value"></div>
         <div class="fg"><label>ชื่อ-สกุล ผู้ปกครอง</label><input value="${s.parent||''}" onchange="DB.students[${idx}].parent=this.value"></div>
@@ -99,7 +99,7 @@ function openStudentDetail(idx){
         <div class="fg"><label>ชื่อ</label><input value="${s.mentor?.firstName||''}" placeholder="ชื่อ" onchange="if(!DB.students[${idx}].mentor)DB.students[${idx}].mentor={};DB.students[${idx}].mentor.firstName=this.value"></div>
         <div class="fg"><label>สกุล</label><input value="${s.mentor?.lastName||''}" placeholder="นามสกุล" onchange="if(!DB.students[${idx}].mentor)DB.students[${idx}].mentor={};DB.students[${idx}].mentor.lastName=this.value"></div>
         <div class="fg"><label>เบอร์โทร</label><input value="${s.mentor?.phone||''}" placeholder="08x-xxx-xxxx" onchange="if(!DB.students[${idx}].mentor)DB.students[${idx}].mentor={};DB.students[${idx}].mentor.phone=this.value"></div>
-        <div class="fg"><label>ตำแหน่ง</label><input value="${s.mentor?.position||''}" placeholder="เช่น ครูที่ปรึกษา" onchange="if(!DB.students[${idx}].mentor)DB.students[${idx}].mentor={};DB.students[${idx}].mentor.position=this.value"></div>
+        <div class="fg"><label>ตำแหน่ง</label><input value="${s.mentor?.position||''}" placeholder="เช่น เจ้าหน้าที่มูลนิธิฯ" onchange="if(!DB.students[${idx}].mentor)DB.students[${idx}].mentor={};DB.students[${idx}].mentor.position=this.value"></div>
       </div>
     </div>
     <div class="form-section">
@@ -402,6 +402,8 @@ function renderSchoolPanel(idx){
           <input value="${sa.advisorM1||''}" placeholder="ชื่อ-นามสกุล" onchange="if(!DB.students[${idx}].school_m1_addr)DB.students[${idx}].school_m1_addr={};DB.students[${idx}].school_m1_addr.advisorM1=this.value"></div>
         <div class="fg"><label>เบอร์โทรครูที่ปรึกษา</label>
           <input value="${sa.telAdvisorM1||''}" placeholder="0x-xxxx-xxxx" onchange="if(!DB.students[${idx}].school_m1_addr)DB.students[${idx}].school_m1_addr={};DB.students[${idx}].school_m1_addr.telAdvisorM1=this.value"></div>
+        <div class="fg"><label>ตำแหน่งครูที่ปรึกษา</label>
+          <input value="${sa.advisorPosM1||''}" placeholder="เช่น ครู คศ.1 / ครูผู้ช่วย" onchange="if(!DB.students[${idx}].school_m1_addr)DB.students[${idx}].school_m1_addr={};DB.students[${idx}].school_m1_addr.advisorPosM1=this.value"></div>
       </div>
     </div>
     <div class="form-section">

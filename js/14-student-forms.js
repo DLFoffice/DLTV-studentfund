@@ -200,10 +200,10 @@ const SF_FORM1 = [
     { id:'teacher_comment_study', type:'textarea', label:'ด้านการเรียน', full:true },
     { id:'teacher_comment_behavior', type:'textarea', label:'ด้านความประพฤติ', full:true },
     { id:'teacher_comment_other', type:'textarea', label:'ด้านอื่น ๆ', full:true },
-    { id:'teacher_name', type:'text', label:'ชื่อครูที่ปรึกษาหรือครูผู้ดูแล', from:s=>[s.mentor&&s.mentor.firstName,s.mentor&&s.mentor.lastName].filter(Boolean).join(' ') },
-    { id:'teacher_position', type:'text', label:'ตำแหน่ง', from:s=>(s.mentor&&s.mentor.position)||'' },
+    { id:'teacher_name', type:'text', label:'ชื่อครูที่ปรึกษาหรือครูผู้ดูแล', from:s=>(s.school_m1_addr&&s.school_m1_addr.advisorM1)||'' },
+    { id:'teacher_position', type:'text', label:'ตำแหน่ง', from:s=>(s.school_m1_addr&&s.school_m1_addr.advisorPosM1)||'' },
     { id:'teacher_school', type:'text', label:'สถานศึกษา', from:s=>s.school_m1 },
-    { id:'teacher_phone', optional:true, type:'text', label:'เบอร์โทรศัพท์', from:s=>(s.mentor&&s.mentor.phone)||'' },
+    { id:'teacher_phone', optional:true, type:'text', label:'เบอร์โทรศัพท์', from:s=>(s.school_m1_addr&&s.school_m1_addr.telAdvisorM1)||'' },
     { id:'teacher_sign_date', type:'date', label:'วันที่ลงนาม' },
   ]},
 ];
@@ -281,9 +281,9 @@ const SF_FORM2 = [
     { id:'teacher_comment_study', type:'textarea', label:'ด้านการเรียนของผู้รับทุนการศึกษา', full:true },
     { id:'teacher_comment_behavior', type:'textarea', label:'ด้านความประพฤติและการปฏิบัติตน', full:true },
     { id:'teacher_comment_expense', type:'textarea', label:'การรับรองและข้อคิดเห็นเพิ่มเติมในการใช้จ่ายเงินทุนการศึกษา', full:true },
-    { id:'teacher_name', type:'text', label:'ชื่อครูที่ปรึกษาหรือครูผู้ดูแล', from:s=>[s.mentor&&s.mentor.firstName,s.mentor&&s.mentor.lastName].filter(Boolean).join(' ') },
-    { id:'teacher_position', type:'text', label:'ตำแหน่ง', from:s=>(s.mentor&&s.mentor.position)||'' },
-    { id:'teacher_phone', optional:true, type:'text', label:'โทรศัพท์', from:s=>(s.mentor&&s.mentor.phone)||'' },
+    { id:'teacher_name', type:'text', label:'ชื่อครูที่ปรึกษาหรือครูผู้ดูแล', from:s=>(s.school_m1_addr&&s.school_m1_addr.advisorM1)||'' },
+    { id:'teacher_position', type:'text', label:'ตำแหน่ง', from:s=>(s.school_m1_addr&&s.school_m1_addr.advisorPosM1)||'' },
+    { id:'teacher_phone', optional:true, type:'text', label:'โทรศัพท์', from:s=>(s.school_m1_addr&&s.school_m1_addr.telAdvisorM1)||'' },
     { id:'teacher_sign_date', type:'date', label:'วันที่ลงนามครู' },
     { id:'director_name', type:'text', label:'ชื่อผู้อำนวยการสถานศึกษา', from:s=>(s.school_m1_addr&&s.school_m1_addr.directorM1)||s.directorM1||s.directorM_1||'' },
     { id:'director_sign_date', type:'date', label:'วันที่ลงนามผู้อำนวยการ' },
@@ -362,6 +362,7 @@ function sfIncompleteSections(formKey){
 
 /* ---------- Field renderers ---------- */
 function sfFormatDateISO(raw){
+  if(typeof normDateISO==='function') return normDateISO(raw);   // v36
   if(!raw) return '';
   const s = String(raw).trim();
   if(/^(\d{4})-(\d{2})-(\d{2})$/.test(s)) return s;

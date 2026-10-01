@@ -240,7 +240,8 @@
       <div class="sdx-calls">
         ${tel('s', s.phone, 'นักเรียน')}
         ${tel('p', s.parentPhone, 'ผู้ปกครอง · ' + (s.parent || 'ไม่ระบุชื่อ'))}
-        ${tel('m', m.phone, 'พี่เลี้ยง · ' + ([m.firstName, m.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'))}
+        ${tel('t', (s.school_m1_addr || {}).telAdvisorM1, 'ครูที่ปรึกษา · ' + ((s.school_m1_addr || {}).advisorM1 || 'ไม่ระบุชื่อ'))}
+        ${tel('m', m.phone, 'พี่เลี้ยง (มูลนิธิฯ) · ' + ([m.firstName, m.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'))}
       </div>
 
       ${secHead(missing.length ? '📌' : '✅', missing.length ? `ข้อมูลที่ยังขาด (${missing.length} รายการ)` : 'ข้อมูลครบถ้วนทุกรายการ')}
@@ -265,7 +266,7 @@
           onfocus="this.value=this.dataset.realValue;this.select()"
           onblur="this.dataset.realValue=this.value.replace(/\\D/g,'');this.value=maskId(this.value)"
           onchange="this.dataset.realValue=this.value.replace(/\\D/g,'')"></div>
-        <div class="fg"><label>วันเดือนปีเกิด</label><input type="date" value="${esc(s.dob)}" onchange="${D}.dob=this.value;this.closest('.form-grid').querySelector('input[readonly]').value=calcAge(this.value)"></div>
+        <div class="fg"><label>วันเดือนปีเกิด</label><input type="date" value="${esc(normDateISO(s.dob))}" onchange="${D}.dob=this.value;this.closest('.form-grid').querySelector('input[readonly]').value=calcAge(this.value)"></div>
         <div class="fg"><label>อายุ</label><input readonly value="${calcAge(s.dob)}" style="background:var(--bg2);color:var(--text2);cursor:default" title="คำนวณจากวันเกิด"></div>
         <div class="fg"><label>โทรศัพท์นักเรียน</label><input value="${esc(s.phone)}" onchange="${D}.phone=this.value"></div>
       </div>
@@ -337,6 +338,11 @@
   function renderMentorForms(idx) {
     const s = DB.students[idx], m = s.mentor || {}, D = `DB.students[${idx}]`;
     const mk = f => `if(!${D}.mentor)${D}.mentor={};${D}.mentor.${f}=this.value`;
+    const sa = s.school_m1_addr || {};
+    const ak = f => `if(!${D}.school_m1_addr)${D}.school_m1_addr={};${D}.school_m1_addr.${f}=this.value`;
+    const norm = v => String(v || '').replace(/\s+/g, '');
+    const mentorFull = [m.firstName, m.lastName].filter(Boolean).join(' ');
+    const mentorClash = !!(mentorFull && sa.advisorM1 && norm(mentorFull) === norm(sa.advisorM1));
     const terms = termsOf(s);
     const active = (window.Term && Term.active()) || '';
 
@@ -354,12 +360,20 @@
       : `<tr><td colspan="3" class="sdx-empty">ยังไม่มีแบบฟอร์มของนักเรียนคนนี้</td></tr>`;
 
     $('st-panel-1').innerHTML = `
-      ${secHead('👨‍🏫', 'พี่เลี้ยง', 'ครูผู้ดูแลนักเรียนทุนคนนี้โดยตรง')}
+      ${secHead('🤝', 'พี่เลี้ยง (บุคลากรมูลนิธิฯ)', 'ผู้ดูแลนักเรียนทุนคนนี้จากมูลนิธิการศึกษาทางไกลผ่านดาวเทียม')}
+      ${mentorClash ? `<div class="sdx-warn">ชื่อพี่เลี้ยงตรงกับชื่อครูที่ปรึกษาของโรงเรียน — ระบบรุ่นก่อนอาจนำชื่อครูจากแบบฟอร์มมาเขียนทับชื่อพี่เลี้ยง กรุณาตรวจสอบและแก้เป็นชื่อบุคลากรของมูลนิธิฯ</div>` : ''}
       <div class="form-grid">
         <div class="fg"><label>ชื่อ</label><input value="${esc(m.firstName)}" placeholder="ชื่อ" onchange="${mk('firstName')}"></div>
         <div class="fg"><label>สกุล</label><input value="${esc(m.lastName)}" placeholder="นามสกุล" onchange="${mk('lastName')}"></div>
         <div class="fg"><label>เบอร์โทร</label><input value="${esc(m.phone)}" placeholder="08x-xxx-xxxx" onchange="${mk('phone')}"></div>
-        <div class="fg"><label>ตำแหน่ง</label><input value="${esc(m.position)}" placeholder="เช่น ครูที่ปรึกษา" onchange="${mk('position')}"></div>
+        <div class="fg"><label>ตำแหน่ง/หน่วยงาน</label><input value="${esc(m.position)}" placeholder="เช่น เจ้าหน้าที่มูลนิธิฯ" onchange="${mk('position')}"></div>
+      </div>
+
+      ${secHead('👨‍🏫', 'ครูที่ปรึกษา (ที่โรงเรียน)', 'ใช้เติมในแบบฟอร์มที่ 1 และ 2 ช่อง "ครูที่ปรึกษาหรือครูผู้ดูแล" · คนละคนกับพี่เลี้ยง')}
+      <div class="form-grid">
+        <div class="fg"><label>ชื่อ-สกุล ครูที่ปรึกษา</label><input value="${esc(sa.advisorM1)}" placeholder="ชื่อ-นามสกุล" onchange="${ak('advisorM1')}"></div>
+        <div class="fg"><label>ตำแหน่ง</label><input value="${esc(sa.advisorPosM1)}" placeholder="เช่น ครู คศ.1" onchange="${ak('advisorPosM1')}"></div>
+        <div class="fg"><label>เบอร์โทร</label><input value="${esc(sa.telAdvisorM1)}" placeholder="08x-xxx-xxxx" onchange="${ak('telAdvisorM1')}"></div>
       </div>
 
       ${secHead('📋', 'สถานะแบบฟอร์มรายภาคเรียน')}
