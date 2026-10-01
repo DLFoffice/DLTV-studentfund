@@ -2514,3 +2514,76 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .sidebar-manual .sm-txt{flex:1}
 .sidebar-manual .sm-go{color:var(--lg-gold,#FFC531);font-size:13px;transition:transform .25s}
 .sidebar-manual:hover .sm-go{transform:translate(2px,-2px)}
+
+/* ============================================================
+   v43 — วิเคราะห์กลุ่มการดูแล (GPA ล่าสุด + SDQ ล่าสุด) ใน GPA Sheet
+   ============================================================ */
+.ca-card{--ok:#16A34A;--risk:#D97706;--prob:#DC2626;background:#fff;border:1px solid rgba(15,26,64,.07);border-radius:16px;padding:20px 22px;margin-bottom:18px;
+  box-shadow:0 1px 2px rgba(15,26,64,.04),0 8px 24px -12px rgba(15,26,64,.14)}
+.ca-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.ca-head h3{margin:0;font-size:16.5px;font-weight:700;color:var(--text)}
+.ca-head p{margin:3px 0 0;font-size:12.5px;color:var(--text3)}
+.ca-rule{font-size:12.5px;color:var(--text2);max-width:520px}
+.ca-rule summary{cursor:pointer;font-weight:600;color:var(--blue-dk)}
+.ca-rule ol{margin:8px 0 0;padding-left:1.3em;line-height:1.7}
+.ca-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+.ca-kpi{border-radius:12px;padding:12px 14px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column}
+.ca-kpi span{font-size:12.5px;font-weight:600;color:var(--text2)}
+.ca-kpi b{font-size:28px;line-height:1.2;font-variant-numeric:tabular-nums}
+.ca-kpi small{font-size:11.5px;color:var(--text3)}
+.ca-kpi.prob{background:#FDEEEE;border-color:#F8CACA}.ca-kpi.prob b{color:var(--prob)}
+.ca-kpi.risk{background:#FEF6E7;border-color:#F5D9A8}.ca-kpi.risk b{color:var(--risk)}
+.ca-kpi.ok{background:#ECF8F1;border-color:#C6EBD4}.ca-kpi.ok b{color:var(--ok)}
+.ca-kpi.na b{color:var(--text3)}
+.ca-kpi.drop b{color:var(--blue-dk)}
+.ca-body{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:18px;align-items:start}
+.ca-sub{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.ca-sub small{font-weight:400;color:var(--text3)}
+.ca-matrix{width:100%;border-collapse:separate;border-spacing:4px;font-size:12px}
+.ca-matrix th{font-weight:600;color:var(--text3);text-align:center;padding:2px}
+.ca-matrix tbody th{text-align:right;white-space:nowrap;padding-right:6px}
+.ca-cell{width:100%;height:46px;border:none;border-radius:10px;font:inherit;font-size:17px;font-weight:700;cursor:pointer;font-variant-numeric:tabular-nums;
+  transition:transform .2s,box-shadow .2s}
+.ca-cell.s-ok{background:#E3F5EA;color:#15803D}.ca-cell.s-risk{background:#FDEFD6;color:#B45309}
+.ca-cell.s-prob{background:#FBDADA;color:#B91C1C}.ca-cell.s-na{background:#EEF1F6;color:var(--text3)}
+.ca-cell.zero{opacity:.45;cursor:default;font-weight:500}
+.ca-cell:not(.zero):hover{transform:translateY(-2px);box-shadow:0 6px 14px -8px rgba(15,26,64,.5)}
+.ca-cell.on{box-shadow:0 0 0 3px var(--blue)}
+.ca-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--text2)}
+.ca-legend span{display:inline-flex;align-items:center;gap:5px}
+.ca-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.ca-legend i.ok{background:#16A34A}.ca-legend i.risk{background:#D97706}.ca-legend i.prob{background:#DC2626}
+.ca-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ca-chip{border:1px solid var(--border2);background:#fff;color:var(--text2);border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer}
+.ca-chip b{margin-left:3px;color:var(--text)}
+.ca-chip.on{background:var(--text);border-color:var(--text);color:#fff}.ca-chip.on b{color:#fff}
+.ca-chip.on.c-prob{background:var(--prob);border-color:var(--prob)}.ca-chip.on.c-risk{background:var(--risk);border-color:var(--risk)}.ca-chip.on.c-ok{background:var(--ok);border-color:var(--ok)}
+.ca-ltitle{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.ca-clear{border:none;background:none;color:var(--blue);font:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline}
+.ca-list{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:12px}
+.ca-item{position:relative;display:grid;grid-template-columns:minmax(190px,1.1fr) minmax(170px,.9fr) minmax(200px,1.5fr) auto;gap:12px;align-items:center;
+  padding:10px 12px 10px 16px;border-top:1px solid var(--border)}
+.ca-item:first-child{border-top:none}
+.ca-item:hover{background:#FAFBFE}
+.ca-bar{position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:#CBD5E1}
+.ca-item.s-prob .ca-bar{background:var(--prob)}.ca-item.s-risk .ca-bar{background:var(--risk)}.ca-item.s-ok .ca-bar{background:var(--ok)}
+.ca-who{display:flex;align-items:center;gap:9px;min-width:0}
+.ca-who b{display:block;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ca-who span{display:block;font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ca-data{display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.ca-data small{color:var(--text3)}
+.ca-lbl{display:inline-block;width:72px;color:var(--text3);font-size:11.5px}
+.ca-tr{font-size:11.5px;font-weight:700;margin-left:4px}.ca-tr.up{color:#15803D}.ca-tr.dn{color:var(--text3)}.ca-tr.down{color:var(--prob)}
+.ca-g{font-weight:700;font-size:12px;padding:1px 7px;border-radius:999px}
+.ca-g.ok{background:#ECF8F1;color:#15803D}.ca-g.risk{background:#FEF6E7;color:#B45309}.ca-g.prob{background:#FDEEEE;color:#B91C1C}
+.ca-na{color:var(--text3);font-size:12px}
+.ca-whys{display:flex;flex-wrap:wrap;gap:4px}
+.ca-why{font-size:11.5px;padding:2px 8px;border-radius:7px;background:var(--bg3);color:var(--text2)}
+.ca-why.l2{background:#FDEEEE;color:#B91C1C;font-weight:600}.ca-why.l1{background:#FEF6E7;color:#B45309;font-weight:600}
+.ca-act{display:flex;gap:6px;white-space:nowrap}
+.ca-empty,.ca-more{padding:16px;text-align:center;color:var(--text3);font-size:12.5px;list-style:none}
+@media (max-width:1200px){.ca-body{grid-template-columns:1fr}.ca-kpis{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:800px){.ca-item{grid-template-columns:1fr auto}.ca-data,.ca-whys{grid-column:1/-1}.ca-act{grid-column:1/-1}.ca-kpis{grid-template-columns:1fr 1fr}}
+
+.ca-grp{display:block;margin-top:3px}.ca-grp .badge{white-space:nowrap}
+.ca-data>div{white-space:nowrap}
