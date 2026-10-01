@@ -296,6 +296,20 @@
     finally { pushPending = false; }
   };
 
+  /** v44: ลบฟิลด์ย่อยออกจากเอกสารบนคลาวด์จริง (เช่น sdq["2/2568"])
+   *  จำเป็นเพราะการบันทึกปกติใช้ merge:true → ลบ key ในเครื่องแล้ว บนคลาวด์ยังอยู่และจะโหลดกลับมา */
+  window.fbDeleteField = async function (s, ...path) {
+    if (!fbReady || !s) return { cloud: false, ok: true };
+    try {
+      await fsdb.collection(COL).doc(docIdOf(s))
+        .update(new firebase.firestore.FieldPath(...path), firebase.firestore.FieldValue.delete());
+      return { cloud: true, ok: true };
+    } catch (e) {
+      if (e && e.code === 'not-found') return { cloud: true, ok: true };
+      return { cloud: true, ok: false, error: e };
+    }
+  };
+
   /* ---------- 2) ดัก deleteStudent ---------- */
   const _origDeleteStudent = deleteStudent;
   deleteStudent = function (idx) {

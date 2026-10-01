@@ -2587,3 +2587,10 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 
 .ca-grp{display:block;margin-top:3px}.ca-grp .badge{white-space:nowrap}
 .ca-data>div{white-space:nowrap}
+
+/* v44 — ปุ่มล้างข้อมูล SDQ */
+.sq2-ed-tools,.sq2-rowact{display:flex;gap:8px;align-items:center}
+.sq2-btn-danger{color:#B91C1C;border-color:#F3C4C4;background:#fff}
+.sq2-btn-danger:hover{background:#FDEEEE;border-color:#DC2626;color:#991B1B}
+.sq2-icon-btn{padding:8px 10px}
+.sq2-icon-btn:hover{border-color:#DC2626;background:#FDEEEE}

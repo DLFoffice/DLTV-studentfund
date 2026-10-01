@@ -268,7 +268,8 @@
       <header class="sq2-head">
         <div><h2>แบบประเมิน SDQ</h2><p>ฉบับครูเป็นผู้ประเมิน · 25 ข้อ · ${sdqEsc(termLabelOf(term))}</p></div>
         <div class="sq2-head-tools">${termCtrl}
-          ${sdqIsStaff() ? `<button class="sq2-btn ${open ? '' : 'sq2-btn-primary'}" id="sdq-toggle-btn">${open ? '🔒 ปิดรับการประเมิน' : '🔓 เปิดรับการประเมิน'}</button>` : ''}</div>
+          ${sdqIsStaff() ? `<button class="sq2-btn ${open ? '' : 'sq2-btn-primary'}" id="sdq-toggle-btn">${open ? '🔒 ปิดรับการประเมิน' : '🔓 เปิดรับการประเมิน'}</button>
+            <button class="sq2-btn sq2-btn-danger" id="sdq-clear-term-btn" title="ล้างแบบประเมินของทุกคนในภาคเรียนนี้ (เช่น ข้อมูลทดสอบ)">🗑️ ล้างผลทั้งภาคเรียน</button>` : ''}</div>
       </header>
       ${!open && sdqIsStaff() ? `<div class="sq2-banner">ฟอร์ม SDQ ปิดรับอยู่ — ครูท่านอื่นและนักเรียนกรอกไม่ได้ (คุณยังดู/แก้ไขได้ในฐานะผู้ดูแล)</div>` : ''}
       <section class="sq2-card sq2-progress">
@@ -300,7 +301,10 @@
       ${avatar(s)}
       <div class="sq2-pwho"><b>${sdqEsc(s.name || '')}</b><span>${sdqEsc(s.school_m1 || '-')}${s.nickname ? ' · ' + sdqEsc(s.nickname) : ''}</span></div>
       <div class="sq2-pstatus">${status}</div>
-      <button type="button" class="sq2-btn ${sent ? '' : 'sq2-btn-primary'}" data-sdq-open="${idx}">${btn}</button>
+      <div class="sq2-rowact">
+        ${sdqIsStaff() && b ? `<button type="button" class="sq2-btn sq2-icon-btn" data-sdq-clear="${idx}" title="ล้างข้อมูลแบบประเมินของคนนี้" aria-label="ล้างข้อมูลแบบประเมินของ ${sdqEsc(s.name || '')}">🗑️</button>` : ''}
+        <button type="button" class="sq2-btn ${sent ? '' : 'sq2-btn-primary'}" data-sdq-open="${idx}">${btn}</button>
+      </div>
     </li>`;
   }
 
@@ -317,7 +321,12 @@
     };
     const toggle = document.getElementById('sdq-toggle-btn');
     if (toggle) toggle.onclick = () => sdqSetOpen(!sdqGetOpen());
+    const clearAll = document.getElementById('sdq-clear-term-btn');
+    if (clearAll) clearAll.onclick = () => sdqClearTerm();
     host.querySelectorAll('[data-sq2-pick]').forEach(b => { b.onclick = () => { sdqState.pick = b.getAttribute('data-sq2-pick'); sdqRenderFormPage(); }; });
+    host.querySelectorAll('[data-sdq-clear]').forEach(btn => {
+      btn.onclick = () => sdqClear(sdqStudents()[Number(btn.getAttribute('data-sdq-clear'))]);
+    });
     host.querySelectorAll('[data-sdq-open]').forEach(btn => {
       btn.onclick = () => { sdqState.studentIdx = Number(btn.getAttribute('data-sdq-open')); sdqRenderFormPage(); const m = document.querySelector('.main'); if (m) m.scrollTop = 0; };
     });
@@ -369,6 +378,7 @@
         </div>
       </li>`;
     }).join('');
+    const hasData = !!(data.submittedAt || res.totalAnswered || data.overall || data.evaluator || data.grade);
     const showImpact = data.overall && data.overall !== '1';
     const impactAreas = [['home', 'ความเป็นอยู่ที่บ้าน'], ['friends', 'การคบเพื่อน'], ['classroom', 'การเรียนในห้องเรียน'], ['leisure', 'กิจกรรมยามว่าง']];
     const opt = (list, cur) => list.map(o => `<option value="${o}" ${cur === o ? 'selected' : ''}>${o || '— ยังไม่ระบุ —'}</option>`).join('');
@@ -379,7 +389,10 @@
         ${avatar(student)}
         <div class="sq2-ed-who"><h2>${sdqEsc(student.name || '')}</h2>
           <p>${sdqEsc(student.school_m1 || '-')} · ${sdqEsc(termLabelOf(sdqState.term))} ${sentNote}</p></div>
-        <button type="button" class="sq2-btn" id="sdq-print-btn">🖨️ พิมพ์ / PDF</button>
+        <div class="sq2-ed-tools">
+          ${!locked && hasData ? `<button type="button" class="sq2-btn sq2-btn-danger" id="sdq-clear-btn" title="ลบคำตอบและผลการประเมินของภาคเรียนนี้">🗑️ ล้างข้อมูล</button>` : ''}
+          <button type="button" class="sq2-btn" id="sdq-print-btn">🖨️ พิมพ์ / PDF</button>
+        </div>
       </header>
       ${!sdqIsStaff() ? `<div class="sq2-note">นักเรียนเห็นเฉพาะแบบประเมินและผลของตัวเองเท่านั้น</div>` : ''}
       ${locked ? `<div class="sq2-banner">ฟอร์มนี้ปิดรับอยู่ ไม่สามารถกรอกหรือแก้ไขได้ในขณะนี้</div>` : ''}
@@ -460,6 +473,59 @@
     });
     const submitBtn = document.getElementById('sdq-submit-btn');
     if (submitBtn) submitBtn.onclick = () => sdqSubmit(student);
+    const clearBtn = document.getElementById('sdq-clear-btn');
+    if (clearBtn) clearBtn.onclick = () => sdqClear(student);
+  }
+
+  /* ---------- v44: ล้างข้อมูลแบบประเมิน (ทั้งร่างและผลที่ส่งแล้ว) ---------- */
+  async function clearBucket(student, term) {
+    if (student.sdq && student.sdq[term]) delete student.sdq[term];
+    let r = { ok: true };
+    if (typeof window.fbDeleteField === 'function') r = await window.fbDeleteField(student, 'sdq', term);
+    if (r && r.ok === false) throw (r.error || new Error('ลบบนคลาวด์ไม่สำเร็จ'));
+    if (typeof window.fbSaveNow === 'function') await window.fbSaveNow(); else saveToStorage();
+  }
+  async function sdqClear(student) {
+    const term = sdqState.term;
+    const d = (student.sdq && student.sdq[term]) || {};
+    const res = sdqCompute(sdqBucket(student, term, true));
+    if (!window.UIDialog) return;
+    UIDialog.confirm({
+      tone: 'danger', title: 'ล้างข้อมูลแบบประเมิน SDQ?',
+      message: 'คำตอบทั้ง 25 ข้อ ผู้ประเมิน วันที่ และผลการประเมินของภาคเรียนนี้จะถูกลบ และกู้คืนไม่ได้\nสถานะจะกลับเป็น "ยังไม่ส่ง"',
+      details: [{ label: 'นักเรียน', value: student.name || '-' }, { label: 'ภาคเรียน', value: termLabelOf(term) },
+                { label: 'ข้อมูลที่มี', value: (d.submittedAt ? 'ส่งผลแล้ว · ' : 'ร่าง · ') + res.totalAnswered + '/25 ข้อ' }],
+      confirmText: 'ล้างข้อมูล', workingText: 'กำลังล้างข้อมูล…',
+      onConfirm: async () => {
+        await clearBucket(student, term);
+        sdqRenderFormPage();
+        return { title: 'ล้างข้อมูลแล้ว', message: 'แบบประเมินของ ' + (student.name || '') + ' ภาคเรียน ' + term + ' ว่างแล้ว เริ่มประเมินใหม่ได้ทันที' };
+      }
+    });
+  }
+  // ผู้ดูแล: ล้างผล SDQ ของทุกคนในภาคเรียนที่เลือก (ใช้ล้างข้อมูลทดสอบ) — ต้องพิมพ์ภาคเรียนยืนยัน
+  async function sdqClearTerm() {
+    const term = sdqState.term;
+    const list = sdqStudents().filter(s => s.sdq && s.sdq[term]);
+    if (!list.length) { UIDialog.alert({ tone: 'info', title: 'ไม่มีข้อมูลให้ล้าง', message: 'ภาคเรียน ' + term + ' ยังไม่มีแบบประเมิน SDQ' }); return; }
+    const typed = await UIDialog.prompt({
+      tone: 'danger', icon: 'danger', title: 'ล้างผล SDQ ทั้งภาคเรียน?',
+      message: 'แบบประเมินของนักเรียน ' + list.length + ' คนในภาคเรียน ' + term + ' (ทั้งร่างและที่ส่งแล้ว) จะถูกลบ และกู้คืนไม่ได้\n\nพิมพ์ ' + term + ' เพื่อยืนยัน',
+      placeholder: term, confirmText: 'ล้างทั้งหมด',
+      validate: v => v === term ? '' : 'พิมพ์ ' + term + ' ให้ตรงเพื่อยืนยัน'
+    });
+    if (typed !== term) return;
+    const close = UIDialog.busy ? UIDialog.busy('กำลังล้างผล SDQ ' + list.length + ' คน…') : () => {};
+    let fail = 0;
+    for (const s of list) {
+      if (s.sdq) delete s.sdq[term];
+      if (typeof window.fbDeleteField === 'function') { const r = await window.fbDeleteField(s, 'sdq', term); if (r && r.ok === false) fail++; }
+    }
+    try { if (typeof window.fbSaveNow === 'function') await window.fbSaveNow(); else saveToStorage(); } catch (e) {}
+    close();
+    sdqRenderFormPage();
+    UIDialog.alert(fail ? { tone: 'warning', title: 'ล้างได้บางส่วน', message: 'ล้างสำเร็จ ' + (list.length - fail) + ' คน · ไม่สำเร็จ ' + fail + ' คน (ตรวจอินเทอร์เน็ต/สิทธิ์ แล้วลองอีกครั้ง)' }
+      : { tone: 'success', title: 'ล้างผล SDQ แล้ว', message: 'ล้างแบบประเมินภาคเรียน ' + term + ' ของนักเรียน ' + list.length + ' คนเรียบร้อย' });
   }
 
   function sdqRefreshResultInline(host, data) {
