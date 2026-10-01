@@ -2331,3 +2331,175 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .sh-check{flex-direction:row!important;align-items:flex-start;gap:8px!important;font-weight:400!important;line-height:1.5}
 .sh-check input{margin-top:3px}
 @media (max-width:560px){.sh-form{grid-template-columns:1fr}}
+
+/* ============================================================
+   v41 — ธีมเดียวกับหน้าเข้าสู่ระบบ ("ดาวเทียมการศึกษา")
+   ใช้สี/แสง/การเคลื่อนไหวชุดเดียวกับ login.html ทั่วทั้งระบบ
+   (ชั้นนี้อยู่ท้ายไฟล์ → ทับธีมเดิมได้โดยไม่ต้องแก้ส่วนอื่น)
+   ============================================================ */
+:root{
+  --lg-navy-0:#060E2B; --lg-navy-1:#0B1A46; --lg-blue:#2F5CFF; --lg-blue-dk:#1E3FD1; --lg-cyan:#5CC8FF; --lg-gold:#FFC531;
+  --lg-ease:cubic-bezier(.16,1,.3,1); --lg-spring:cubic-bezier(.34,1.56,.64,1);
+  --lg-grad:linear-gradient(100deg,#3A68FF 0%,#2F5CFF 45%,#1E3FD1 100%);
+  --lg-edge:linear-gradient(90deg,#5CC8FF,#2F5CFF 40%,#7C5CFF 70%,#FFC531);
+}
+
+/* ---------- Sidebar: น้ำเงินลึก + แสง + ดาว ---------- */
+.sidebar{
+  background:
+    radial-gradient(420px 320px at -20% -5%, rgba(47,92,255,.55) 0%, transparent 60%),
+    radial-gradient(360px 300px at 120% 70%, rgba(92,200,255,.18) 0%, transparent 60%),
+    radial-gradient(300px 260px at 30% 110%, rgba(109,75,255,.30) 0%, transparent 60%),
+    linear-gradient(180deg,#0E1F5A 0%,var(--lg-navy-1) 45%,var(--lg-navy-0) 100%) !important;
+  box-shadow:4px 0 30px rgba(6,14,43,.35) !important;
+}
+.sidebar::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.55;
+  background-image:
+    radial-gradient(1px 1px at 22px 34px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 140px 90px,#fff 50%,transparent 51%),
+    radial-gradient(1.4px 1.4px at 210px 220px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 60px 300px,#fff 50%,transparent 51%),
+    radial-gradient(1px 1px at 190px 420px,#fff 50%,transparent 51%),radial-gradient(1.4px 1.4px at 30px 520px,#fff 50%,transparent 51%),
+    radial-gradient(1px 1px at 120px 640px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 230px 720px,#fff 50%,transparent 51%);
+  animation:lgTwinkle 5s ease-in-out infinite}
+@keyframes lgTwinkle{50%{opacity:.25}}
+.sidebar>*{position:relative;z-index:1}
+.sidebar-brand{border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo-wrap{position:relative;overflow:visible !important;border-radius:11px}
+.sidebar-logo-wrap img{border-radius:11px;background:#fff}
+.sidebar-logo-wrap::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:1.2px dashed rgba(255,255,255,.35);animation:lgSpin 16s linear infinite}
+.sidebar-logo-wrap::after{content:"";position:absolute;top:-10px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;
+  background:var(--lg-gold);box-shadow:0 0 8px var(--lg-gold);transform-origin:3px 29px;animation:lgSpin 6s linear infinite}
+@keyframes lgSpin{to{transform:rotate(360deg)}}
+.sidebar-section-label{color:rgba(255,255,255,.38) !important;letter-spacing:1.4px}
+.nav-btn{border-radius:11px !important;transition:background .25s var(--lg-ease),color .2s,transform .25s var(--lg-ease) !important}
+.nav-btn:hover{background:rgba(255,255,255,.08) !important;transform:translateX(3px)}
+.nav-btn .nav-icon,.nav-btn .nav-ico{transition:transform .35s var(--lg-spring)}
+.nav-btn:hover .nav-icon,.nav-btn:hover .nav-ico{transform:scale(1.15)}
+.nav-btn.active{
+  background:linear-gradient(100deg,rgba(58,104,255,.95),rgba(30,63,209,.85)) !important;color:#fff !important;font-weight:600;
+  box-shadow:0 10px 22px -10px rgba(47,92,255,.9),inset 0 0 0 1px rgba(255,255,255,.14)}
+.nav-btn.active::before{background:var(--lg-gold) !important;box-shadow:0 0 10px var(--lg-gold);width:3px !important;border-radius:3px}
+.sidebar-user{background:rgba(255,255,255,.06) !important;border:1px solid rgba(255,255,255,.1) !important;border-radius:14px !important;backdrop-filter:blur(6px)}
+.sidebar-action-btn{border-radius:10px !important;transition:background .2s,transform .2s var(--lg-ease) !important}
+.sidebar-action-btn:hover{transform:translateY(-1px)}
+
+/* ---------- Topbar: กระจกขาว + เส้นไล่สีแบบขอบการ์ด login ---------- */
+.topbar{background:rgba(255,255,255,.82) !important;backdrop-filter:blur(12px) saturate(1.4);-webkit-backdrop-filter:blur(12px) saturate(1.4);
+  border-bottom:1px solid rgba(15,26,64,.06) !important;box-shadow:0 6px 20px -16px rgba(15,26,64,.4) !important}
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--lg-edge);opacity:.55;
+  background-size:200% 100%;animation:lgFlow 10s linear infinite}
+@keyframes lgFlow{to{background-position:-200% 0}}
+.topbar-page-title{background:linear-gradient(90deg,#14204A,#2F5CFF);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- พื้นที่เนื้อหา: แสงอ่อนจาง ๆ มุมบน ---------- */
+.main{background:
+  radial-gradient(900px 420px at 0% 0%, rgba(47,92,255,.07) 0%, transparent 60%),
+  radial-gradient(700px 380px at 100% 0%, rgba(92,200,255,.08) 0%, transparent 60%),
+  var(--bg) !important}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:rgba(47,92,255,.22);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.main::-webkit-scrollbar-thumb:hover{background-color:rgba(47,92,255,.4)}
+
+/* ---------- เปลี่ยนหน้า: เลื่อนขึ้น + จางเข้า ---------- */
+.page.active{animation:lgPageIn .55s var(--lg-ease) both !important}
+@keyframes lgPageIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* การ์ดในหน้า ไล่ลำดับเข้า */
+.page.active .metrics>*,.page.active .ft2-tasks>*,.page.active .sq2-kpis>*,.page.active .card-grid>*:nth-child(-n+12){animation:lgRise .6s var(--lg-ease) both}
+.page.active .metrics>*:nth-child(2),.page.active .ft2-tasks>*:nth-child(2),.page.active .sq2-kpis>*:nth-child(2),.page.active .card-grid>*:nth-child(2){animation-delay:.06s}
+.page.active .metrics>*:nth-child(3),.page.active .ft2-tasks>*:nth-child(3),.page.active .sq2-kpis>*:nth-child(3),.page.active .card-grid>*:nth-child(3){animation-delay:.12s}
+.page.active .metrics>*:nth-child(4),.page.active .sq2-kpis>*:nth-child(4),.page.active .card-grid>*:nth-child(4){animation-delay:.18s}
+.page.active .metrics>*:nth-child(5),.page.active .card-grid>*:nth-child(5){animation-delay:.24s}
+.page.active .card-grid>*:nth-child(n+6){animation-delay:.3s}
+@keyframes lgRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* ---------- การ์ด: มุมโค้ง เงานุ่ม ยกขึ้นเมื่อชี้ ---------- */
+.metric,.chart-card,.tbl-wrap,.student-card,.ft2-overview,.ft2-task,.ft2-list,.sq2-card,.sq2-kpi,.sh-card,.wl-card{
+  border-radius:16px !important;border-color:rgba(15,26,64,.07) !important;
+  box-shadow:0 1px 2px rgba(15,26,64,.04),0 8px 24px -12px rgba(15,26,64,.14) !important}
+.metric,.ft2-task,.sq2-kpi,.student-card{transition:transform .35s var(--lg-ease),box-shadow .35s var(--lg-ease) !important}
+.metric:hover,.ft2-task:hover,.sq2-kpi:hover,.student-card:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgba(15,26,64,.05),0 18px 34px -14px rgba(47,92,255,.32) !important}
+/* การ์ดภาพรวมหน้าติดตาม: แถบหัวไล่สีแบบ login */
+.ft2-overview,.sq2-dash .sq2-kpis + .sq2-dash-grid{position:relative}
+.ft2-overview{overflow:hidden}
+.ft2-overview::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--lg-edge)}
+.ft2-big-num{background:linear-gradient(90deg,#1E3FD1,#2F5CFF,#5CC8FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ft2-stack .seg,.sq2-meter>span,.sq2-stack .seg{transition:width 1s var(--lg-ease),flex .8s var(--lg-ease)}
+
+/* ---------- ปุ่มหลัก: ไล่สี + แสงวิ่ง (เหมือนปุ่มเข้าสู่ระบบ) ---------- */
+.btn-primary,.topbar-btn-primary,.ft2-btn-primary,.sq2-btn-primary,.sf-btn-primary,.uid-info .uid-ok{
+  position:relative;overflow:hidden;background:var(--lg-grad) !important;border-color:transparent !important;color:#fff !important;
+  box-shadow:0 10px 22px -12px rgba(47,92,255,.85) !important;transition:transform .25s var(--lg-ease),box-shadow .25s !important}
+.btn-primary::after,.topbar-btn-primary::after,.ft2-btn-primary::after,.sq2-btn-primary::after,.sf-btn-primary::after{
+  content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;transform:skewX(-20deg);pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transition:left .7s var(--lg-ease)}
+.btn-primary:hover:not(:disabled),.topbar-btn-primary:hover,.ft2-btn-primary:hover,.sq2-btn-primary:hover:not(:disabled),.sf-btn-primary:hover:not(:disabled){
+  transform:translateY(-2px);box-shadow:0 16px 28px -12px rgba(47,92,255,.9) !important}
+.btn-primary:hover::after,.topbar-btn-primary:hover::after,.ft2-btn-primary:hover::after,.sq2-btn-primary:hover::after,.sf-btn-primary:hover::after{left:130%}
+.btn-primary:active,.ft2-btn-primary:active,.sq2-btn-primary:active{transform:translateY(0) scale(.98)}
+
+/* ---------- ช่องกรอก: วงโฟกัสแบบ login ---------- */
+.main input:not([type=checkbox]):not([type=radio]):focus,.main select:focus,.main textarea:focus,.modal input:focus,.modal select:focus,.modal textarea:focus{
+  outline:none;border-color:var(--lg-blue) !important;box-shadow:0 0 0 4px rgba(47,92,255,.14) !important}
+
+/* ---------- Modal: ฉากหลังน้ำเงินเบลอ + เปิดแบบลอยขึ้น ---------- */
+.modal-overlay{background:rgba(6,14,43,.5) !important;backdrop-filter:blur(8px) !important;-webkit-backdrop-filter:blur(8px) !important}
+.modal-overlay.open .modal{animation:lgModalIn .5s var(--lg-ease) both !important}
+@keyframes lgModalIn{from{opacity:0;transform:translateY(26px) scale(.97)}to{opacity:1;transform:none}}
+.modal{border-radius:22px !important;box-shadow:0 40px 80px -24px rgba(6,14,43,.55) !important}
+.uid-backdrop{background:rgba(6,14,43,.5) !important}
+
+/* ---------- ตาราง: หัวตารางสะอาด แถวไฮไลต์นุ่ม ---------- */
+.tbl-wrap thead th,.ft2-table th,.sq2-table th{background:linear-gradient(180deg,#F8FAFE,#F2F5FB) !important}
+.tbl-wrap tbody tr,.ft2-table tbody tr,.sq2-table tbody tr{transition:background .2s}
+.tbl-wrap tbody tr:hover td{background:#F7F9FF}
+
+/* ---------- ชิป/ป้ายสถานะ: ขยับเด้งเบา ๆ ---------- */
+.ft2-chip,.sq2-chip,.wl-chip{transition:background .2s,color .2s,border-color .2s,transform .25s var(--lg-spring) !important}
+.ft2-chip:active,.sq2-chip:active,.wl-chip:active{transform:scale(.95)}
+
+@media (prefers-reduced-motion:reduce){
+  .sidebar::before,.sidebar-logo-wrap::before,.sidebar-logo-wrap::after,.topbar::after{animation:none !important}
+  .page.active,.page.active *{animation:none !important}
+  .nav-btn:hover{transform:none}
+}
+
+/* v41 — แบนเนอร์ต้อนรับ Dashboard */
+.hx{position:relative;overflow:hidden;display:flex;align-items:center;gap:28px;margin-bottom:20px;padding:26px 30px;border-radius:20px;color:#fff;
+  background:radial-gradient(520px 300px at 0% 0%,rgba(47,92,255,.9) 0%,transparent 65%),radial-gradient(420px 300px at 100% 120%,rgba(92,200,255,.35) 0%,transparent 60%),
+    linear-gradient(120deg,#122E86 0%,#0B1A46 60%,#060E2B 100%);
+  box-shadow:0 24px 50px -24px rgba(11,26,70,.75);animation:lgRise .7s var(--lg-ease) both}
+.hx-stars{position:absolute;inset:0;opacity:.6;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 8% 30%,#fff 50%,transparent 51%),radial-gradient(1.3px 1.3px at 22% 78%,#fff 50%,transparent 51%),
+    radial-gradient(1px 1px at 45% 18%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 63% 64%,#fff 50%,transparent 51%),
+    radial-gradient(1.4px 1.4px at 78% 22%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 92% 82%,#fff 50%,transparent 51%),
+    radial-gradient(1px 1px at 35% 50%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 55% 90%,#fff 50%,transparent 51%);
+  animation:lgTwinkle 4.5s ease-in-out infinite}
+.hx-orbit{position:absolute;right:210px;top:50%;width:220px;height:220px;margin-top:-110px;opacity:.5;pointer-events:none}
+.hx-orbit span{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(255,255,255,.35);animation:lgSpin 24s linear infinite}
+.hx-orbit .r2{inset:38px;border-style:solid;border-color:rgba(92,200,255,.3);animation-duration:14s;animation-direction:reverse}
+.hx-orbit i{position:absolute;top:-4px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--lg-gold);box-shadow:0 0 12px var(--lg-gold)}
+.hx-orbit .r2 i{background:var(--lg-cyan);box-shadow:0 0 12px var(--lg-cyan)}
+.hx-orbit .core{inset:96px;border:none;background:radial-gradient(circle,rgba(255,255,255,.5),transparent 70%);animation:none}
+.hx-main{position:relative;flex:1;min-width:0}
+.hx-date{font-size:12.5px;color:rgba(255,255,255,.65);font-weight:600}
+.hx h2{margin:4px 0 4px;font-size:clamp(22px,2.4vw,30px);font-weight:800;line-height:1.25;letter-spacing:-.2px}
+.hx h2 span{background:linear-gradient(90deg,#FFD66B,#FFC531,#FFE7A3,#FFC531);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:lgFlow 6s linear infinite}
+.hx p{font-size:14px;color:rgba(255,255,255,.78)}
+.hx p b{color:#fff}
+.hx-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.hx-btn{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:9px 16px;font:inherit;font-size:13.5px;font-weight:600;
+  cursor:pointer;backdrop-filter:blur(6px);transition:background .25s,transform .25s var(--lg-ease),border-color .25s}
+.hx-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4);transform:translateY(-2px)}
+.hx-btn.primary{background:#fff;color:#1E3FD1;border-color:#fff}
+.hx-btn.primary:hover{background:#F0F4FF}
+.hx-btn:focus-visible{outline:2px solid var(--lg-gold);outline-offset:2px}
+.hx-prog{position:relative;flex:none;width:138px;height:138px}
+.hx-prog svg{width:100%;height:100%;transform:rotate(-90deg)}
+.hx-prog circle{fill:none;stroke-width:10}
+.hx-prog .bgc{stroke:rgba(255,255,255,.14)}
+.hx-prog .fgc{stroke:url(#none);stroke:var(--lg-gold);stroke-linecap:round;transition:stroke-dashoffset 1.3s var(--lg-ease);filter:drop-shadow(0 0 6px rgba(255,197,49,.55))}
+.hx-prog-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.hx-prog-in b{font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.hx-prog-in span{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:3px}
+.hx-prog-in small{font-size:11px;color:rgba(255,255,255,.55)}
+@media (max-width:900px){.hx{flex-direction:column;align-items:flex-start;padding:22px}.hx-orbit{display:none}.hx-prog{align-self:center}}
+@media (prefers-reduced-motion:reduce){.hx,.hx-stars,.hx-orbit span,.hx h2 span{animation:none}.hx-prog .fgc{transition:none}}

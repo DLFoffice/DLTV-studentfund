@@ -312,11 +312,11 @@ function renderStudents(){
         </div>
         <div class="card-body">
           <div class="card-name">${escHtml(s.name||'(ยังไม่ระบุชื่อ)')}</div>
-          <div class="card-nickname">"${escHtml(s.nickname)}"</div>
+          ${s.nickname?`<div class="card-nickname">"${escHtml(s.nickname)}"</div>`:''}
           <div class="card-school">🏫 ${escHtml(s.school_m1)}</div>
           ${gv>0?`<div class="card-gpa-row">
             <div>
-              <div class="card-gpa-val" style="color:${gpaColor(gv)}">${escHtml(gv)}</div>
+              <div class="card-gpa-val" style="color:${gpaColor(gv)}">${escHtml((Math.round(gv*100)/100).toFixed(2))}</div>
               <div class="card-gpa-lbl">GPA</div>
             </div>
             <div class="card-bar"><div class="card-bar-fill" style="width:${(gv/4*100).toFixed(0)}%;background:${gpaColor(gv)}"></div></div>
