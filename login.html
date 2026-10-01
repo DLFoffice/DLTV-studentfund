@@ -2,214 +2,316 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1A46">
 <title>เข้าสู่ระบบ — ระบบดูแลนักเรียนทุนการศึกษาพระราชทานฯ DLTV</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   หน้าเข้าสู่ระบบ v40 — ธีม "ดาวเทียมการศึกษา"
+   พื้นหลังน้ำเงินลึกพร้อมแสงเคลื่อนไหว ดาวกระพริบ วงโคจรรอบโลโก้ (สื่อถึงการศึกษาทางไกลผ่านดาวเทียม)
+   motion: เปิดหน้าแบบไล่ลำดับ, ตัวเลขนับขึ้น, การ์ดเอียงตามเมาส์, ปุ่มประกาย, สั่นเมื่อผิด, ติ๊กถูกเมื่อสำเร็จ
+   ทุก animation ปิดอัตโนมัติเมื่อผู้ใช้ตั้งค่า "ลดการเคลื่อนไหว" (prefers-reduced-motion)
+   ============================================================ */
 :root{
-  --navy-1:#12245C; --navy-2:#0B1A46; --blue:#2F5CFF; --blue-dk:#1E3FD1; --blue-lt:#EEF2FF;
-  --gold:#FFC531; --ink:#20233A; --muted:#8A8F9E; --line:#E9EDF3;
-  --card:#FFFFFF; --err:#DC2626; --panel-bg:#F7F9FC;
+  --navy-0:#060E2B; --navy-1:#0B1A46; --navy-2:#12245C; --blue:#2F5CFF; --blue-dk:#1E3FD1; --blue-lt:#EEF2FF;
+  --cyan:#5CC8FF; --gold:#FFC531; --ink:#1A1F36; --muted:#6B7287; --line:#E3E8F2; --err:#DC2626; --ok:#16A34A;
+  --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;display:flex;
-  background:var(--panel-bg);
-}
-h1,h2{font-family:'Noto Sans Thai',sans-serif}
+html,body{min-height:100%}
+body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;min-height:100dvh;
+  background:var(--navy-0);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
-/* ================= ฝั่งซ้าย : HERO (น้ำเงินเข้ม) ================= */
-.hero{
-  flex:1.2;padding:46px 54px;display:flex;flex-direction:column;position:relative;overflow:hidden;
-  color:#fff;min-height:100vh;
-  background:
-    radial-gradient(620px 460px at 108% 8%, rgba(255,255,255,.10) 0%, transparent 62%),
-    radial-gradient(520px 520px at 30% 62%, rgba(255,255,255,.14) 0%, transparent 60%),
-    linear-gradient(150deg, var(--navy-1) 0%, var(--blue) 46%, var(--navy-2) 100%);
-}
-.hero-glow{position:absolute;left:6%;bottom:10%;width:420px;height:420px;border-radius:50%;
-  background:radial-gradient(circle, rgba(255,255,255,.20) 0%, transparent 70%);filter:blur(6px);pointer-events:none}
+/* ---------- พื้นหลังเคลื่อนไหว ---------- */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;
+  background:radial-gradient(1200px 800px at 15% 0%, #1B3A9E 0%, transparent 60%),
+             radial-gradient(1000px 700px at 100% 100%, #0F2A7A 0%, transparent 55%),
+             linear-gradient(160deg, var(--navy-1) 0%, var(--navy-0) 100%)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;will-change:transform}
+.blob.b1{width:520px;height:520px;left:-120px;top:-80px;background:#2F5CFF;animation:drift1 22s ease-in-out infinite}
+.blob.b2{width:440px;height:440px;right:-100px;top:30%;background:#5CC8FF;opacity:.32;animation:drift2 26s ease-in-out infinite}
+.blob.b3{width:380px;height:380px;left:30%;bottom:-160px;background:#6D4BFF;opacity:.35;animation:drift3 30s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(140px,90px) scale(1.12)}}
+@keyframes drift2{50%{transform:translate(-120px,-70px) scale(.9)}}
+@keyframes drift3{50%{transform:translate(-90px,-120px) scale(1.15)}}
+.grid{position:absolute;inset:0;opacity:.18;
+  background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(ellipse at 35% 45%, #000 0%, transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 35% 45%, #000 0%, transparent 70%)}
+#stars{position:absolute;inset:0;width:100%;height:100%}
 
-.brand{display:flex;align-items:center;gap:12px;position:relative;z-index:2}
-.brand-logo{width:48px;height:48px;border-radius:12px;background:#fff;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  box-shadow:0 6px 18px rgba(0,0,0,.18);overflow:hidden;padding:6px}
-.brand-logo img{width:100%;height:100%;object-fit:contain}
-.brand-name{font-family:'Noto Sans Thai';font-weight:800;font-size:17px;line-height:1.25}
-.brand-sub{font-size:10px;letter-spacing:2.6px;color:rgba(255,255,255,.6);font-weight:700;margin-top:2px}
+/* ---------- โครงหน้า ---------- */
+.shell{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);
+  padding:max(28px,env(safe-area-inset-top)) clamp(20px,4vw,56px) max(24px,env(safe-area-inset-bottom));gap:clamp(24px,4vw,64px);align-items:center}
 
-.tagline{margin-top:44px;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.3px;
-  display:flex;align-items:center;gap:8px;position:relative;z-index:2}
-.tagline::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block}
-.headline{margin-top:12px;font-size:clamp(30px,3.6vw,44px);font-weight:800;line-height:1.2;position:relative;z-index:2}
-.headline .accent{color:var(--gold)}
-.sub{margin-top:16px;max-width:460px;font-size:14.5px;line-height:1.8;color:rgba(255,255,255,.78);position:relative;z-index:2}
+/* ---------- ฝั่งซ้าย ---------- */
+.hero{color:#fff;display:flex;flex-direction:column;gap:22px;max-width:640px}
+.brand{display:flex;align-items:center;gap:14px}
+.orbit{position:relative;width:72px;height:72px;flex:none}
+.orbit .logo{position:absolute;inset:12px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;padding:5px;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2}
+.orbit .logo img{width:100%;height:100%;object-fit:contain}
+.orbit .ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(255,255,255,.35);animation:spin 14s linear infinite}
+.orbit .ring.r2{inset:-10px;border:1px solid rgba(92,200,255,.25);animation-duration:22s;animation-direction:reverse}
+.orbit .sat{position:absolute;top:-4px;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 0 3px rgba(255,197,49,.25),0 0 14px var(--gold)}
+.orbit .ring.r2 .sat{background:var(--cyan);box-shadow:0 0 0 3px rgba(92,200,255,.25),0 0 14px var(--cyan);top:auto;bottom:-4px;width:7px;height:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.brand-name{font-weight:800;font-size:19px;line-height:1.2;letter-spacing:.2px}
+.brand-sub{font-size:10.5px;letter-spacing:3px;color:rgba(255,255,255,.6);font-weight:700;margin-top:3px}
 
-/* Feature grid 2x2 (การ์ดกระจก) */
-.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:38px;position:relative;z-index:2;max-width:560px}
-.feature-card{background:rgba(255,255,255,.08);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);
-  border-radius:14px;padding:15px 16px;display:flex;gap:12px;align-items:flex-start;transition:background .15s}
-.feature-card:hover{background:rgba(255,255,255,.13)}
-.feature-ic{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.16);
-  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.feature-card b{display:block;font-family:'Noto Sans Thai';font-size:13.5px;font-weight:700;margin-bottom:3px}
-.feature-card span{font-size:11.5px;color:rgba(255,255,255,.68);line-height:1.55;display:block}
+.tagline{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:6px 14px 6px 10px;border-radius:999px;
+  background:rgba(255,197,49,.12);border:1px solid rgba(255,197,49,.35);color:var(--gold);font-size:12.5px;font-weight:700}
+.tagline .pulse{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 0 rgba(255,197,49,.6);animation:pulse 2.2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(255,197,49,0)}100%{box-shadow:0 0 0 0 rgba(255,197,49,0)}}
+.headline{font-size:clamp(32px,4vw,54px);font-weight:800;line-height:1.18;letter-spacing:-.3px}
+.headline .line{display:block;overflow:hidden;padding-bottom:.06em}
+.headline .line>span{display:inline-block}
+.headline .accent{background:linear-gradient(90deg,#FFD66B 0%,#FFC531 40%,#FFE7A3 60%,#FFC531 100%);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:-200% 0}}
+.sub{max-width:520px;font-size:15px;line-height:1.85;color:rgba(255,255,255,.75)}
 
-.hero-spacer{flex:1;min-height:24px}
+.features{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:580px}
+.feat{position:relative;display:flex;gap:12px;align-items:flex-start;padding:14px 15px;border-radius:16px;overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .35s var(--ease),border-color .3s,background .3s}
+.feat::after{content:"";position:absolute;inset:0;background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.14),transparent 60%);
+  opacity:0;transition:opacity .3s}
+.feat:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.3)}
+.feat:hover::after{opacity:1}
+.feat .ic{flex:none;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.12);color:#fff}
+.feat .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feat b{display:block;font-size:13.5px;font-weight:700;margin-bottom:2px}
+.feat span{font-size:11.8px;line-height:1.55;color:rgba(255,255,255,.66);display:block}
 
-/* Stat row ล่างสุด */
-.stat-row{display:flex;gap:34px;flex-wrap:wrap;position:relative;z-index:2;margin-top:20px}
-.stat-item b{display:block;font-size:24px;font-weight:800;font-family:'Noto Sans Thai'}
-.stat-item span{font-size:11px;color:rgba(255,255,255,.62);font-weight:600}
+.stats{display:flex;gap:clamp(18px,3vw,40px);flex-wrap:wrap;margin-top:6px}
+.stat b{display:block;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600}
 
-/* ================= ฝั่งขวา : LOGIN PANEL ================= */
-.panel{flex:1;display:flex;flex-direction:column;padding:36px 6% 28px;min-height:100vh;background:#fff}
-.panel-top{display:flex;align-items:center;justify-content:space-between;max-width:400px;margin:0 auto;width:100%}
-.panel-brand{display:flex;align-items:center;gap:10px}
-.panel-logo{width:34px;height:34px;border-radius:9px;background:var(--blue-lt);display:flex;align-items:center;
-  justify-content:center;overflow:hidden;padding:4px}
-.panel-logo img{width:100%;height:100%;object-fit:contain}
-.panel-brand-text{font-family:'Noto Sans Thai';font-weight:800;font-size:14px;color:var(--ink)}
-.year-badge{background:var(--blue-lt);color:var(--blue-dk);font-size:11px;font-weight:700;padding:5px 11px;
-  border-radius:20px;font-family:'Noto Sans Thai'}
+/* ---------- ฝั่งขวา: การ์ดเข้าสู่ระบบ ---------- */
+.card-wrap{display:flex;justify-content:center;perspective:1200px}
+.card-col{width:min(440px,100%)}
+.card{position:relative;width:min(440px,100%);background:rgba(255,255,255,.97);border-radius:24px;padding:30px clamp(22px,3vw,36px) 24px;
+  box-shadow:0 40px 80px -24px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.4) inset;transform-style:preserve-3d;transition:transform .5s var(--ease)}
+.card::before{content:"";position:absolute;inset:-1px;border-radius:25px;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(92,200,255,.9),rgba(47,92,255,.2) 35%,transparent 60%,rgba(255,197,49,.7));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+.mini{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px}
+.mini img{width:30px;height:30px;object-fit:contain;border-radius:8px;background:var(--blue-lt);padding:3px}
+.year{font-size:11.5px;font-weight:700;color:var(--blue-dk);background:var(--blue-lt);padding:5px 12px;border-radius:999px}
+.card h2{font-size:25px;font-weight:800;display:flex;align-items:center;gap:8px;letter-spacing:-.2px}
+.wave{display:inline-block;transform-origin:70% 70%;animation:wave 2.4s ease-in-out 1.2s 2}
+@keyframes wave{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%{transform:rotate(-8deg)}40%{transform:rotate(-4deg)}50%{transform:rotate(10deg)}}
+.hint{font-size:13.5px;color:var(--muted);margin:6px 0 22px;line-height:1.6}
 
-.panel-form-wrap{flex:1;display:flex;align-items:center;justify-content:center}
-.form-box{width:min(400px,100%)}
-.form-box h2{font-size:23px;font-weight:800;display:flex;align-items:center;gap:8px}
-.form-box .hint{font-size:13.5px;color:var(--muted);margin:6px 0 26px}
+.fld{position:relative;margin-top:14px}
+.fld label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--ink)}
+.ctl{position:relative}
+.ctl input{width:100%;height:50px;padding:0 46px 0 44px;border:1.5px solid var(--line);border-radius:13px;font:inherit;font-size:15px;color:var(--ink);
+  background:#F7F9FD;transition:border-color .2s,box-shadow .25s,background .2s}
+.ctl input::placeholder{color:#A3A9B8}
+.ctl input:hover{border-color:#CDD5E5}
+.ctl input:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 4px rgba(47,92,255,.14)}
+.ctl .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:19px;height:19px;color:#9AA3B5;transition:color .2s,transform .3s var(--spring);pointer-events:none}
+.ctl .ic svg,.eye svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ctl input:focus ~ .ic{color:var(--blue);transform:translateY(-50%) scale(1.12)}
+.eye{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;background:none;border-radius:10px;cursor:pointer;
+  color:#8C94A6;display:flex;align-items:center;justify-content:center;padding:8px;transition:background .2s,color .2s}
+.eye:hover{background:var(--blue-lt);color:var(--blue)}
+.eye:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.eye .off{display:none}.eye.on .on{display:none}.eye.on .off{display:block}
+.caps{display:none;margin-top:6px;font-size:12px;color:#B45309}
+.caps.show{display:block;animation:fadeIn .25s}
 
-label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';margin:15px 0 6px;color:var(--ink)}
-.field{position:relative}
-.field input{width:100%;padding:12px 42px 12px 40px;border:1.5px solid var(--line);border-radius:10px;font-size:14.5px;
-  font-family:'Noto Sans Thai';background:#FAFBFD;transition:border-color .15s, box-shadow .15s}
-.field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,92,255,.14);background:#fff}
-.field .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5}
-.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;
-  padding:7px;font-size:16px;opacity:.55;border-radius:8px}
-.eye:hover{opacity:1;background:var(--blue-lt)}
-.eye:focus-visible{outline:2px solid var(--blue)}
-.row{display:flex;justify-content:space-between;align-items:center;margin-top:15px;font-size:12.5px}
-.remember{display:flex;gap:7px;align-items:center;color:#5A5F6E;cursor:pointer;user-select:none}
-.remember input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer}
-.forgot{color:var(--blue-dk);font-weight:600;text-decoration:none}
-.forgot:hover{text-decoration:underline}
-.btn{width:100%;margin-top:22px;padding:13px;border:none;border-radius:11px;cursor:pointer;
-  font-family:'Noto Sans Thai';font-size:15.5px;font-weight:700;color:#fff;
-  background:linear-gradient(90deg,var(--blue) 0%,var(--blue-dk) 100%);
-  box-shadow:0 10px 22px rgba(47,92,255,.32);transition:transform .12s, box-shadow .12s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(47,92,255,.4)}
-.btn:disabled{opacity:.65;transform:none;cursor:not-allowed}
-.err{color:var(--err);font-size:13px;margin-top:12px;min-height:19px;text-align:center}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px}
+.remember{display:flex;gap:8px;align-items:center;color:#4B5265;cursor:pointer;user-select:none}
+.remember input{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:1.5px solid #C5CCDA;border-radius:5px;display:grid;place-content:center;cursor:pointer;transition:all .2s}
+.remember input::after{content:"";width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) scale(0);margin-top:-2px;transition:transform .25s var(--spring)}
+.remember input:checked{background:var(--blue);border-color:var(--blue)}
+.remember input:checked::after{transform:rotate(-45deg) scale(1)}
+.remember input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.forgot{color:var(--blue-dk);font-weight:600;text-decoration:none;position:relative}
+.forgot::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:1.5px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .3s var(--ease)}
+.forgot:hover::after{transform:scaleX(1);transform-origin:left}
 
-.divider{display:flex;align-items:center;gap:10px;margin-top:24px;color:var(--muted);font-size:11.5px}
+.btn{position:relative;overflow:hidden;width:100%;height:52px;margin-top:22px;border:none;border-radius:14px;cursor:pointer;
+  font:inherit;font-size:16px;font-weight:700;color:#fff;background:linear-gradient(100deg,#3A68FF 0%,var(--blue) 45%,var(--blue-dk) 100%);
+  box-shadow:0 14px 28px -10px rgba(47,92,255,.7);transition:transform .25s var(--ease),box-shadow .25s}
+.btn::before{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transition:left .7s var(--ease)}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 18px 34px -10px rgba(47,92,255,.8)}
+.btn:hover:not(:disabled)::before{left:120%}
+.btn:active:not(:disabled){transform:translateY(0) scale(.99)}
+.btn:focus-visible{outline:3px solid rgba(47,92,255,.35);outline-offset:3px}
+.btn:disabled{cursor:progress}
+.btn .lbl,.btn .spin,.btn .done{display:inline-flex;align-items:center;gap:8px;transition:opacity .2s,transform .3s var(--ease)}
+.btn .lbl svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease)}
+.btn:hover .lbl svg{transform:translateX(4px)}
+.btn .spin,.btn .done{position:absolute;inset:0;justify-content:center;opacity:0;transform:translateY(8px)}
+.btn .spin i{width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+.btn.loading .lbl{opacity:0;transform:translateY(-8px)}
+.btn.loading .spin{opacity:1;transform:none}
+.btn.success{background:linear-gradient(100deg,#22C55E,var(--ok))}
+.btn.success .lbl,.btn.success .spin{opacity:0;transition-duration:.08s}
+.btn.success .done{transition-delay:.1s}
+.btn.success .done{opacity:1;transform:none}
+.btn .done svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24}
+.btn.success .done svg{animation:draw .45s var(--ease) .05s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+.err{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:0 12px;border-radius:11px;font-size:13px;line-height:1.5;color:var(--err);
+  background:#FEF2F2;border:1px solid transparent;max-height:0;opacity:0;overflow:hidden;transition:max-height .35s var(--ease),opacity .25s,padding .35s var(--ease),border-color .3s}
+.err.show{max-height:90px;opacity:1;padding:10px 12px;border-color:#FBD5D5}
+.err::before{content:"!";flex:none;width:18px;height:18px;border-radius:50%;background:var(--err);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.err:empty::before{display:none}
+.card.shake{animation:shake .45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+
+.divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:#A3A9B8;font-size:12px}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.alt{display:flex;flex-direction:column;gap:10px}
+.alt a.req{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);text-decoration:none;color:var(--ink);
+  transition:border-color .25s,transform .25s var(--ease),box-shadow .25s,background .25s}
+.alt a.req:hover{border-color:var(--blue);background:#FAFBFF;transform:translateY(-2px);box-shadow:0 10px 22px -12px rgba(47,92,255,.45)}
+.alt a.req:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.req .ric{flex:none;width:38px;height:38px;border-radius:11px;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center}
+.req .ric svg,.req .go{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.req b{display:block;font-size:13.5px}
+.req span{display:block;font-size:12px;color:var(--muted)}
+.req .go{margin-left:auto;color:#A3A9B8;transition:transform .3s var(--ease),color .2s}
+.alt a.req:hover .go{transform:translateX(4px);color:var(--blue)}
+.help{text-align:center;font-size:12px;color:var(--muted)}
+.copy{text-align:center;font-size:11.5px;color:rgba(255,255,255,.45);margin-top:16px}
 
-.foot{margin-top:16px;text-align:center;font-size:12.5px}
-.foot .contact{margin-bottom:8px;color:var(--muted)}
-.foot .contact a{color:var(--blue-dk);font-weight:600;text-decoration:none}
-.foot .contact a:hover{text-decoration:underline}
-
-.panel-copy{text-align:center;font-size:11.5px;color:#AFB6C4;margin-top:auto;padding-top:18px}
-
-/* ---- Modal ลืมรหัสผ่าน ---- */
-.modal-bg{position:fixed;inset:0;background:rgba(10,16,40,.55);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
-.modal-bg.open{display:flex}
-.modal{width:min(380px,92%);background:#fff;border-radius:16px;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal h3{font-family:'Noto Sans Thai';font-size:17px;margin-bottom:6px}
-.modal p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px}
-.modal input{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font-family:'Noto Sans Thai'}
+/* ---------- Modal ลืมรหัสผ่าน ---------- */
+.modal-bg{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(6,14,43,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+.modal-bg.open{opacity:1;visibility:visible}
+.modal{width:min(400px,100%);background:#fff;border-radius:20px;padding:28px;box-shadow:0 30px 70px rgba(0,0,0,.4);
+  transform:translateY(16px) scale(.97);transition:transform .35s var(--ease)}
+.modal-bg.open .modal{transform:none}
+.modal .mic{width:52px;height:52px;border-radius:50%;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.modal .mic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.modal h3{font-size:19px;margin-bottom:6px}
+.modal p{font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:14px}
+.modal p .warn{display:block;margin-top:6px;color:#B45309;font-size:12.5px}
+.modal input{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;font:inherit;font-size:15px;background:#F7F9FD}
+.modal input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(47,92,255,.14);background:#fff}
 .modal .actions{display:flex;gap:10px;margin-top:16px}
-.modal .actions button{flex:1;padding:10px;border-radius:10px;font-family:'Noto Sans Thai';font-weight:700;font-size:14px;cursor:pointer}
-.mcancel{border:1.5px solid var(--line);background:#fff;color:#5A5F6E}
-.mok{border:none;background:linear-gradient(90deg,var(--blue),var(--blue-dk));color:#fff}
-.mmsg{font-size:12.5px;margin-top:10px;min-height:17px}
+.modal .actions button{flex:1;height:46px;border-radius:12px;font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;transition:transform .2s,background .2s}
+.mcancel{border:1.5px solid var(--line);background:#fff;color:#4B5265}
+.mcancel:hover{background:#F4F6FA}
+.mok{border:none;background:linear-gradient(100deg,#3A68FF,var(--blue-dk));color:#fff}
+.mok:hover{transform:translateY(-1px)}
+.mmsg{font-size:13px;margin-top:10px;min-height:18px}
 
-@media (max-width:920px){
-  body{flex-direction:column}
-  .hero{padding:30px 26px;min-height:auto}
-  .feature-grid{max-width:100%}
-  .stat-row{margin-bottom:6px}
-  .panel{padding:26px 6% 30px;min-height:auto}
+/* ---------- ลำดับการเปิดหน้า (stagger) ---------- */
+.rise{opacity:0;transform:translateY(22px);animation:rise .9s var(--ease) forwards;animation-delay:calc(var(--d,0) * 90ms + 120ms)}
+.headline .line>span{transform:translateY(105%);animation:lineUp 1s var(--ease) forwards;animation-delay:calc(var(--d,0) * 120ms + 260ms)}
+.card-enter{opacity:0;transform:translateY(40px) rotateX(8deg) scale(.97);animation:cardIn 1.1s var(--ease) .25s forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+@keyframes lineUp{to{transform:none}}
+@keyframes cardIn{to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.leaving .hero,.leaving .card-wrap{transition:opacity .5s var(--ease),transform .6s var(--ease)}
+.leaving .hero{opacity:0;transform:translateX(-30px)}
+.leaving .card-wrap{opacity:0;transform:scale(.96)}
+
+/* ---------- จอเล็ก ---------- */
+@media (max-width:980px){
+  .shell{grid-template-columns:1fr;align-items:start;gap:22px;padding-top:max(22px,env(safe-area-inset-top))}
+  .hero{max-width:none;gap:14px}
+  .hero .sub,.features,.stats{display:none}
+  .headline{font-size:clamp(26px,7vw,36px)}
+  .card{border-radius:22px}
+  .card-top .mini{visibility:hidden}
 }
-@media (max-width:480px){
-  .feature-grid{grid-template-columns:1fr}
+@media (max-width:420px){ .card{padding:24px 18px 20px} .orbit{width:60px;height:60px} .orbit .logo{inset:10px} }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .rise,.card-enter,.headline .line>span{opacity:1;transform:none}
+  #stars{display:none}
 }
 </style>
 </head>
 <body>
+<div class="bg" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="grid"></div>
+  <canvas id="stars"></canvas>
+</div>
 
-<!-- ═════════ HERO ซ้าย ═════════ -->
-<section class="hero">
-  <div class="hero-glow"></div>
-
-  <div class="brand">
-    <div class="brand-logo"><img src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt="DLTV"></div>
-    <div>
-      <div class="brand-name">DLTV Fund</div>
-      <div class="brand-sub">SCHOLARSHIP CARE SYSTEM</div>
+<main class="shell" id="shell">
+  <!-- ═════════ HERO ═════════ -->
+  <section class="hero" aria-label="เกี่ยวกับระบบ">
+    <div class="brand rise" style="--d:0">
+      <div class="orbit" aria-hidden="true">
+        <div class="ring"><span class="sat"></span></div>
+        <div class="ring r2"><span class="sat"></span></div>
+        <div class="logo"><img src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt=""></div>
+      </div>
+      <div><div class="brand-name">DLTV Fund</div><div class="brand-sub">SCHOLARSHIP CARE SYSTEM</div></div>
     </div>
-  </div>
 
-  <div class="tagline">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
-  <h1 class="headline">ระบบดูแลนักเรียนทุน<br>การศึกษา<span class="accent">พระราชทานฯ</span></h1>
-  <p class="sub">บริหารจัดการข้อมูลนักเรียนทุน ติดตามผลการเรียน ที่อยู่ บัญชีธนาคาร
-    และแบบฟอร์มติดตามความเป็นอยู่ ครบวงจรในศูนย์กลางข้อมูลเดียว บนระบบคลาวด์ที่ปลอดภัย</p>
+    <div class="tagline rise" style="--d:1"><span class="pulse"></span>มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์</div>
+    <h1 class="headline">
+      <span class="line"><span style="--d:0">ระบบดูแลนักเรียนทุน</span></span>
+      <span class="line"><span style="--d:1">การศึกษา<span class="accent">พระราชทานฯ</span></span></span>
+    </h1>
+    <p class="sub rise" style="--d:4">บริหารจัดการข้อมูลนักเรียนทุน ติดตามผลการเรียน ที่อยู่ บัญชีธนาคาร
+      และแบบฟอร์มติดตามความเป็นอยู่ ครบวงจรในศูนย์กลางข้อมูลเดียว บนระบบคลาวด์ที่ปลอดภัย</p>
 
-  <div class="feature-grid">
-    <div class="feature-card">
-      <div class="feature-ic">📊</div>
-      <div><b>ติดตามผลการเรียน</b><span>GPA รายภาคเรียน พร้อมกราฟวิเคราะห์ความเสี่ยง</span></div>
+    <div class="features">
+      <div class="feat rise" style="--d:5"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg></div>
+        <div><b>ติดตามผลการเรียน</b><span>GPA รายภาคเรียน พร้อมวิเคราะห์กลุ่มที่ต้องดูแล</span></div></div>
+      <div class="feat rise" style="--d:6"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 10h18M5 10V7l7-4 7 4v3M6 10v8M10 10v8M14 10v8M18 10v8M3 21h18"/></svg></div>
+        <div><b>บัญชี &amp; การเงิน</b><span>ประวัติการเบิกจ่ายรายภาค สรุปตามระดับชั้น</span></div></div>
+      <div class="feat rise" style="--d:7"><div class="ic"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg></div>
+        <div><b>แบบฟอร์ม &amp; SDQ</b><span>กรอกออนไลน์ ติดตามสถานะการส่งได้ทันที</span></div></div>
+      <div class="feat rise" style="--d:8"><div class="ic"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1-1 8.9M12 13v8M9 16l3-3 3 3"/></svg></div>
+        <div><b>ซิงก์เรียลไทม์</b><span>บันทึกขึ้นคลาวด์ ใช้ได้หลายเครื่องพร้อมกัน</span></div></div>
     </div>
-    <div class="feature-card">
-      <div class="feature-ic">🏦</div>
-      <div><b>ข้อมูลบัญชี &amp; การเงิน</b><span>ที่อยู่ บัญชีธนาคาร ประวัติการเบิกจ่ายทุน</span></div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-ic">📝</div>
-      <div><b>แบบฟอร์มออนไลน์</b><span>แบบฟอร์มติดตาม 1/2 กรอกเอง พร้อมแจ้งเตือนสถานะ</span></div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-ic">☁️</div>
-      <div><b>ซิงก์เรียลไทม์</b><span>บันทึกอัตโนมัติขึ้นคลาวด์ หลายเครื่องพร้อมกัน</span></div>
-    </div>
-  </div>
 
-  <div class="hero-spacer"></div>
-
-  <div class="stat-row">
-    <div class="stat-item"><b>72+</b><span>นักเรียนทุน</span></div>
-    <div class="stat-item"><b>29</b><span>จังหวัดทั่วประเทศ</span></div>
-    <div class="stat-item"><b>100%</b><span>Cloud Sync</span></div>
-    <div class="stat-item"><b>24/7</b><span>เข้าถึงได้ทุกที่</span></div>
-  </div>
-</section>
-
-<!-- ═════════ LOGIN PANEL ขวา ═════════ -->
-<section class="panel">
-  <div class="panel-top">
-    <div class="panel-brand">
-      <div class="panel-logo"><img src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt="DLTV"></div>
-      <div class="panel-brand-text">DLTV Fund</div>
+    <div class="stats rise" style="--d:9">
+      <div class="stat"><b data-count="72" data-suffix="+">0</b><span>นักเรียนทุน</span></div>
+      <div class="stat"><b data-count="29">0</b><span>จังหวัดทั่วประเทศ</span></div>
+      <div class="stat"><b data-count="100" data-suffix="%">0</b><span>Cloud Sync</span></div>
+      <div class="stat"><b>24/7</b><span>เข้าถึงได้ทุกที่</span></div>
     </div>
-    <div class="year-badge">ปีการศึกษา 2568</div>
-  </div>
+  </section>
 
-  <div class="panel-form-wrap">
-    <div class="form-box">
-      <h2>ยินดีต้อนรับกลับ 👋</h2>
+  <!-- ═════════ การ์ดเข้าสู่ระบบ ═════════ -->
+  <section class="card-wrap" aria-label="เข้าสู่ระบบ">
+    <div class="card-col">
+    <div class="card card-enter" id="card">
+      <div class="card-top">
+        <div class="mini"><img src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt="">DLTV Fund</div>
+        <div class="year">ปีการศึกษา 2568</div>
+      </div>
+      <h2>ยินดีต้อนรับกลับ <span class="wave" aria-hidden="true">👋</span></h2>
       <p class="hint">เข้าสู่ระบบเพื่อจัดการข้อมูลนักเรียนทุนการศึกษาพระราชทานฯ</p>
 
-      <label for="login-user">ชื่อผู้ใช้ / อีเมล</label>
-      <div class="field">
-        <span class="ic">👤</span>
-        <input id="login-user" type="text" placeholder="เช่น admin@dltv.ac.th หรือ dltv001" autocomplete="username">
+      <div class="fld">
+        <label for="login-user">ชื่อผู้ใช้ / อีเมล</label>
+        <div class="ctl">
+          <input id="login-user" type="text" placeholder="เช่น admin@dltv.ac.th หรือ dltv001" autocomplete="username" autocapitalize="none" spellcheck="false">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+        </div>
       </div>
-
-      <label for="login-pass">รหัสผ่าน</label>
-      <div class="field">
-        <span class="ic">🔒</span>
-        <input id="login-pass" type="password" placeholder="••••••••••" autocomplete="current-password">
-        <button type="button" class="eye" id="eye-btn" aria-label="แสดงรหัสผ่าน" title="แสดง/ซ่อนรหัสผ่าน">👁️</button>
+      <div class="fld">
+        <label for="login-pass">รหัสผ่าน</label>
+        <div class="ctl">
+          <input id="login-pass" type="password" placeholder="กรอกรหัสผ่าน" autocomplete="current-password">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+          <button type="button" class="eye" id="eye-btn" aria-label="แสดงรหัสผ่าน" aria-pressed="false">
+            <svg class="on" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.9 8.3 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+          </button>
+        </div>
+        <div class="caps" id="caps" role="status">Caps Lock เปิดอยู่</div>
       </div>
 
       <div class="row">
@@ -217,36 +319,96 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
         <a href="#" class="forgot" id="forgot-link">ลืมรหัสผ่าน?</a>
       </div>
 
-      <button class="btn" id="btn-login">→ เข้าสู่ระบบ</button>
-      <div class="err" id="login-err"></div>
+      <button class="btn" id="btn-login" type="button">
+        <span class="lbl">เข้าสู่ระบบ <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="spin" aria-hidden="true"><i></i>กำลังเข้าสู่ระบบ…</span>
+        <span class="done" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>สำเร็จ</span>
+      </button>
+      <div class="err" id="login-err" role="alert" aria-live="assertive"></div>
 
       <div class="divider">หรือ</div>
-
-      <div class="foot">
-        <div class="contact">ครูผู้ดูแล? <a href="request-code.html">ขอรับรหัสนักเรียนทุน</a></div>
-        <div class="contact">📞 หากพบปัญหาในการใช้งาน ติดต่อผู้ดูแลระบบ</div>
+      <div class="alt">
+        <a class="req" href="request-code.html">
+          <span class="ric"><svg viewBox="0 0 24 24"><path d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM4 21a8 8 0 0 1 13-6.3M18 15v6M15 18h6"/></svg></span>
+          <span><b>ครูผู้ดูแล? ขอรับรหัสนักเรียนทุน</b><span>ส่งคำขอครั้งเดียว ผู้ดูแลส่งรหัสให้ทาง e-mail</span></span>
+          <svg class="go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </a>
+        <div class="help">หากพบปัญหาในการใช้งาน ติดต่อผู้ดูแลระบบ</div>
       </div>
     </div>
-  </div>
-
-  <div class="panel-copy">© 2026 DLTV Fund · ระบบดูแลนักเรียนทุนการศึกษาพระราชทานฯ · Powered by Firebase</div>
-</section>
+    <div class="copy">© 2026 DLTV Fund · ระบบดูแลนักเรียนทุนการศึกษาพระราชทานฯ · Powered by Firebase</div>
+    </div>
+  </section>
+</main>
 
 <!-- ═════════ Modal ลืมรหัสผ่าน ═════════ -->
-<div class="modal-bg" id="forgot-modal">
+<div class="modal-bg" id="forgot-modal" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
   <div class="modal">
-    <h3>🔑 ลืมรหัสผ่าน</h3>
-    <p>กรอก<b>อีเมล</b>ที่ใช้สมัคร ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ทางอีเมล<br>
-       <span style="color:#B45309">บัญชีนักเรียนที่ใช้ชื่อผู้ใช้ (เช่น dltv001) ให้ติดต่อครูผู้ดูแลระบบเพื่อออกรหัสใหม่</span></p>
-    <input id="forgot-email" type="email" placeholder="อีเมลของคุณ">
-    <div class="mmsg" id="forgot-msg"></div>
+    <div class="mic"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2"/></svg></div>
+    <h3 id="forgot-title">ลืมรหัสผ่าน</h3>
+    <p>กรอก<b>อีเมล</b>ที่ใช้สมัคร ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ทางอีเมล
+      <span class="warn">บัญชีนักเรียนที่ใช้ชื่อผู้ใช้ (เช่น dltv001) ให้ติดต่อครูผู้ดูแลระบบเพื่อออกรหัสใหม่</span></p>
+    <input id="forgot-email" type="email" placeholder="อีเมลของคุณ" autocomplete="email">
+    <div class="mmsg" id="forgot-msg" role="status"></div>
     <div class="actions">
-      <button class="mcancel" id="forgot-cancel">ยกเลิก</button>
-      <button class="mok" id="forgot-send">ส่งลิงก์รีเซ็ต</button>
+      <button class="mcancel" id="forgot-cancel" type="button">ยกเลิก</button>
+      <button class="mok" id="forgot-send" type="button">ส่งลิงก์รีเซ็ต</button>
     </div>
   </div>
 </div>
 
+<!-- ═════════ motion: ดาว, นับตัวเลข, เอียงการ์ด, แสงตามเมาส์ ═════════ -->
+<script>
+(function(){
+  'use strict';
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // ดาวกระพริบ + ดาวตกเป็นครั้งคราว
+  const cv = document.getElementById('stars');
+  if (cv && !reduce) {
+    const ctx = cv.getContext('2d'); let W, H, stars = [], shoot = null, dpr = Math.min(2, window.devicePixelRatio || 1);
+    const size = () => { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      stars = Array.from({ length: Math.round(W * H / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.2 + .2, p: Math.random() * 6.28, s: .006 + Math.random() * .02 })); };
+    size(); addEventListener('resize', size);
+    (function loop(){
+      ctx.clearRect(0, 0, W, H);
+      for (const s of stars) { s.p += s.s; ctx.globalAlpha = .25 + Math.sin(s.p) * .25 + .25; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill(); }
+      if (!shoot && Math.random() < .004) shoot = { x: Math.random() * W * .7, y: Math.random() * H * .4, l: 0 };
+      if (shoot) { shoot.l += 1; const len = 90, x = shoot.x + shoot.l * 9, y = shoot.y + shoot.l * 4;
+        const g = ctx.createLinearGradient(x, y, x - len, y - len * .45); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.globalAlpha = Math.max(0, 1 - shoot.l / 40); ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - len, y - len * .45); ctx.stroke();
+        if (shoot.l > 40) shoot = null; }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(loop);
+    })();
+  }
+  // นับตัวเลข
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const to = +el.dataset.count, suf = el.dataset.suffix || '';
+    if (reduce) { el.textContent = to + suf; return; }
+    const t0 = performance.now() + 1100, dur = 1400;
+    (function tick(t){ const k = Math.min(1, Math.max(0, (t - t0) / dur)); const e = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(to * e) + suf; if (k < 1) requestAnimationFrame(tick); })(performance.now());
+  });
+  // แสงตามเมาส์บนการ์ดฟีเจอร์
+  document.querySelectorAll('.feat').forEach(f => f.addEventListener('pointermove', e => {
+    const r = f.getBoundingClientRect(); f.style.setProperty('--mx', (e.clientX - r.left) + 'px'); f.style.setProperty('--my', (e.clientY - r.top) + 'px'); }));
+  // การ์ดเอียงตามเมาส์เล็กน้อย (เฉพาะจอใหญ่ที่มีเมาส์)
+  const card = document.getElementById('card');
+  if (card && !reduce && matchMedia('(hover:hover) and (min-width:981px)').matches) {
+    const wrap = card.parentElement.parentElement;
+    card.addEventListener('animationend', () => { card.classList.remove('card-enter'); }, { once: true });
+    wrap.addEventListener('pointermove', e => {
+      if (card.classList.contains('card-enter') || card.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+      const r = card.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      card.style.transform = `rotateY(${x * 5}deg) rotateX(${-y * 5}deg)`; });
+    wrap.addEventListener('pointerleave', () => { card.style.transform = ''; });
+  } else if (card) card.addEventListener('animationend', () => card.classList.remove('card-enter'), { once: true });
+  // Caps Lock
+  const pass = document.getElementById('login-pass'), caps = document.getElementById('caps');
+  ['keydown', 'keyup'].forEach(ev => pass.addEventListener(ev, e => { if (e.getModifierState) caps.classList.toggle('show', e.getModifierState('CapsLock')); }));
+  pass.addEventListener('blur', () => caps.classList.remove('show'));
+})();
+</script>
 <script src="firebase/firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -254,7 +416,15 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
 <script>
 (function(){
   'use strict';
-  const err = (m) => document.getElementById('login-err').textContent = m || '';
+  // v40: ข้อความผิดพลาดแบบกล่องเลื่อนลง + การ์ดสั่นเบา ๆ
+  const errEl = document.getElementById('login-err');
+  const cardEl = document.getElementById('card');
+  const err = (m) => {
+    errEl.textContent = m || '';
+    errEl.classList.toggle('show', !!m);
+    if (m && cardEl) { cardEl.classList.remove('shake'); void cardEl.offsetWidth; cardEl.classList.add('shake'); }
+  };
+  if (cardEl) cardEl.addEventListener('animationend', e => { if (e.animationName === 'shake') cardEl.classList.remove('shake'); });
 
   if (typeof firebase === 'undefined' || !window.FIREBASE_CONFIG) {
     err('โหลดระบบไม่สำเร็จ — ตรวจอินเทอร์เน็ตและไฟล์ firebase-config.js');
@@ -273,8 +443,10 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
   eyeBtn.onclick = () => {
     const show = passInput.type === 'password';
     passInput.type = show ? 'text' : 'password';
-    eyeBtn.textContent = show ? '🙈' : '👁️';
+    eyeBtn.classList.toggle('on', show);
+    eyeBtn.setAttribute('aria-pressed', String(show));
     eyeBtn.setAttribute('aria-label', show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+    passInput.focus();
   };
 
   /* ---- เข้าสู่ระบบ ---- */
@@ -283,9 +455,9 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
     err('');
     let user = document.getElementById('login-user').value.trim();
     const pass = passInput.value;
-    if (!user || !pass) { err('กรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่านให้ครบ'); return; }
+    if (!user || !pass) { err('กรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่านให้ครบ'); (user ? passInput : document.getElementById('login-user')).focus(); return; }
 
-    btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
+    btn.disabled = true; btn.classList.add('loading'); btn.setAttribute('aria-busy', 'true');
     window._loggingIn = true;
     try {
       // จดจำฉัน: ติ๊ก = จำถาวร / ไม่ติ๊ก = จำเฉพาะแท็บนี้
@@ -320,7 +492,12 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
         });
       } catch(e) { console.warn('บันทึก log ไม่สำเร็จ:', e.message); }
 
-      location.replace('index.html');
+      // v40: แสดงติ๊กถูก + เลื่อนหน้าออกนุ่ม ๆ ก่อนเข้าแอป
+      btn.classList.remove('loading'); btn.classList.add('success');
+      const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      setTimeout(() => { const sh = document.getElementById('shell'); if (sh) sh.classList.add('leaving'); }, reduce ? 0 : 450);
+      setTimeout(() => location.replace('index.html'), reduce ? 60 : 900);
+      return;
     } catch (e) {
       err(({
         'auth/invalid-credential': 'อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง',
@@ -330,8 +507,10 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
         'auth/network-request-failed': 'เชื่อมต่ออินเทอร์เน็ตไม่ได้',
       })[e.code] || e.message);
     } finally {
-      window._loggingIn = false;
-      btn.disabled = false; btn.textContent = '→ เข้าสู่ระบบ';
+      if (!btn.classList.contains('success')) {
+        window._loggingIn = false;
+        btn.disabled = false; btn.classList.remove('loading'); btn.removeAttribute('aria-busy');
+      }
     }
   }
   btn.onclick = doLogin;
@@ -346,6 +525,8 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
     document.getElementById('forgot-email').focus();
   };
   document.getElementById('forgot-cancel').onclick = () => fm.classList.remove('open');
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && fm.classList.contains('open')) fm.classList.remove('open'); });
+  document.getElementById('forgot-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('forgot-send').click(); });
   fm.addEventListener('click', e => { if (e.target === fm) fm.classList.remove('open'); });
   document.getElementById('forgot-send').onclick = async () => {
     const email = document.getElementById('forgot-email').value.trim();
@@ -353,7 +534,7 @@ label{display:block;font-size:13px;font-weight:600;font-family:'Noto Sans Thai';
     try {
       await auth.sendPasswordResetEmail(email);
       fmsg.style.color = '#15803D';
-      fmsg.textContent = '✅ ส่งลิงก์แล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม)';
+      fmsg.textContent = '✓ ส่งลิงก์แล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม)';
     } catch (e) {
       fmsg.style.color = '#DC2626';
       fmsg.textContent = e.code === 'auth/user-not-found' ? 'ไม่พบอีเมลนี้ในระบบ' : e.message;
