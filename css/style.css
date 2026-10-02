@@ -2670,3 +2670,74 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .fx-droplist button{border:1px solid #F3C4C4;background:#FDEEEE;color:#991B1B;border-radius:8px;padding:3px 8px;font:inherit;font-size:11.5px;cursor:pointer}
 @media (max-width:1100px){.fx-grid2{grid-template-columns:1fr}.fx-cover{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:600px){.fx-cover{grid-template-columns:1fr 1fr}.fx-bar{grid-template-columns:1fr auto 14px}.fx-bar-track{grid-column:1/-1;order:3}}
+
+/* ============================================================
+   v46 — Dashboard ใหม่: หัวข้อส่วน, โดนัท CSS, ไฮไลต์แบบฟอร์มที่ 2, ปัญหาอุปสรรค
+   ============================================================ */
+.dv-sec{margin:26px 2px 12px}
+.dv-sec .dv-kicker,.fx-kicker{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.4px;color:var(--blue);background:var(--blue-lt);padding:2px 10px;border-radius:999px}
+.dv-sec h3{margin:6px 0 0;font-size:19px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.dv-sec p{margin:2px 0 0;font-size:12.5px;color:var(--text3)}
+.dv .chart-card{border-radius:18px !important}
+.dv .chart-title{font-size:13.5px !important;font-weight:700 !important;color:var(--text) !important;letter-spacing:0 !important;text-transform:none !important}
+.dv-box{padding:4px 0 2px}
+.dv-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.dv-donut{position:relative;flex:none;width:150px;height:150px;border-radius:50%;animation:dvSpin .9s var(--lg-ease,ease) both}
+.dv-donut>div{position:absolute;inset:22px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  box-shadow:inset 0 2px 8px rgba(15,26,64,.06)}
+.dv-donut b{font-size:28px;line-height:1.05;color:var(--text);font-variant-numeric:tabular-nums}
+.dv-donut span{font-size:10.5px;color:var(--text3);padding:0 8px;line-height:1.3;margin-top:2px}
+@keyframes dvSpin{from{transform:rotate(-90deg) scale(.85);opacity:0}to{transform:none;opacity:1}}
+.dv-legend{list-style:none;margin:0;padding:0;flex:1;min-width:150px;display:flex;flex-direction:column;gap:6px}
+.dv-legend li{display:grid;grid-template-columns:10px 1fr auto 36px;gap:8px;align-items:center;font-size:12.5px;color:var(--text2)}
+.dv-legend i{width:10px;height:10px;border-radius:3px}
+.dv-legend b{color:var(--text);font-variant-numeric:tabular-nums}
+.dv-legend small{color:var(--text3);text-align:right}
+.dv-link{margin-top:12px;border:none;background:none;padding:0;font:inherit;font-size:12.5px;font-weight:600;color:var(--blue-dk);cursor:pointer}
+.dv-link:hover{text-decoration:underline}
+
+/* แบบฟอร์มที่ 2 (เวอร์ชันจัดใหม่) */
+.fx{margin-top:26px}
+.fx-head h3{font-size:19px;margin-top:6px}
+.fx-cover{display:flex;flex-wrap:wrap;gap:8px;grid-template-columns:none}
+.fx-cover>span{padding:6px 12px;border-radius:999px;background:var(--bg2);border:1px solid var(--border);font-size:12.5px;color:var(--text2)}
+.fx-cover>span b{color:var(--blue-dk);font-size:14px;margin-right:3px;font-variant-numeric:tabular-nums}
+.fx-hls{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.fx-hl{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:16px 16px 14px;border-radius:16px;
+  border:1px solid transparent;font:inherit;cursor:pointer;color:var(--text);transition:transform .3s var(--lg-ease,ease),box-shadow .3s}
+.fx-hl:hover{transform:translateY(-3px);box-shadow:0 14px 28px -16px rgba(15,26,64,.45)}
+.fx-hl:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.fx-hl::after{content:"";position:absolute;right:-24px;top:-24px;width:90px;height:90px;border-radius:50%;opacity:.18;background:currentColor}
+.fx-hl.t-blue{background:linear-gradient(150deg,#EEF3FF,#fff);border-color:#D5E0FF;color:#1E3FD1}
+.fx-hl.t-amber{background:linear-gradient(150deg,#FFF6E5,#fff);border-color:#F8DFAE;color:#B45309}
+.fx-hl.t-rose{background:linear-gradient(150deg,#FFEEF1,#fff);border-color:#F9CBD4;color:#BE123C}
+.fx-hl.t-green{background:linear-gradient(150deg,#EAF8EF,#fff);border-color:#C7EBD3;color:#15803D}
+.fx-hl-ic{font-size:20px}
+.fx-hl-lbl{font-size:12px;font-weight:600;opacity:.85}
+.fx-hl b{font-size:15.5px;line-height:1.35;color:var(--text)}
+.fx-hl-n{font-size:12px;color:var(--text2)}
+.fx-insight{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.fx-sug li{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fx-tags{display:flex;gap:4px;flex:none}
+.fx-tag.soft{background:var(--bg3);color:var(--text2)}
+.fx-sugcard{background:linear-gradient(160deg,#FFFBF0 0%,#fff 55%)}
+.fx-dim header,.fx-support header{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.fx-dim h4,.fx-support h4{margin:0}
+.fx-dim small,.fx-support header small{font-size:12px;color:var(--text3)}
+.fx-dim-ic{width:36px;height:36px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--bg3)}
+.fx-dim.t-blue .fx-dim-ic{background:#EEF3FF}.fx-dim.t-amber .fx-dim-ic{background:#FFF6E5}
+.fx-dim.t-rose .fx-dim-ic{background:#FFEEF1}.fx-dim.t-green .fx-dim-ic{background:#EAF8EF}
+.fx-dim.t-rose{border-top:3px solid #FB7185}.fx-dim.t-blue{border-top:3px solid #5C8BFF}
+.fx-dim.t-amber{border-top:3px solid #FBBF24}.fx-dim.t-green{border-top:3px solid #4ADE80}
+.fx-gpa{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;padding:0 6px;border-radius:6px;background:var(--bg3);color:var(--text2);vertical-align:1px}
+.fx-gpa.low{background:#FDEEEE;color:#B91C1C}
+.fx-support{margin-top:14px}
+.fx-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.fx-tiles>div{padding:12px 14px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column}
+.fx-tiles b{font-size:24px;line-height:1.15;color:var(--text);font-variant-numeric:tabular-nums}
+.fx-tiles span{font-size:12.5px;color:var(--text2);font-weight:600}
+.fx-tiles small{font-size:11.5px;color:var(--text3)}
+@media (max-width:1100px){.fx-hls{grid-template-columns:repeat(2,1fr)}.fx-insight{grid-template-columns:1fr}}
+@media (max-width:560px){.fx-hls{grid-template-columns:1fr}.dv-donut{width:130px;height:130px}}
+@media (prefers-reduced-motion:reduce){.dv-donut{animation:none}}
+.fx-cover>span b{display:inline}

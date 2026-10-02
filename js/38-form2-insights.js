@@ -2,13 +2,14 @@
    38-form2-insights.js — Dashboard: วิเคราะห์ข้อมูลจากแบบฟอร์มที่ 2
    ------------------------------------------------------------
    แหล่งข้อมูล (แบบฟอร์มที่ 2 ส่วน "การดูแลช่วยเหลือ ความต้องการ และความคาดหวัง")
+     learning_problems ปัญหาอุปสรรคที่ส่งผลต่อการเรียน (ข้อความ · ส่วนผลการเรียน)
      expect_career     ความคาดหวังด้านอาชีพในอนาคต (ข้อความ)
      additional_needs  ความต้องการความช่วยเหลือเพิ่มเติม จากสถานศึกษา ครู หรืออื่น ๆ (ข้อความ)
      expect_education  ความคาดหวังด้านการศึกษา (ข้อความ)
      support_other     การดูแลช่วยเหลืออื่น ๆ (ตัวเลือก) · tutoring สอนเสริม (ตาราง) · extra_funding ทุนอื่น (ตาราง)
    วิธีวิเคราะห์ (ทำในเบราว์เซอร์ ไม่ส่งข้อมูลออกนอกระบบ)
      • เชิงปริมาณ: จัดหมวดข้อความด้วยคำสำคัญภาษาไทย (1 คนอยู่ได้หลายหมวด) → จำนวน/ร้อยละ
-     • เชิงคุณภาพ: ข้อความตัวอย่างของแต่ละหมวด (กดดูทั้งหมด), คำที่พบบ่อย, สรุปประเด็นอัตโนมัติ
+     • เชิงคุณภาพ: ข้อความจริงของแต่ละหมวด (กดดู), สรุปประเด็นอัตโนมัติ, GPA เฉลี่ยของกลุ่มที่มีอุปสรรคแต่ละแบบ
        และข้อเสนอแนะการดูแลจากผลการวิเคราะห์ (เชื่อมกับกลุ่มการดูแล GPA + SDQ)
    ข้อความที่ไม่เข้าหมวดใด → "อื่น ๆ" (ไม่ตกหล่น ดูข้อความจริงได้เสมอ)
    ============================================================ */
@@ -60,6 +61,29 @@
     ['hs', 'จบ ม.6 / ม.ปลาย', /ม\.?\s?6|มัธยมศึกษาตอนปลาย|ม\.ปลาย|ม\.4|สายวิทย์|สายศิลป์/],
     ['good', 'ตั้งใจเรียน / ผลการเรียนดีขึ้น', /เกรด|ผลการเรียน|ตั้งใจเรียน|เรียนเก่ง|สอบได้|คะแนน|ดีขึ้น/]
   ];
+  const OBST = [
+    ['subject', 'เรียนไม่เข้าใจบางวิชา / พื้นฐานไม่แน่น', /ไม่เข้าใจ|ยาก|วิชา|คณิต|อังกฤษ|วิทยาศาสตร์|ฟิสิกส์|เคมี|ชีว|เรียนไม่ทัน|ตามไม่ทัน|พื้นฐาน|ภาษาไทย|สังคม/],
+    ['focus', 'สมาธิ / การจัดการเวลา / ส่งงาน', /สมาธิ|ไม่ตั้งใจ|ขี้เกียจ|เกม|โทรศัพท์|มือถือ|โซเชียล|จัดการเวลา|แบ่งเวลา|ส่งงาน|งานค้าง|ขาดเรียน|มาสาย|หลับ|ง่วง/],
+    ['family', 'ครอบครัว / ภาระทางบ้าน', /ครอบครัว|ทางบ้าน|งานบ้าน|ดูแลน้อง|ผู้ปกครอง|พ่อแม่|บิดา|มารดา|หย่า|แยกทาง|ภาระ|ช่วยงาน|ปู่|ย่า|ยาย/],
+    ['money', 'เศรษฐกิจ / ค่าใช้จ่าย', /เงิน|ค่าใช้จ่าย|ยากจน|รายได้|ฐานะ|ขาดแคลน|ค่าเดินทาง|หนี้/],
+    ['emotion', 'อารมณ์ / ความเครียด / การปรับตัว', /เครียด|กังวล|ท้อ|เศร้า|ซึมเศร้า|ปรับตัว|ไม่มั่นใจ|ถูกแกล้ง|กดดัน|ทะเลาะ|เพื่อน/],
+    ['health', 'สุขภาพ / เจ็บป่วย', /สุขภาพ|ป่วย|โรค|เจ็บ|ผ่าตัด|โรงพยาบาล|สายตา|ภูมิแพ้|นอนไม่พอ|พักผ่อน/],
+    ['travel', 'การเดินทาง / ระยะทาง', /เดินทาง|ระยะทาง|ไกล|รถ/],
+    ['equip', 'ขาดอุปกรณ์ / อินเทอร์เน็ต', /อุปกรณ์|คอมพิวเตอร์|อินเทอร์เน็ต|อินเตอร์เน็ต|สัญญาณ|หนังสือ|ไฟฟ้า/],
+    ['activity', 'กิจกรรม / งานนอกเวลาเรียนมาก', /กิจกรรม|แข่งขัน|ซ้อม|ทำงานพิเศษ|รับจ้าง|ทำงานหาเงิน/],
+    ['none', 'ไม่มีปัญหาอุปสรรค', /ไม่มีปัญหา|ไม่พบปัญหา|ไม่มีอุปสรรค|^ไม่มี|เรียนได้ดี|ผลการเรียนดี/]
+  ];
+  const OB_SUGGEST = {
+    subject: 'จัดสอนเสริม/ติวพื้นฐานในวิชาที่นักเรียนเรียนไม่เข้าใจ และให้ครูประจำวิชาติดตาม',
+    focus: 'ครูที่ปรึกษาช่วยวางแผนเวลาเรียน ติดตามการส่งงาน และพูดคุยเรื่องการใช้โทรศัพท์/เกม',
+    family: 'เยี่ยมบ้านและประสานผู้ปกครอง เพื่อลดภาระงานบ้านที่กระทบการเรียน',
+    money: 'ตรวจสอบการใช้จ่ายเงินทุน และพิจารณาความช่วยเหลือด้านค่าใช้จ่ายเพิ่มเติม',
+    emotion: 'ให้คำปรึกษา/ส่งต่อครูแนะแนว ใช้ผล SDQ ประกอบการดูแล',
+    health: 'ประสานหน่วยสาธารณสุขหรือโรงพยาบาลในพื้นที่ดูแลสุขภาพ',
+    travel: 'หาทางเลือกการเดินทาง/ที่พัก ลดเวลาเดินทางที่กระทบการเรียน',
+    equip: 'จัดหาอุปกรณ์การเรียน/อินเทอร์เน็ตให้เพียงพอ',
+    activity: 'ช่วยนักเรียนจัดสมดุลระหว่างกิจกรรม/งานนอกเวลา กับการเรียน'
+  };
   const SUGGEST = {
     money: 'ทบทวนแผนการเบิกจ่าย และประสานแหล่งทุนเสริมสำหรับผู้ที่ระบุความต้องการด้านการเงิน',
     equip: 'สำรวจรายการอุปกรณ์ที่ต้องการ (เช่น คอมพิวเตอร์ อินเทอร์เน็ต หนังสือ) เพื่อจัดหาหรือขอรับบริจาค',
@@ -72,23 +96,28 @@
     family: 'ประสานผู้ปกครองเพื่อร่วมวางแผนการดูแลนักเรียน',
     activity: 'สนับสนุนการเข้าร่วมค่าย/กิจกรรมพัฒนาทักษะตามความสนใจ'
   };
-  const STOP = new Set(('และ ที่ ใน การ ให้ มี เป็น ได้ ของ จะ ไป กับ อยาก เพื่อ ความ ต้องการ ด้าน หรือ ทำ นักเรียน อื่น ๆ คน เรียน ได้รับ จาก ครู โรงเรียน ' +
-    'สถานศึกษา อยู่ แล้ว ไม่ มาก ขึ้น เพิ่ม เพิ่มเติม ช่วย เหลือ ช่วยเหลือ เรื่อง ใน ตัว เอง ตนเอง ต่อ โดย มา นี้ นั้น ซึ่ง อย่าง ทุก ๆ ก็ แต่ ถ้า ว่า เมื่อ ด้วย ยัง ตาม ' +
-    'หนู ผม ดิฉัน เขา เรา ฉัน คือ คะ ครับ ค่ะ จึง อาชีพ อนาคต ทำงาน การศึกษา').split(/\s+/));
 
   /* ---------- เก็บข้อมูล ---------- */
-  const st = { term: 'latest', open: null, wordTab: 'career' };
+  const st = { term: 'latest', open: null };
   const isEmpty = v => v == null || EMPTY_RE.test(String(v).trim());
   const text = v => (typeof v === 'string' && !isEmpty(v)) ? v.trim() : '';
   function form2Of(s, term) {
     const forms = s.forms || {};
     const pick = t => { const f = forms[t] && forms[t].form2; return f && typeof f === 'object' ? f : null; };
-    const has = f => f && (text(f.expect_career) || text(f.additional_needs) || text(f.expect_education)
+    const has = f => f && (text(f.expect_career) || text(f.additional_needs) || text(f.expect_education) || obText(f.learning_problems)
       || (f.support_other && ((f.support_other.selected || []).length || text(f.support_other.other))));
     if (term !== 'latest') { const f = pick(term); return has(f) ? { term, f } : null; }
     const terms = Object.keys(forms).filter(t => /\d\/\d{4}/.test(t)).sort((a, b) => tkey(b) - tkey(a));
     for (const t of terms) { const f = pick(t); if (has(f)) return { term: t, f }; }
     return null;
+  }
+  // ปัญหาอุปสรรค: คำตอบ "ไม่มี" มีความหมาย (= ไม่มีปัญหา) ไม่ใช่ช่องว่าง
+  function obText(v) {
+    if (typeof v !== 'string') return '';
+    const t = v.trim();
+    if (!t || /^[-–—.]+$/.test(t)) return '';
+    if (/^ไม่มี(ครับ|ค่ะ|คะ)?$/.test(t)) return 'ไม่มีปัญหาอุปสรรค';
+    return t;
   }
   function classify(str, dict) {
     if (!str) return [];
@@ -103,93 +132,99 @@
       const x = form2Of(s, st.term);
       if (!x) return;
       const f = x.f;
-      const career = text(f.expect_career), needs = text(f.additional_needs), edu = text(f.expect_education);
+      const career = text(f.expect_career), needs = text(f.additional_needs), edu = text(f.expect_education), obst = obText(f.learning_problems);
       const so = f.support_other || {};
       const sent = !!(window.Term && Term.state && Term.state(s, 'form2', x.term) === 'submitted');
       let care = null; try { care = window.CareGroup ? CareGroup.compute(s) : null; } catch (e) {}
-      out.push({ s, idx, term: x.term, sent, career, needs, edu, care,
+      const gl = (s.semGpa || []).filter(g => g && Number(g.gpa) > 0).sort((a, b) => tkey(b.term) - tkey(a.term))[0];
+      out.push({ s, idx, term: x.term, sent, career, needs, edu, obst, care, gpa: gl ? Number(gl.gpa) : null, obCat: classify(obst, OBST),
         careerCat: classify(career, CAREER), needCat: classify(needs, NEED), eduCat: classify(edu, EDU),
         support: (so.selected || []).slice(), supportOther: text(so.other),
         tutoring: tableRows(f.tutoring), funding: tableRows(f.extra_funding) });
     });
     return out;
   }
+  // หมวดหลักเรียงตามจำนวน → หมวดสถานะ (ยังไม่แน่ใจ/เพียงพอ/ไม่มีปัญหา) → อื่น ๆ
+  const rank = k => k === 'other' ? 2 : ['unsure', 'enough', 'none'].includes(k) ? 1 : 0;
   function tally(rows, field, dict) {
     const m = new Map();
     rows.forEach(r => r[field].forEach(k => { if (!m.has(k)) m.set(k, []); m.get(k).push(r); }));
     const name = k => k === 'other' ? 'อื่น ๆ (ไม่เข้าหมวด)' : (dict.find(d => d[0] === k) || [, k])[1];
     return [...m.entries()].map(([k, list]) => ({ k, name: name(k), list, n: list.length }))
-      .sort((a, b) => (a.k === 'other') - (b.k === 'other') || b.n - a.n);
-  }
-  function topWords(strs, n) {
-    const cnt = new Map();
-    const seg = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
-    strs.forEach(t => {
-      const words = seg ? [...seg.segment(t)].filter(x => x.isWordLike).map(x => x.segment) : t.split(/[\s,./()]+/);
-      new Set(words.map(w => w.trim().toLowerCase()).filter(w => w.length >= 2 && !STOP.has(w) && !/^\d+$/.test(w))).forEach(w => cnt.set(w, (cnt.get(w) || 0) + 1));
-    });
-    return [...cnt.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, n);
+      .sort((a, b) => rank(a.k) - rank(b.k) || b.n - a.n);
   }
   const short = (t, n) => { t = String(t).replace(/\s+/g, ' '); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 
   /* ---------- วาด ---------- */
-  function bars(id, items, total, color) {
+  const DIM = {
+    career: { title: 'ความคาดหวังด้านอาชีพในอนาคต', icon: '🎯', tone: 'blue', field: 'career', cat: 'careerCat', dict: CAREER, color: 'linear-gradient(90deg,#3A68FF,#5CC8FF)' },
+    need: { title: 'ความต้องการความช่วยเหลือเพิ่มเติม', sub: 'จากสถานศึกษา ครู หรืออื่น ๆ', icon: '🤝', tone: 'amber', field: 'needs', cat: 'needCat', dict: NEED, color: 'linear-gradient(90deg,#F59E0B,#FFC531)' },
+    obst: { title: 'ปัญหาอุปสรรคที่ส่งผลต่อการเรียน', icon: '🧩', tone: 'rose', field: 'obst', cat: 'obCat', dict: OBST, color: 'linear-gradient(90deg,#E11D48,#FB7185)', gpa: true },
+    edu: { title: 'ความคาดหวังด้านการศึกษา', icon: '🎓', tone: 'green', field: 'edu', cat: 'eduCat', dict: EDU, color: 'linear-gradient(90deg,#16A34A,#4ADE80)' }
+  };
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  function bars(id, items, total, allGpa) {
+    const d = DIM[id];
     if (!items.length) return '<p class="fx-none">ยังไม่มีข้อมูลในหัวข้อนี้</p>';
     const max = Math.max(...items.map(i => i.n));
     return `<ul class="fx-bars">${items.map(i => {
       const key = id + ':' + i.k, open = st.open === key;
-      const quotes = open ? `<div class="fx-quotes">${i.list.slice(0, 40).map(r => {
-        const t = id === 'career' ? r.career : id === 'need' ? r.needs : r.edu;
-        return `<blockquote><p>“${E(short(t, 220))}”</p><footer><button type="button" class="fx-who" data-fx-open="${r.idx}">${E(r.s.name || '')}</button> · ${E(r.s.school_m1 || '-')} · ${E(r.term)}</footer></blockquote>`;
-      }).join('')}${i.list.length > 40 ? `<div class="fx-more">และอีก ${i.list.length - 40} คน (ดูทั้งหมดในไฟล์ CSV)</div>` : ''}</div>` : '';
+      const g = d.gpa ? avg(i.list.map(r => r.gpa).filter(v => v)) : null;
+      const gNote = g !== null && allGpa !== null && i.k !== 'none'
+        ? `<span class="fx-gpa ${g < allGpa - 0.05 ? 'low' : ''}" title="GPA ล่าสุดเฉลี่ยของกลุ่มนี้ เทียบค่าเฉลี่ยทุกคน ${allGpa.toFixed(2)}">GPA ${g.toFixed(2)}</span>` : '';
+      const quotes = open ? `<div class="fx-quotes">${i.list.slice(0, 40).map(r => `<blockquote><p>“${E(short(r[d.field], 220))}”</p>
+          <footer><button type="button" class="fx-who" data-fx-open="${r.idx}">${E(r.s.name || '')}</button> · ${E(r.s.school_m1 || '-')} · ${E(r.term)}${r.gpa ? ' · GPA ' + r.gpa.toFixed(2) : ''}${r.care && r.care.severity >= 1 ? ` · <span class="${r.care.badgeClass}">${E(r.care.label)}</span>` : ''}</footer></blockquote>`).join('')}
+          ${i.list.length > 40 ? `<div class="fx-more">และอีก ${i.list.length - 40} คน (ดูทั้งหมดในไฟล์ CSV)</div>` : ''}</div>` : '';
       return `<li class="${open ? 'open' : ''}">
         <button type="button" class="fx-bar" data-fx-cat="${key}" aria-expanded="${open}">
-          <span class="fx-bar-name">${E(i.name)}</span>
-          <span class="fx-bar-track"><span style="width:${(i.n / max * 100).toFixed(1)}%;background:${color}"></span></span>
+          <span class="fx-bar-name">${E(i.name)}${gNote}</span>
+          <span class="fx-bar-track"><span style="width:${(i.n / max * 100).toFixed(1)}%;background:${d.color}"></span></span>
           <span class="fx-bar-n"><b>${i.n}</b> คน <small>${pct(i.n, total)}%</small></span>
           <span class="fx-bar-chev" aria-hidden="true">›</span>
         </button>${quotes}</li>`;
     }).join('')}</ul>`;
   }
-  function narrative(rows, cT, nT, eT, careRows) {
+  const named = (T, skip) => T.filter(x => x.k !== 'other' && !(skip || []).includes(x.k));
+  function narrative(rows, T, careRows) {
     const pts = [];
-    const cN = rows.filter(r => r.career).length, nN = rows.filter(r => r.needs).length;
-    const named = cT.filter(x => x.k !== 'other' && x.k !== 'unsure');
-    if (named.length) {
-      const [a, b, c] = named;
-      pts.push(`<b>ด้านอาชีพ:</b> จาก ${cN} คนที่ระบุ สนใจ <b>${E(a.name)}</b> มากที่สุด (${a.n} คน, ${pct(a.n, cN)}%)`
-        + (b ? ` รองลงมาคือ ${E(b.name)} (${b.n} คน)` : '') + (c ? ` และ ${E(c.name)} (${c.n} คน)` : ''));
+    const nOf = f => rows.filter(r => r[f]).length;
+    const c = named(T.career, ['unsure']);
+    if (c.length) pts.push(`<b>อาชีพ:</b> จาก ${nOf('career')} คน สนใจ <b>${E(c[0].name)}</b> มากที่สุด (${c[0].n} คน, ${pct(c[0].n, nOf('career'))}%)`
+      + (c[1] ? ` รองลงมาคือ ${E(c[1].name)} (${c[1].n})` : '') + (c[2] ? ` และ ${E(c[2].name)} (${c[2].n})` : ''));
+    const uns = T.career.find(x => x.k === 'unsure');
+    if (uns) pts.push(`<b>${uns.n} คนยังไม่แน่ใจเรื่องอาชีพ</b> — ควรได้รับการแนะแนวอาชีพเป็นพิเศษ`);
+    const o = named(T.obst, ['none']);
+    if (o.length) {
+      const none = T.obst.find(x => x.k === 'none');
+      pts.push(`<b>ปัญหาอุปสรรคการเรียน:</b> พบมากที่สุดคือ <b>${E(o[0].name)}</b> (${o[0].n} คน)` + (o[1] ? ` รองลงมาคือ ${E(o[1].name)} (${o[1].n})` : '')
+        + (none ? ` · ${none.n} คนระบุว่าไม่มีปัญหา` : ''));
     }
-    const uns = cT.find(x => x.k === 'unsure');
-    if (uns) pts.push(`<b>${uns.n} คน (${pct(uns.n, cN)}%) ยังไม่แน่ใจเรื่องอาชีพ</b> — กลุ่มที่ควรได้รับการแนะแนวอาชีพเป็นพิเศษ`);
-    const needNamed = nT.filter(x => x.k !== 'other' && x.k !== 'enough');
-    if (needNamed.length) {
-      pts.push(`<b>ความต้องการเพิ่มเติม:</b> พบมากที่สุดคือ <b>${E(needNamed[0].name)}</b> (${needNamed[0].n} คน, ${pct(needNamed[0].n, nN)}%)`
-        + (needNamed[1] ? ` รองลงมาคือ ${E(needNamed[1].name)} (${needNamed[1].n} คน)` : '') + (needNamed[2] ? ` และ ${E(needNamed[2].name)} (${needNamed[2].n} คน)` : ''));
-    }
-    const en = nT.find(x => x.k === 'enough');
-    if (en) pts.push(`${en.n} คนระบุว่าการช่วยเหลือที่ได้รับเพียงพอแล้ว`);
-    const ba = eT.filter(x => ['ba', 'grad'].includes(x.k)).reduce((a, x) => a + x.n, 0), eN = rows.filter(r => r.edu).length;
-    if (eN) pts.push(`<b>ด้านการศึกษา:</b> ${pct(ba, eN)}% ของผู้ที่ระบุ ตั้งเป้าเรียนถึงระดับปริญญาตรีขึ้นไป`
-      + ((eT.find(x => x.k === 'voc') || {}).n ? ` · สายอาชีพ ${(eT.find(x => x.k === 'voc')).n} คน` : ''));
+    const n = named(T.need, ['enough']);
+    if (n.length) pts.push(`<b>ความต้องการเพิ่มเติม:</b> พบมากที่สุดคือ <b>${E(n[0].name)}</b> (${n[0].n} คน)` + (n[1] ? ` รองลงมาคือ ${E(n[1].name)} (${n[1].n})` : '') + (n[2] ? ` และ ${E(n[2].name)} (${n[2].n})` : ''));
+    const eN = nOf('edu'), ba = T.edu.filter(x => ['ba', 'grad'].includes(x.k)).reduce((a, x) => a + x.n, 0);
+    if (eN) pts.push(`<b>การศึกษา:</b> ${pct(ba, eN)}% ของผู้ที่ระบุ ตั้งเป้าเรียนถึงปริญญาตรีขึ้นไป`);
     if (careRows.length) {
-      const t2 = tally(careRows, 'needCat', NEED).filter(x => x.k !== 'other' && x.k !== 'enough');
-      pts.push(`<b>กลุ่มต้องดูแล/เฝ้าระวัง (${careRows.length} คนที่มีข้อมูล):</b> `
-        + (t2.length ? `ต้องการ ${t2.slice(0, 3).map(x => `${E(x.name)} (${x.n})`).join(', ')}` : 'ยังไม่ได้ระบุความต้องการเพิ่มเติม'));
+      const t2 = named(tally(careRows.filter(r => r.obst), 'obCat', OBST), ['none']);
+      const t3 = named(tally(careRows.filter(r => r.needs), 'needCat', NEED), ['enough']);
+      pts.push(`<b>กลุ่มต้องดูแล/เฝ้าระวัง (${careRows.length} คน):</b> `
+        + (t2.length ? `อุปสรรคหลัก ${t2.slice(0, 2).map(x => `${E(x.name)} (${x.n})`).join(', ')}` : 'ยังไม่ได้ระบุปัญหาอุปสรรค')
+        + (t3.length ? ` · ต้องการ ${t3.slice(0, 2).map(x => `${E(x.name)} (${x.n})`).join(', ')}` : ''));
     }
     return pts;
   }
-  function suggestions(nT, cT, tutorSubjects) {
+  function suggestions(T, tutorSubjects) {
     const out = [];
-    nT.filter(x => SUGGEST[x.k]).slice(0, 4).forEach(x => {
+    named(T.obst, ['none']).slice(0, 3).forEach(x => OB_SUGGEST[x.k] && out.push({ t: OB_SUGGEST[x.k], n: x.n, src: 'อุปสรรค' }));
+    named(T.need, ['enough']).slice(0, 3).forEach(x => {
+      if (!SUGGEST[x.k]) return;
       let t = SUGGEST[x.k];
       if (x.k === 'tutor' && tutorSubjects.length) t += ` (วิชาที่พบบ่อย: ${tutorSubjects.slice(0, 3).map(([w]) => w).join(', ')})`;
-      if (x.k === 'guide') { const top = cT.filter(c => !['other', 'unsure'].includes(c.k)).slice(0, 2).map(c => c.name); if (top.length) t += ` เช่น ${top.join(' และ ')}`; }
-      out.push({ t, n: x.n, name: x.name });
+      if (x.k === 'guide') { const top = named(T.career, ['unsure']).slice(0, 2).map(c => c.name); if (top.length) t += ` เช่น ${top.join(' และ ')}`; }
+      if (!out.some(o => o.t.slice(0, 12) === t.slice(0, 12))) out.push({ t, n: x.n, src: 'ความต้องการ' });
     });
-    const uns = cT.find(x => x.k === 'unsure');
-    if (uns && !out.some(o => /แนะแนว/.test(o.t))) out.push({ t: 'จัดกิจกรรมสำรวจความถนัดและแนะแนวอาชีพ สำหรับนักเรียนที่ยังไม่แน่ใจเรื่องอาชีพ', n: uns.n, name: uns.name });
-    return out;
+    const uns = T.career.find(x => x.k === 'unsure');
+    if (uns) out.push({ t: 'จัดกิจกรรมสำรวจความถนัดและแนะแนวอาชีพ สำหรับนักเรียนที่ยังไม่แน่ใจเรื่องอาชีพ', n: uns.n, src: 'อาชีพ' });
+    return out.slice(0, 6);
   }
 
   function render() {
@@ -201,10 +236,10 @@
     const rows = collect();
     const N = (DB.students || []).length;
     const terms = [...new Set((DB.students || []).flatMap(s => Object.keys(s.forms || {})))].filter(t => /\d\/\d{4}/.test(t)).sort((a, b) => tkey(b) - tkey(a));
-    const cRows = rows.filter(r => r.career), nRows = rows.filter(r => r.needs), eRows = rows.filter(r => r.edu);
-    const cT = tally(cRows, 'careerCat', CAREER), nT = tally(nRows, 'needCat', NEED), eT = tally(eRows, 'eduCat', EDU);
+    const T = {}, R = {};
+    Object.entries(DIM).forEach(([k, d]) => { R[k] = rows.filter(r => r[d.field]); T[k] = tally(R[k], d.cat, d.dict); });
     const careRows = rows.filter(r => r.care && r.care.severity >= 1);
-    // การช่วยเหลือที่ได้รับ (ตัวเลือก/ตาราง)
+    const allGpa = avg(rows.map(r => r.gpa).filter(v => v));
     const supp = new Map(); rows.forEach(r => r.support.forEach(o => supp.set(o, (supp.get(o) || 0) + 1)));
     const suppOther = rows.filter(r => r.supportOther).length;
     const tutorRows = rows.filter(r => r.tutoring.length);
@@ -212,18 +247,28 @@
       .reduce((m, w) => m.set(w, (m.get(w) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).slice(0, 6);
     const fundRows = rows.filter(r => r.funding.length);
     const fundSum = rows.reduce((a, r) => a + r.funding.reduce((x, c) => x + (parseFloat(String(c.amount || '').replace(/[^\d.]/g, '')) || 0), 0), 0);
-    const words = topWords((st.wordTab === 'career' ? cRows.map(r => r.career) : st.wordTab === 'need' ? nRows.map(r => r.needs) : eRows.map(r => r.edu)), 24);
-    const maxW = words.length ? words[0][1] : 1, minW = words.length ? words[words.length - 1][1] : 1;
-    const wScale = c => maxW === minW ? .35 : (c - minW) / (maxW - minW);
-    const pts = narrative(rows, cT, nT, eT, careRows);
-    const sug = suggestions(nT, cT, tutorSubjects);
+    const pts = narrative(rows, T, careRows);
+    const sug = suggestions(T, tutorSubjects);
     const sent = rows.filter(r => r.sent).length;
     const money = n => (typeof fmt === 'function') ? fmt(n) : Math.round(n).toLocaleString('th-TH');
+    const hl = (k, skip) => {
+      const d = DIM[k], top = named(T[k], skip)[0];
+      return `<button type="button" class="fx-hl t-${d.tone}" data-fx-jump="${k}">
+        <span class="fx-hl-ic" aria-hidden="true">${d.icon}</span>
+        <span class="fx-hl-lbl">${k === 'career' ? 'อาชีพที่สนใจมากที่สุด' : k === 'need' ? 'ความต้องการหลัก' : k === 'obst' ? 'อุปสรรคการเรียนหลัก' : 'เป้าหมายการศึกษาหลัก'}</span>
+        <b>${top ? E(top.name) : '—'}</b>
+        <span class="fx-hl-n">${top ? `${top.n} คน · ${pct(top.n, R[k].length)}% ของผู้ที่ระบุ` : 'ยังไม่มีข้อมูล'}</span></button>`;
+    };
+    const dimCard = k => { const d = DIM[k];
+      return `<article class="fx-card fx-dim t-${d.tone}" id="fx-dim-${k}">
+        <header><span class="fx-dim-ic" aria-hidden="true">${d.icon}</span><div><h4>${d.title}</h4>
+          <small>${d.sub ? d.sub + ' · ' : ''}${R[k].length} คนที่ระบุ · 1 คนอยู่ได้หลายหมวด</small></div></header>
+        ${bars(k, T[k], R[k].length, allGpa)}</article>`; };
 
     box.innerHTML = `
       <header class="fx-head">
-        <div><h3>วิเคราะห์จากแบบฟอร์มที่ 2: ความคาดหวังและความต้องการของนักเรียน</h3>
-          <p>สรุปเชิงปริมาณ (จำนวน/ร้อยละ) และเชิงคุณภาพ (ข้อความจริง คำที่พบบ่อย ข้อเสนอแนะ) · กดแต่ละหมวดเพื่ออ่านข้อความของนักเรียน</p></div>
+        <div><span class="fx-kicker">เสียงจากนักเรียน</span><h3>วิเคราะห์จากแบบฟอร์มที่ 2</h3>
+          <p>อาชีพที่คาดหวัง · ความต้องการ · ปัญหาอุปสรรคการเรียน · เป้าหมายการศึกษา — กดแต่ละหมวดเพื่ออ่านข้อความจริง</p></div>
         <div class="fx-tools">
           <select class="fx-sel" data-fx-term aria-label="ภาคเรียน"><option value="latest" ${st.term === 'latest' ? 'selected' : ''}>ล่าสุดของแต่ละคน</option>
             ${terms.map(t => `<option value="${t}" ${st.term === t ? 'selected' : ''}>${E(window.Term && Term.label ? Term.label(t) : t)}</option>`).join('')}</select>
@@ -231,54 +276,37 @@
         </div>
       </header>
       <div class="fx-cover">
-        <div><b>${rows.length}</b><span>จาก ${N} คน มีข้อมูลแบบฟอร์มที่ 2</span></div>
-        <div><b>${cRows.length}</b><span>ระบุความคาดหวังด้านอาชีพ</span></div>
-        <div><b>${nRows.length}</b><span>ระบุความต้องการเพิ่มเติม</span></div>
-        <div><b>${eRows.length}</b><span>ระบุความคาดหวังด้านการศึกษา</span></div>
-        <div><b>${sent}</b><span>ฉบับที่ส่งแล้ว</span></div>
+        <span><b>${rows.length}</b>/${N} คนมีข้อมูล</span><span><b>${R.career.length}</b> ระบุอาชีพ</span><span><b>${R.need.length}</b> ระบุความต้องการ</span>
+        <span><b>${R.obst.length}</b> ระบุปัญหาอุปสรรค</span><span><b>${R.edu.length}</b> ระบุเป้าหมายการศึกษา</span><span><b>${sent}</b> ฉบับส่งแล้ว</span>
       </div>
       ${rows.length ? `
-      <div class="fx-grid2">
-        <article class="fx-card fx-summary">
-          <h4>สรุปประเด็นสำคัญ</h4>
-          <ul class="fx-points">${pts.map(p => `<li>${p}</li>`).join('') || '<li>ยังมีข้อมูลไม่พอสำหรับสรุป</li>'}</ul>
-          ${sug.length ? `<h4 class="fx-h4b">ข้อเสนอแนะการดูแล</h4><ol class="fx-sug">${sug.map(x => `<li>${E(x.t)} <span class="fx-tag">${x.n} คน</span></li>`).join('')}</ol>` : ''}
-          <p class="fx-note">สรุปอัตโนมัติจากคำสำคัญในข้อความ ควรอ่านข้อความจริงประกอบก่อนตัดสินใจ</p>
-        </article>
-        <article class="fx-card">
-          <h4>คำที่พบบ่อย</h4>
-          <div class="fx-tabs" role="tablist">
-            ${[['career', 'อาชีพ'], ['need', 'ความต้องการ'], ['edu', 'การศึกษา']].map(([k, t]) => `<button type="button" role="tab" aria-selected="${st.wordTab === k}" class="${st.wordTab === k ? 'on' : ''}" data-fx-words="${k}">${t}</button>`).join('')}
-          </div>
-          <div class="fx-cloud">${words.length ? words.map(([w, c]) => `<span style="font-size:${(13 + 13 * wScale(c)).toFixed(1)}px;opacity:${(.6 + .4 * wScale(c)).toFixed(2)}" title="${c} คน">${E(w)}<small>${c}</small></span>`).join('') : '<p class="fx-none">ยังมีคำซ้ำไม่พอ</p>'}</div>
-        </article>
+      <div class="fx-hls">${hl('career', ['unsure'])}${hl('need', ['enough'])}${hl('obst', ['none'])}${hl('edu')}</div>
+      <div class="fx-grid2 fx-insight">
+        <article class="fx-card fx-summary"><h4>สรุปประเด็นสำคัญ</h4>
+          <ul class="fx-points">${pts.map(p => `<li>${p}</li>`).join('') || '<li>ยังมีข้อมูลไม่พอสำหรับสรุป</li>'}</ul></article>
+        <article class="fx-card fx-sugcard"><h4>ข้อเสนอแนะการดูแล</h4>
+          ${sug.length ? `<ol class="fx-sug">${sug.map(x => `<li><span>${E(x.t)}</span><span class="fx-tags"><span class="fx-tag">${x.n} คน</span><span class="fx-tag soft">${x.src}</span></span></li>`).join('')}</ol>` : '<p class="fx-none">ยังไม่มีข้อเสนอแนะ</p>'}
+          <p class="fx-note">สรุปอัตโนมัติจากคำสำคัญในข้อความ ควรอ่านข้อความจริงประกอบก่อนตัดสินใจ</p></article>
       </div>
-      <div class="fx-grid2">
-        <article class="fx-card"><h4>ความคาดหวังด้านอาชีพในอนาคต <small>${cRows.length} คน · 1 คนอาจอยู่ได้หลายหมวด</small></h4>${bars('career', cT, cRows.length, 'linear-gradient(90deg,#3A68FF,#5CC8FF)')}</article>
-        <article class="fx-card"><h4>ความต้องการความช่วยเหลือเพิ่มเติม <small>จากสถานศึกษา ครู หรืออื่น ๆ · ${nRows.length} คน</small></h4>${bars('need', nT, nRows.length, 'linear-gradient(90deg,#F59E0B,#FFC531)')}</article>
-      </div>
-      <div class="fx-grid2">
-        <article class="fx-card"><h4>ความคาดหวังด้านการศึกษา <small>${eRows.length} คน</small></h4>${bars('edu', eT, eRows.length, 'linear-gradient(90deg,#16A34A,#4ADE80)')}</article>
-        <article class="fx-card"><h4>การดูแลช่วยเหลือที่ได้รับอยู่ <small>จากตัวเลือกและตารางในแบบฟอร์ม</small></h4>
-          <ul class="fx-stats">
-            ${[...supp.entries()].sort((a, b) => b[1] - a[1]).map(([o, c]) => `<li><span>${E(o)}</span><b>${c}</b><small>${pct(c, rows.length)}%</small></li>`).join('')}
-            ${suppOther ? `<li><span>อื่น ๆ (ระบุเอง)</span><b>${suppOther}</b><small>${pct(suppOther, rows.length)}%</small></li>` : ''}
-            <li><span>ได้รับการสอนเสริม</span><b>${tutorRows.length}</b><small>${pct(tutorRows.length, rows.length)}%</small></li>
-            <li><span>ได้รับทุนจากแหล่งอื่น</span><b>${fundRows.length}</b><small>${fundSum ? 'รวม ' + money(fundSum) + ' บาท' : pct(fundRows.length, rows.length) + '%'}</small></li>
-          </ul>
-          ${tutorSubjects.length ? `<div class="fx-sub">วิชาที่สอนเสริมบ่อย: ${tutorSubjects.slice(0, 6).map(([w, c]) => `<span class="fx-tag">${E(w)} ${c}</span>`).join(' ')}</div>` : ''}
-        </article>
-      </div>` : `<div class="fx-card fx-empty">ยังไม่มีข้อมูลความคาดหวังหรือความต้องการในแบบฟอร์มที่ 2 ${st.term !== 'latest' ? 'ของภาคเรียนนี้' : ''} — ข้อมูลจะแสดงเมื่อครูกรอกส่วน "ช่วยเหลือ/คาดหวัง"</div>`}`;
+      <div class="fx-grid2">${dimCard('career')}${dimCard('need')}</div>
+      <div class="fx-grid2">${dimCard('obst')}${dimCard('edu')}</div>
+      <article class="fx-card fx-support"><header><span class="fx-dim-ic" aria-hidden="true">🏫</span><div><h4>การดูแลช่วยเหลือที่ได้รับอยู่</h4><small>จากตัวเลือกและตารางในแบบฟอร์มที่ 2 · ${rows.length} คน</small></div></header>
+        <div class="fx-tiles">
+          ${[...supp.entries()].sort((a, b) => b[1] - a[1]).map(([o, c]) => `<div><b>${c}</b><span>${E(o)}</span><small>${pct(c, rows.length)}%</small></div>`).join('')}
+          ${suppOther ? `<div><b>${suppOther}</b><span>อื่น ๆ (ระบุเอง)</span><small>${pct(suppOther, rows.length)}%</small></div>` : ''}
+          <div><b>${tutorRows.length}</b><span>ได้รับการสอนเสริม</span><small>${tutorSubjects.length ? tutorSubjects.slice(0, 3).map(([w, c]) => `${E(w)} ${c}`).join(' · ') : pct(tutorRows.length, rows.length) + '%'}</small></div>
+          <div><b>${fundRows.length}</b><span>ได้รับทุนจากแหล่งอื่น</span><small>${fundSum ? 'รวม ' + money(fundSum) + ' บาท' : pct(fundRows.length, rows.length) + '%'}</small></div>
+        </div></article>` : `<div class="fx-card fx-empty">ยังไม่มีข้อมูลในแบบฟอร์มที่ 2 ${st.term !== 'latest' ? 'ของภาคเรียนนี้' : ''} — ข้อมูลจะแสดงเมื่อครูกรอกส่วน "ผลการเรียน" และ "ช่วยเหลือ/คาดหวัง"</div>`}`;
     box._rows = rows;
   }
 
   function exportCsv(rows) {
     const safe = v => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
     const nm = (ks, dict) => ks.map(k => k === 'other' ? 'อื่น ๆ' : (dict.find(d => d[0] === k) || [, k])[1]).join(' / ');
-    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'ภาคเรียน', 'สถานะ', 'กลุ่มการดูแล', 'ความคาดหวังด้านอาชีพ', 'หมวดอาชีพ', 'ความต้องการเพิ่มเติม', 'หมวดความต้องการ', 'ความคาดหวังด้านการศึกษา', 'หมวดการศึกษา', 'การช่วยเหลือที่ได้รับ', 'สอนเสริม (วิชา)', 'ทุนอื่น'];
+    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'ภาคเรียน', 'สถานะ', 'กลุ่มการดูแล', 'GPA ล่าสุด', 'ปัญหาอุปสรรคที่ส่งผลต่อการเรียน', 'หมวดปัญหาอุปสรรค', 'ความคาดหวังด้านอาชีพ', 'หมวดอาชีพ', 'ความต้องการเพิ่มเติม', 'หมวดความต้องการ', 'ความคาดหวังด้านการศึกษา', 'หมวดการศึกษา', 'การช่วยเหลือที่ได้รับ', 'สอนเสริม (วิชา)', 'ทุนอื่น'];
     const lines = [head.map(safe).join(',')].concat(rows.slice().sort((a, b) => (a.s.no || 0) - (b.s.no || 0)).map(r => [
       r.s.no, r.s.name, r.s.school_m1, r.term, r.sent ? 'ส่งแล้ว' : 'ยังไม่ส่ง', r.care ? r.care.label : '',
-      r.career, r.career ? nm(r.careerCat, CAREER) : '', r.needs, r.needs ? nm(r.needCat, NEED) : '', r.edu, r.edu ? nm(r.eduCat, EDU) : '',
+      r.gpa ? r.gpa.toFixed(2) : '', r.obst, r.obst ? nm(r.obCat, OBST) : '', r.career, r.career ? nm(r.careerCat, CAREER) : '', r.needs, r.needs ? nm(r.needCat, NEED) : '', r.edu, r.edu ? nm(r.eduCat, EDU) : '',
       r.support.concat(r.supportOther ? ['อื่น ๆ: ' + r.supportOther] : []).join(' / '),
       r.tutoring.map(c => c.subject).filter(Boolean).join(' / '), r.funding.map(c => [c.source, c.amount].filter(Boolean).join(' ')).join(' / ')
     ].map(safe).join(',')));
@@ -292,7 +320,7 @@
     box.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.fxCat) { st.open = st.open === b.dataset.fxCat ? null : b.dataset.fxCat; render(); return; }
-      if (b.dataset.fxWords) { st.wordTab = b.dataset.fxWords; render(); return; }
+      if (b.dataset.fxJump) { const el = document.getElementById('fx-dim-' + b.dataset.fxJump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
       if (b.dataset.fxOpen) { openStudentDetail(+b.dataset.fxOpen); return; }
       if (b.hasAttribute('data-fx-csv')) exportCsv(box._rows || []);
     });
