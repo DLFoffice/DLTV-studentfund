@@ -2943,3 +2943,31 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 @media (max-width:640px){.topbar-page-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}.sfx-bottom{flex-wrap:wrap}.sfx-bottom .sfx-count{order:-1;width:100%}.sfx-bottom .sfx-btn{flex:1}}
 .sfx .sf-table-wrap{overflow-x:auto;max-width:100%}.sfx-nav{min-width:0}
 .sfx-forms.sf-tabs{display:grid;margin-bottom:0}
+
+/* ============================================================
+   v52 — หัวตารางในแบบฟอร์ม: โทนสว่างแบบเดียวกับตารางอื่นของระบบ
+   (เดิมไล่สีน้ำเงิน→ฟ้าจัด ไม่เข้าธีม) · ใช้กับตารางรับเงิน/ใช้จ่าย, สอนเสริม, ทุนอื่น, ตารางผลการเรียน
+   ============================================================ */
+.sf-table-wrap{border:1px solid var(--border);border-radius:14px;overflow-x:auto;overflow-y:hidden;background:#fff}
+.sf-table-wrap > .sf-data-table{border-collapse:separate;border-spacing:0}
+.sf-data-table th,.sfx .sf-data-table th{
+  background:linear-gradient(180deg,#F7F9FF 0%,#EEF2FD 100%) !important;
+  color:#1E2A5A !important; font-weight:700 !important; font-size:12.5px !important; letter-spacing:.1px;
+  border-bottom:2px solid #D6E0FB !important; padding:11px 12px !important; white-space:nowrap}
+.sf-data-table th:first-child,.sf-data-table th:last-child{border-radius:0 !important}
+.sf-data-table th + th{border-left:1px solid #E3E9F8}
+.sf-data-table th.sf-th-x{width:44px}
+.sf-data-table td{border-bottom:1px solid #EEF1F7 !important}
+.sf-data-table tbody tr:nth-child(even){background:#FBFCFF !important}
+.sf-data-table tbody tr:hover{background:#F3F6FF !important}
+.sf-data-table tbody tr:last-child td{border-bottom:none !important}
+/* หัวคอลัมน์ที่แก้ไขได้ (ตารางผลการเรียน: ม.1, ม.2 …) */
+.sf-data-table .sf-col-head{color:#1E3FD1 !important;font-weight:700 !important;background:transparent !important}
+.sf-data-table .sf-col-head::placeholder{color:#94A3B8 !important}
+.sf-data-table .sf-col-head:hover{background:#fff !important;border-color:#D6E0FB !important}
+.sf-data-table .sf-col-head:focus{background:#fff !important;border-color:var(--blue) !important;box-shadow:0 0 0 3px var(--blue-lt) !important;color:#1E3FD1 !important}
+.sf-data-table .sf-cell-input:hover{background:#fff !important;border-color:#E3E9F8 !important}
+.sf-data-table .sf-btn-icon{color:#94A3B8}
+.sf-data-table .sf-btn-icon:hover{color:#DC2626;background:#FDEEEE}
+.sf-table-wrap .sf-btn-add{margin:10px 12px 12px}
+.sf-table-wrap .sf-matrix-foot{padding:0 12px 10px}
