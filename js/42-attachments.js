@@ -137,7 +137,7 @@
         if (bar) bar.style.width = Math.round((i + 0.15) / files.length * 100) + '%';
         if (t) t.textContent = `กำลังอัปโหลด ${i + 1}/${files.length} ไปยัง Google Drive…`;
         const base = f.name.replace(/\.[^.]+$/, '');
-        const r = await DriveStore.upload(s, { term, kind, blob, mimeType: type, fileName: `${base}.${ext}` });
+        const r = await DriveStore.upload(s, { term, kind, blob, mimeType: type, fileName: `${base}.${ext}`, originalName: f.name });
         const thumb = await thumbOf(blob);
         done.push({ name: f.name, fileId: r.fileId, url: r.url, type, size: blob.size, uploadedAt: new Date().toISOString(), by: who(), thumb });
         const bar2 = document.querySelector(`[data-at-bar="${kind}"]`); if (bar2) bar2.style.width = Math.round((i + 1) / files.length * 100) + '%';

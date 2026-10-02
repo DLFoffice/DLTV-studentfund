@@ -32,9 +32,11 @@ window.DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgKUzq2HSF8S
     if (j.status !== 'ok') throw new Error(j.message || 'Google Drive ตอบกลับผิดพลาด');
     return j;
   }
-  async function upload(student, { term, kind, blob, fileName, mimeType }) {
+  async function upload(student, { term, kind, blob, fileName, mimeType, originalName }) {
     const data = await toB64(blob);
-    return call({ action: 'driveUpload', studentNo: noOf(student), term, kind, fileName, mimeType: mimeType || blob.type, data });
+    // v50: ส่งชื่อ/โรงเรียน/ชื่อไฟล์เดิม ไปบันทึกในทะเบียนเอกสารแนบ (Google Sheet)
+    return call({ action: 'driveUpload', studentNo: noOf(student), term, kind, fileName, mimeType: mimeType || blob.type, data,
+      studentName: (student && student.name) || '', school: (student && student.school_m1) || '', originalName: originalName || fileName });
   }
   async function get(student, fileId) {
     const j = await call({ action: 'driveGet', studentNo: noOf(student), fileId });
