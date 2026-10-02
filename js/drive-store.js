@@ -2,7 +2,9 @@
    drive-store.js — ตัวเชื่อมไปยัง Google Drive ผ่าน Apps Script (gas/DriveFiles.gs)
    ใส่ Web app URL ที่ได้จากการ Deploy ใน DRIVE_SCRIPT_URL ด้านล่าง
    ============================================================ */
-window.DRIVE_SCRIPT_URL = '';   // ← วาง URL ที่ลงท้ายด้วย /exec ของโปรเจกต์ "DLTV Fund – Files"
+// ↓↓ วาง "Web app URL" ที่ได้จาก Apps Script → Deploy (ขึ้นต้น https://script.google.com/macros/s/ และลงท้าย /exec)
+//    ไม่ใช่ลิงก์โฟลเดอร์ Google Drive — ลิงก์โฟลเดอร์ตั้งไว้แล้วใน gas/DriveFiles.gs (ROOT_FOLDER_ID)
+window.DRIVE_SCRIPT_URL = '';
 
 (function () {
   'use strict';
@@ -10,18 +12,21 @@ window.DRIVE_SCRIPT_URL = '';   // ← วาง URL ที่ลงท้าย
   const fromB64 = (b64, type) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
   const noOf = s => String((s && s.no) ?? 'x').replace(/[^\w-]/g, '');
 
+  const validUrl = () => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec\/?$/.test(String(window.DRIVE_SCRIPT_URL || '').trim());
   function ready() {
-    try { return !!window.DRIVE_SCRIPT_URL && typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && !!firebase.auth().currentUser; }
+    try { return validUrl() && typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && !!firebase.auth().currentUser; }
     catch (e) { return false; }
   }
   function why() {
-    if (!window.DRIVE_SCRIPT_URL) return 'https://drive.google.com/drive/folders/168r2gFuXdKlRpq3hWaXEllr7hxq7xHf4?usp=sharing';
+    if (!window.DRIVE_SCRIPT_URL) return 'ยังไม่ได้ตั้งค่า DRIVE_SCRIPT_URL ใน js/drive-store.js (ดู README หัวข้อ v49)';
+    if (/drive\.google\.com/.test(window.DRIVE_SCRIPT_URL)) return 'DRIVE_SCRIPT_URL เป็นลิงก์โฟลเดอร์ Drive — ต้องเป็น Web app URL ของ Apps Script (https://script.google.com/macros/s/…/exec)';
+    if (!validUrl()) return 'DRIVE_SCRIPT_URL ไม่ถูกรูปแบบ — ต้องขึ้นต้น https://script.google.com/macros/s/ และลงท้าย /exec';
     return 'ต้องเข้าสู่ระบบและเชื่อมต่ออินเทอร์เน็ต';
   }
   async function call(body) {
     if (!ready()) throw new Error(why());
     const idToken = await firebase.auth().currentUser.getIdToken();
-    const res = await fetch(window.DRIVE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ idToken }, body)) });
+    const res = await fetch(String(window.DRIVE_SCRIPT_URL).trim(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ idToken }, body)) });
     if (!res.ok) throw new Error('เชื่อมต่อ Google Drive ไม่สำเร็จ (HTTP ' + res.status + ')');
     const j = await res.json();
     if (j.status !== 'ok') throw new Error(j.message || 'Google Drive ตอบกลับผิดพลาด');
