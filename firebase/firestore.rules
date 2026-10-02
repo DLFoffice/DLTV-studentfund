@@ -172,6 +172,17 @@ service cloud.firestore {
       allow list, write: if false;
     }
 
+    // ── v47: ประวัติการแก้ไขข้อมูล (สร้างอัตโนมัติตอนบันทึก) ──
+    // เขียน: ผู้ใช้ที่ล็อกอินเขียนได้เฉพาะรายการของตัวเอง (byUid = uid ตัวเอง) · อ่าน: ผู้ดูแล/เจ้าหน้าที่ · ลบ: ผู้ดูแลเท่านั้น
+    match /auditLogs/{logId} {
+      allow create: if signedIn() && request.resource.data.byUid == myUid()
+        && request.resource.data.changes is list && request.resource.data.changes.size() <= 80;
+      allow update: if signedIn() && resource.data.byUid == myUid() && request.resource.data.byUid == myUid()
+        && request.resource.data.changes is list && request.resource.data.changes.size() <= 80;
+      allow read: if isStaff();
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

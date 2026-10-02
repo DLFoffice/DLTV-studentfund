@@ -17,7 +17,17 @@
   'use strict';
 
   const E = v => (typeof sfEscapeHtml === 'function') ? sfEscapeHtml(v) : String(v ?? '');
-  const T = (f, id) => { try { return sfPText(f, id) || ''; } catch (e) { return ''; } };
+  // v47: แบบฟอร์มที่ 2 — รวม "หมวดที่ติ๊ก" กับ "รายละเอียด" ในเอกสารพิมพ์ (หมวด — รายละเอียด)
+  const F2_PAIR = { learning_problems: 'obstacle_choices', additional_needs: 'needs_choices', expect_education: 'edu_choices', expect_career: 'career_choices' };
+  const T = (f, id) => {
+    try {
+      const txt = sfPText(f, id) || '';
+      if (f !== 'form2' || !F2_PAIR[id]) return txt;
+      const v = sfPV(f, F2_PAIR[id]) || {};
+      const chosen = [...(v.selected || []), v.other ? String(v.other).trim() : ''].filter(Boolean).join(', ');
+      return chosen ? (txt ? chosen + ' — ' + txt : chosen) : txt;
+    } catch (e) { return ''; }
+  };
   const money = v => {
     const s = String(v ?? '').trim(); if (!s) return '';
     const n = (typeof sfNum === 'function') ? sfNum(s) : Number(s.replace(/,/g, ''));

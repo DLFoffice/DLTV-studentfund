@@ -1,0 +1,27 @@
+// ============================================================
+// storage.rules — Firebase Storage สำหรับรูปนักเรียน (v47)
+// วิธีใช้: Firebase Console → Storage → Rules → วางทั้งไฟล์ → Publish
+//   (ครั้งแรกต้องกด "Get started" เปิดใช้ Storage ก่อน)
+// อ่าน: ผู้ใช้ที่ล็อกอิน (แอปใช้ลิงก์ดาวน์โหลดที่มี token อยู่แล้ว)
+// เขียน/ลบ: ผู้ดูแลหรือเจ้าหน้าที่เท่านั้น · รูปภาพ ≤ 2 MB
+// ============================================================
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isStaff() {
+      return signedIn() && (
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email)) ||
+        (firestore.exists(/databases/(default)/documents/accounts/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/accounts/$(request.auth.uid)).data.role == 'staff'));
+    }
+    match /studentPhotos/{file} {
+      allow read: if signedIn();
+      allow create, update: if isStaff()
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isStaff();
+    }
+    match /{all=**} { allow read, write: if false; }
+  }
+}

@@ -155,9 +155,27 @@
     if (studentMode && window.STUDENT_MODE) return String(window.STUDENT_MODE.studentId);
     return String(s._docId || s.id);   // รหัสเอกสารจริงมาก่อนฟิลด์เลขบัตรเสมอ
   }
+  // v47: เก็บ "เนื้อหาที่ตรงกับคลาวด์" ไว้ด้วย → ใช้ (1) ลบฟิลด์ที่ถูกลบออกบนคลาวด์จริง (2) ทำประวัติการแก้ไข
+  const _cloudObj = new Map();
   function seedCloudSig(students) {
-    _cloudSig.clear();
-    students.forEach(s => { const id = docIdOf(s); if (id && id !== 'undefined') _cloudSig.set(id, stableStringify(cleanForCloud(s))); });
+    _cloudSig.clear(); _cloudObj.clear();
+    students.forEach(s => {
+      const id = docIdOf(s); if (!id || id === 'undefined') return;
+      const c = cleanForCloud(s);
+      _cloudSig.set(id, stableStringify(c)); _cloudObj.set(id, c);
+    });
+  }
+  /** v47: หา path ที่ "มีอยู่บนคลาวด์ แต่ถูกลบออกในเครื่อง" (เฉพาะ key ของ object — array เขียนทับทั้งก้อนอยู่แล้ว)
+      จำเป็นเพราะการบันทึกใช้ merge:true ซึ่งไม่ลบ key ที่หายไป → ข้อมูลที่ลบจะเด้งกลับมาเมื่อรีเฟรช */
+  function removedPaths(oldV, newV, prefix, out, depth) {
+    if (!oldV || typeof oldV !== 'object' || Array.isArray(oldV)) return out;
+    if (!newV || typeof newV !== 'object' || Array.isArray(newV)) return out;   // ชนิดเปลี่ยน → merge เขียนทับให้เอง
+    Object.keys(oldV).forEach(k => {
+      const p = prefix.concat(k);
+      if (!(k in newV) || newV[k] === undefined) out.push(p);
+      else if (depth < 8) removedPaths(oldV[k], newV[k], p, out, depth + 1);
+    });
+    return out;
   }
 
   // คืน/สร้าง "รหัสเอกสารถาวร" ให้ทุกระเบียน — กันนักเรียนที่ยังไม่ได้กรอกเลขบัตร
@@ -196,15 +214,34 @@
       if (force || _cloudSig.get(id) !== sig) dirty.push({ id, s, sig });
     });
     if (!dirty.length) return 0;
-    for (let i = 0; i < dirty.length; i += 450) {
+    const FV = firebase.firestore.FieldValue, FP = firebase.firestore.FieldPath;
+    const audits = (window.AuditLog && !force) ? [] : null;
+    for (let i = 0; i < dirty.length; i += 200) {
       const batch = fsdb.batch();
-      dirty.slice(i, i + 450).forEach(({ id, s }) => {
+      dirty.slice(i, i + 200).forEach(item => {
+        const { id, s } = item;
+        const ref = fsdb.collection(COL).doc(id);
+        const payload = payloadFor(s);
+        item.clean = cleanForCloud(s);
         // merge:true — ไม่ลบฟิลด์ที่เวอร์ชันนี้ยังไม่รู้จัก (กันข้อมูลหายเหมือนเคสลำดับ 1)
-        batch.set(fsdb.collection(COL).doc(id), payloadFor(s), { merge: true });
+        batch.set(ref, payload, { merge: true });
+        // v47: ลบ key ที่ผู้ใช้ลบออกจริงบนคลาวด์ด้วย (เช่น ยกเลิกการย้ายสถานศึกษา, ล้างข้อมูล)
+        const old = _cloudObj.get(id);
+        if (old) {
+          let gone = removedPaths(old, item.clean, [], [], 0);
+          if (studentMode) gone = gone.filter(p => STUDENT_WRITABLE_FIELDS.includes(p[0]));
+          if (gone.length) {
+            const args = []; gone.slice(0, 200).forEach(p => { args.push(new FP(...p), FV.delete()); });
+            batch.update(ref, ...args);
+          }
+        }
+        // v47: ประวัติการแก้ไข (ใครแก้อะไร จากค่าใดเป็นค่าใด)
+        if (audits && old) { try { const a = window.AuditLog.build(id, s, old, item.clean); if (a) { audits.push(a); window.AuditLog.write(batch, fsdb, a); } } catch (e) { console.warn('audit', e); } }
       });
       await batch.commit();
     }
-    dirty.forEach(({ id, sig }) => _cloudSig.set(id, sig));
+    dirty.forEach(({ id, sig, clean }) => { _cloudSig.set(id, sig); _cloudObj.set(id, clean); });
+    if (audits && audits.length && window.AuditLog.committed) window.AuditLog.committed(audits);
     console.log('☁️ เขียนขึ้นคลาวด์ ' + dirty.length + '/' + students.length + ' เอกสาร');
     return dirty.length;
   }

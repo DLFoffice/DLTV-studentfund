@@ -104,7 +104,9 @@
   function form2Of(s, term) {
     const forms = s.forms || {};
     const pick = t => { const f = forms[t] && forms[t].form2; return f && typeof f === 'object' ? f : null; };
+    const sel = v => v && ((v.selected || []).length || text(v.other));
     const has = f => f && (text(f.expect_career) || text(f.additional_needs) || text(f.expect_education) || obText(f.learning_problems)
+      || sel(f.career_choices) || sel(f.needs_choices) || sel(f.edu_choices) || sel(f.obstacle_choices)
       || (f.support_other && ((f.support_other.selected || []).length || text(f.support_other.other))));
     if (term !== 'latest') { const f = pick(term); return has(f) ? { term, f } : null; }
     const terms = Object.keys(forms).filter(t => /\d\/\d{4}/.test(t)).sort((a, b) => tkey(b) - tkey(a));
@@ -119,6 +121,15 @@
     if (/^ไม่มี(ครับ|ค่ะ|คะ)?$/.test(t)) return 'ไม่มีปัญหาอุปสรรค';
     return t;
   }
+  function withChoices(v, detail, dict) {
+    const selected = (v && v.selected) || [], other = text(v && v.other);
+    if (!selected.length && !other) return { text: detail, cats: classify(detail, dict), picked: false };
+    const keys = new Set();
+    selected.forEach(name => { const d = dict.find(x => x[1] === name); (d ? [d[0]] : classify(name, dict)).forEach(k => keys.add(k)); });
+    if (other) classify(other, dict).forEach(k => keys.add(k));
+    const label = [...selected, other].filter(Boolean).join(', ');
+    return { text: detail ? label + ' — ' + detail : label, cats: [...keys], picked: true };
+  }
   function classify(str, dict) {
     if (!str) return [];
     const hit = dict.filter(([, , re]) => re.test(str)).map(([k]) => k);
@@ -132,13 +143,18 @@
       const x = form2Of(s, st.term);
       if (!x) return;
       const f = x.f;
-      const career = text(f.expect_career), needs = text(f.additional_needs), edu = text(f.expect_education), obst = obText(f.learning_problems);
+      // v47: หมวดที่ครูติ๊ก (ถ้ามี) เป็นหลัก + ข้อความรายละเอียด · ไม่มีการติ๊ก → จัดหมวดจากข้อความแบบเดิม
+      const C = withChoices(f.career_choices, text(f.expect_career), CAREER);
+      const Nd = withChoices(f.needs_choices, text(f.additional_needs), NEED);
+      const Ed = withChoices(f.edu_choices, text(f.expect_education), EDU);
+      const Ob = withChoices(f.obstacle_choices, obText(f.learning_problems), OBST);
+      const career = C.text, needs = Nd.text, edu = Ed.text, obst = Ob.text;
       const so = f.support_other || {};
       const sent = !!(window.Term && Term.state && Term.state(s, 'form2', x.term) === 'submitted');
       let care = null; try { care = window.CareGroup ? CareGroup.compute(s) : null; } catch (e) {}
       const gl = (s.semGpa || []).filter(g => g && Number(g.gpa) > 0).sort((a, b) => tkey(b.term) - tkey(a.term))[0];
-      out.push({ s, idx, term: x.term, sent, career, needs, edu, obst, care, gpa: gl ? Number(gl.gpa) : null, obCat: classify(obst, OBST),
-        careerCat: classify(career, CAREER), needCat: classify(needs, NEED), eduCat: classify(edu, EDU),
+      out.push({ s, idx, term: x.term, sent, career, needs, edu, obst, care, gpa: gl ? Number(gl.gpa) : null, obCat: Ob.cats, picked: C.picked || Nd.picked || Ed.picked || Ob.picked,
+        careerCat: C.cats, needCat: Nd.cats, eduCat: Ed.cats,
         support: (so.selected || []).slice(), supportOther: text(so.other),
         tutoring: tableRows(f.tutoring), funding: tableRows(f.extra_funding) });
     });
@@ -277,7 +293,7 @@
       </header>
       <div class="fx-cover">
         <span><b>${rows.length}</b>/${N} คนมีข้อมูล</span><span><b>${R.career.length}</b> ระบุอาชีพ</span><span><b>${R.need.length}</b> ระบุความต้องการ</span>
-        <span><b>${R.obst.length}</b> ระบุปัญหาอุปสรรค</span><span><b>${R.edu.length}</b> ระบุเป้าหมายการศึกษา</span><span><b>${sent}</b> ฉบับส่งแล้ว</span>
+        <span><b>${R.obst.length}</b> ระบุปัญหาอุปสรรค</span><span><b>${R.edu.length}</b> ระบุเป้าหมายการศึกษา</span><span><b>${sent}</b> ฉบับส่งแล้ว</span><span title="ครูติ๊กหมวดเองในแบบฟอร์ม (แม่นยำกว่าการจับคำสำคัญ)"><b>${rows.filter(r => r.picked).length}</b> คนเลือกหมวดเอง</span>
       </div>
       ${rows.length ? `
       <div class="fx-hls">${hl('career', ['unsure'])}${hl('need', ['enough'])}${hl('obst', ['none'])}${hl('edu')}</div>
