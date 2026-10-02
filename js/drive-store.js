@@ -15,7 +15,7 @@ window.DRIVE_SCRIPT_URL = '';   // ← วาง URL ที่ลงท้าย
     catch (e) { return false; }
   }
   function why() {
-    if (!window.DRIVE_SCRIPT_URL) return '168r2gFuXdKlRpq3hWaXEllr7hxq7xHf4?usp=sharing';
+    if (!window.DRIVE_SCRIPT_URL) return 'https://drive.google.com/drive/folders/168r2gFuXdKlRpq3hWaXEllr7hxq7xHf4?usp=sharing';
     return 'ต้องเข้าสู่ระบบและเชื่อมต่ออินเทอร์เน็ต';
   }
   async function call(body) {
