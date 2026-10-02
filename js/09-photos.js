@@ -37,7 +37,7 @@ function setPhotoUrl(idx, url) {
   const box = document.getElementById('photo-preview-' + idx);
   if (box) {
     if (url) {
-      box.innerHTML = `<img src="${fixDriveUrl(url)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'" style="width:100px;height:100px;border-radius:var(--rad-lg);object-fit:cover;object-position:top center;border:2px solid var(--border2)">
+      box.innerHTML = `<img src="${fixDriveUrl(url)}" onerror="this.style.display='none';(this.nextElementSibling&&(this.nextElementSibling.style.display='flex'))" style="width:100px;height:100px;border-radius:var(--rad-lg);object-fit:cover;object-position:top center;border:2px solid var(--border2)">
         <div class="photo-avatar-lg" style="display:none">${initials(DB.students[idx].name)}</div>`;
       if (!box.nextElementSibling || !box.nextElementSibling.textContent.includes('ลบรูป')) {
         const btn = document.createElement('button');

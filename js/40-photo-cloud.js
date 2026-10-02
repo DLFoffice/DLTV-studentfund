@@ -1,23 +1,19 @@
 /* ============================================================
-   40-photo-cloud.js — เก็บรูปนักเรียนบนคลาวด์ (Firebase Storage)
+   40-photo-cloud.js — เก็บรูปนักเรียนบนคลาวด์ (Google Drive ผ่าน Apps Script · v49)
    ------------------------------------------------------------
    เดิม: รูปที่อัปโหลดจากเครื่องเก็บเป็น data: ใน localStorage ของเครื่องนั้นเท่านั้น
-         (ขึ้นคลาวด์ไม่ได้ → เปิดเครื่องอื่นไม่เห็นรูป · ล้างเบราว์เซอร์แล้วรูปหาย)
    ใหม่:
-     • อัปโหลดรูป → ย่อเหลือด้านยาวไม่เกิน 800px (JPEG) → เก็บที่ Storage: studentPhotos/no-<ลำดับ>-<สุ่ม>.jpg
-       → บันทึกลิงก์ลง s.photoUrl → เห็นทุกเครื่อง (ชื่อไฟล์ไม่ใช้เลขบัตรประชาชน)
-     • ลบรูป → ลบไฟล์บน Storage ด้วย
-     • ปุ่ม "อัปโหลดรูปในเครื่องขึ้นคลาวด์" (หน้ารายชื่อ) ย้ายรูปเดิมที่ค้างในเครื่องขึ้นคลาวด์ครั้งเดียว
-     • ถ้ายังไม่เปิดใช้ Storage / ออฟไลน์ → เก็บในเครื่องแบบเดิม พร้อมแจ้งให้ทราบ
+     • อัปโหลดรูป → ย่อด้านยาว ≤ 800px (JPEG) → เก็บที่โฟลเดอร์ Drive ของมูลนิธิฯ
+       "ลำดับ <n>/รูปนักเรียน" (แชร์แบบมีลิงก์ดูได้ เพื่อแสดงในหน้าเว็บ) → บันทึกลิงก์ลง s.photoUrl
+     • ลบ/เปลี่ยนรูป → ย้ายไฟล์เดิมไปถังขยะ Drive (เฉพาะไฟล์ที่อยู่ในโฟลเดอร์ของนักเรียนคนนั้น)
+     • ปุ่ม "อัปโหลดรูปในเครื่องขึ้นคลาวด์" (หน้ารายชื่อ) ย้ายรูปที่ค้างในเครื่องขึ้น Drive ครั้งเดียว
+     • ยังไม่ตั้งค่า / ออฟไลน์ → เก็บในเครื่องแบบเดิมพร้อมแจ้ง
    ============================================================ */
 (function () {
   'use strict';
   const MAX_SIDE = 800, QUALITY = 0.82;
 
-  function storageReady() {
-    try { return typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && typeof firebase.storage === 'function'
-      && firebase.auth().currentUser && !window.STUDENT_MODE; } catch (e) { return false; }
-  }
+  function storageReady() { return !window.STUDENT_MODE && window.DriveStore && DriveStore.ready(); }
   function toBlob(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -35,17 +31,15 @@
   }
   const readFile = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file); });
   const rand = () => Math.random().toString(36).slice(2, 10);
-  const isCloudUrl = u => /firebasestorage\.googleapis\.com|\.firebasestorage\.app/.test(String(u || ''));
+  const driveId = u => { const m = String(u || '').match(/drive\.google\.com\/(?:file\/d\/|thumbnail\?id=|open\?id=|uc\?id=)([\w-]+)/); return m ? m[1] : ''; };
 
   async function uploadBlob(s, blob) {
-    const path = `studentPhotos/no-${String(s.no ?? 'x').replace(/[^\w-]/g, '')}-${rand()}.jpg`;
-    const ref = firebase.storage().ref(path);
-    await ref.put(blob, { contentType: 'image/jpeg', cacheControl: 'public,max-age=604800' });
-    return ref.getDownloadURL();
+    const r = await DriveStore.upload(s, { term: '', kind: 'photo', blob, fileName: `รูป-ลำดับ${s.no ?? ''}-${Date.now()}.jpg`, mimeType: 'image/jpeg' });
+    return r.url;
   }
-  async function deleteCloud(url) {
-    if (!isCloudUrl(url) || !storageReady()) return;
-    try { await firebase.storage().refFromURL(url).delete(); } catch (e) { console.warn('ลบรูปเดิมบนคลาวด์ไม่สำเร็จ:', e.code || e.message); }
+  async function deleteCloud(s, url) {
+    const id = driveId(url); if (!id || !storageReady() || !s) return;
+    try { await DriveStore.remove(s, id); } catch (e) { console.warn('ย้ายรูปเดิมไปถังขยะไม่สำเร็จ (อาจเป็นรูปนอกโฟลเดอร์ของระบบ):', e.message); }
   }
 
   async function handle(file, idx) {
@@ -56,21 +50,21 @@
     if (!storageReady()) {
       setPhotoUrl(idx, dataUrl);   // แบบเดิม: เก็บในเครื่อง
       UIDialog.alert({ tone: 'warning', title: 'บันทึกรูปไว้ในเครื่องนี้เท่านั้น',
-        message: 'ยังเชื่อมต่อคลาวด์รูปภาพไม่ได้ (ยังไม่เปิดใช้ Firebase Storage หรือออฟไลน์) เครื่องอื่นจะยังไม่เห็นรูปนี้\nกดปุ่ม "อัปโหลดรูปในเครื่องขึ้นคลาวด์" ในหน้ารายชื่อภายหลังได้' });
+        message: 'ยังเชื่อมต่อ Google Drive ไม่ได้ (' + (window.DriveStore ? DriveStore.why() : 'ยังไม่ได้ตั้งค่า') + ') เครื่องอื่นจะยังไม่เห็นรูปนี้\nกดปุ่ม "อัปโหลดรูปในเครื่องขึ้นคลาวด์" ในหน้ารายชื่อภายหลังได้' });
       return;
     }
-    const close = UIDialog.busy('กำลังอัปโหลดรูป…', 'ระบบย่อรูปและเก็บบนคลาวด์');
+    const close = UIDialog.busy('กำลังอัปโหลดรูป…', 'ระบบย่อรูปและเก็บใน Google Drive ของมูลนิธิฯ');
     try {
       const old = s.photoUrl;
       const url = await uploadBlob(s, await toBlob(dataUrl));
       setPhotoUrl(idx, url);
       if (typeof window.fbSaveNow === 'function') await window.fbSaveNow();
       close();
-      deleteCloud(old);
+      deleteCloud(s, old);
     } catch (e) {
       close();
       UIDialog.alert({ tone: 'danger', title: 'อัปโหลดรูปไม่สำเร็จ',
-        message: (e.code === 'storage/unauthorized' ? 'บัญชีนี้ไม่มีสิทธิ์อัปโหลด หรือยังไม่ได้ตั้งค่า Storage Rules (ดู firebase/storage.rules)' : (e.message || e)) });
+        message: e.message || String(e) });
     }
   }
 
@@ -83,7 +77,7 @@
   window.removePhoto = function (idx) {
     const s = DB.students[idx]; const old = s && s.photoUrl;
     const r = _remove ? _remove.apply(this, arguments) : setPhotoUrl(idx, '');
-    deleteCloud(old);
+    deleteCloud(s, old);
     return r;
   };
 
@@ -92,8 +86,8 @@
   async function migrate() {
     const list = localOnes();
     if (!list.length) return;
-    if (!storageReady()) { UIDialog.alert({ tone: 'warning', title: 'ยังเชื่อมต่อคลาวด์รูปภาพไม่ได้', message: 'เปิดใช้ Firebase Storage และวาง storage.rules ก่อน (ดู README)' }); return; }
-    const ok = await uiAsk(`รูปที่อยู่เฉพาะในเครื่องนี้ ${list.length} รูป จะถูกย่อและอัปโหลดขึ้นคลาวด์ ทุกเครื่องจะเห็นรูปเหล่านี้`,
+    if (!storageReady()) { UIDialog.alert({ tone: 'warning', title: 'ยังเชื่อมต่อ Google Drive ไม่ได้', message: window.DriveStore ? DriveStore.why() : 'ยังไม่ได้ตั้งค่า' }); return; }
+    const ok = await uiAsk(`รูปที่อยู่เฉพาะในเครื่องนี้ ${list.length} รูป จะถูกย่อและอัปโหลดขึ้นคลาวด์ ทุกเครื่องจะเห็นรูปเหล่านี้ (เก็บใน Google Drive ของมูลนิธิฯ)`,
       { tone: 'info', title: 'อัปโหลดรูปในเครื่องขึ้นคลาวด์?', confirmText: 'อัปโหลด ' + list.length + ' รูป' });
     if (!ok) return;
     const close = UIDialog.busy('กำลังอัปโหลดรูป…', `0 / ${list.length}`);

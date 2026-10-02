@@ -2821,3 +2821,7 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .at-miss{font-size:12px;font-weight:600;color:#B45309}
 .at-dash{color:var(--text3);font-size:12.5px}
 .at-detail{margin-top:24px}
+/* v49 — ปุ่มเปิดไฟล์ (Drive) */
+button.at-name{border:none;background:none;padding:0;font:inherit;font-size:13.5px;font-weight:600;color:var(--blue-dk);text-align:left;cursor:pointer;max-width:100%}
+button.at-thumb{padding:0;cursor:pointer}
+button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:pointer}

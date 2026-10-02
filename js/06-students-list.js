@@ -305,7 +305,7 @@ function renderStudents(){
       return `<div class="student-card" onclick="openStudentDetail(${idx})">
         <div class="card-photo-wrap">
           ${safeUrl(s.photoUrl)
-            ? `<img class="card-photo" src="${escHtml(safeUrl(fixDriveUrl(s.photoUrl)))}" alt="${escHtml(s.name)}" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="card-avatar" style="display:none">${escHtml(initials(s.name||''))}</div><div class="card-photo-zoom-icon">🔍</div>`
+            ? `<img class="card-photo" src="${escHtml(safeUrl(fixDriveUrl(s.photoUrl)))}" alt="${escHtml(s.name)}" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';(this.nextElementSibling&&(this.nextElementSibling.style.display='flex'))"><div class="card-avatar" style="display:none">${escHtml(initials(s.name||''))}</div><div class="card-photo-zoom-icon">🔍</div>`
             : `<div class="card-avatar">${escHtml(initials(s.name||''))}</div>`}
           <div class="card-no">#${escHtml(s.no)}</div>
           <div class="card-risk-badge"><span class="${escHtml(cg.badgeClass)}" title="${escHtml(cg.note)}">${escHtml(cg.label)}</span></div>

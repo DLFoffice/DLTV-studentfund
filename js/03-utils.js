@@ -289,7 +289,7 @@ function fixDriveUrl(url) {
 function photoEl(s, cls='tbl-photo', fallbackCls='tbl-avatar'){
   const src = safeUrl(s.photoUrl ? fixDriveUrl(s.photoUrl) : '');
   if(src) {
-    return `<img class="${cls}" src="${escHtml(src)}" alt="${escHtml(s.name)}" title="คลิกดูรูปเต็ม" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="${fallbackCls}" style="display:none">${escHtml(initials(s.name||''))}</div>`;
+    return `<img class="${cls}" src="${escHtml(src)}" alt="${escHtml(s.name)}" title="คลิกดูรูปเต็ม" ${lbAttrs(s.photoUrl, s.name)} onerror="this.style.display='none';(this.nextElementSibling&&(this.nextElementSibling.style.display='flex'))"><div class="${fallbackCls}" style="display:none">${escHtml(initials(s.name||''))}</div>`;
   }
   return `<div class="${fallbackCls}">${escHtml(initials(s.name||''))}</div>`;
 }

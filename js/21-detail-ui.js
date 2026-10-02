@@ -295,7 +295,7 @@
         <div class="photo-preview-box">
           <div id="photo-preview-${idx}">
             ${s.photoUrl
-              ? `<img src="${fixDriveUrl(s.photoUrl)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'" style="width:100px;height:100px;border-radius:var(--rad-lg);object-fit:cover;object-position:top center;border:2px solid var(--border2)"><div class="photo-avatar-lg" style="display:none">${initials(s.name)}</div>`
+              ? `<img src="${fixDriveUrl(s.photoUrl)}" onerror="this.style.display='none';(this.nextElementSibling&&(this.nextElementSibling.style.display='flex'))" style="width:100px;height:100px;border-radius:var(--rad-lg);object-fit:cover;object-position:top center;border:2px solid var(--border2)"><div class="photo-avatar-lg" style="display:none">${initials(s.name)}</div>`
               : `<div class="photo-avatar-lg">${initials(s.name)}</div>`}
           </div>
           ${s.photoUrl ? `<button class="btn btn-sm btn-danger" style="margin-top:6px;width:100%" onclick="removePhoto(${idx})">🗑 ลบรูป</button>` : ''}

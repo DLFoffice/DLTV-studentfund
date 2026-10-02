@@ -838,3 +838,39 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 ### ⚠️ ต้องอัปเดต Storage Rules
 วาง `firebase/storage.rules` ใหม่ทั้งไฟล์ → Publish (เพิ่ม `studentDocs/{no}`: ผู้ดูแล/เจ้าหน้าที่ทุกโฟลเดอร์,
 ครูผู้ดูแลเฉพาะโฟลเดอร์ลำดับของตัวเอง — ตรวจจาก `accounts/{uid}.no`)
+
+---
+
+## v49 — เก็บเอกสารแนบและรูปนักเรียนใน Google Drive (แทน Firebase Storage)
+
+ไฟล์: `gas/DriveFiles.gs` (ใหม่ · Apps Script แยกโปรเจกต์), `js/drive-store.js` (ใหม่ · ตั้งค่า URL), `js/40-photo-cloud.js`, `js/42-attachments.js`,
+`js/41-audit-log.js`, `index.html` (`?v=20261002e`, เอา firebase-storage-compat ออก), `css/style.css`, `manual.md`/`manual.html`
+ลบ: `firebase/storage.rules` (ไม่ใช้แล้ว — ไม่ต้องอัปเกรด Blaze)
+
+**โครงโฟลเดอร์ใน Drive** (โฟลเดอร์ราก `168r2gFuXdKlRpq3hWaXEllr7hxq7xHf4`)
+```
+ลำดับ 12/
+  ภาคเรียน 2-2568/
+    ผลการเรียน/   สมุดบัญชี/   เอกสารอื่น/
+  รูปนักเรียน/
+```
+• เอกสารแนบ = ไฟล์ส่วนตัว (ไม่แชร์) เปิดดูผ่านสคริปต์ซึ่งตรวจสิทธิ์ทุกครั้ง · ลบ = ย้ายไปถังขยะ Drive (กู้ได้ 30 วัน)
+• รูปนักเรียน = แชร์ "ทุกคนที่มีลิงก์ดูได้" เพื่อแสดงในหน้าเว็บ (ลิงก์สุ่ม)
+• สิทธิ์: สคริปต์ตรวจ Firebase ID token กับ Firestore — ผู้ดูแล (`admins/{email}`) / เจ้าหน้าที่ (`accounts.role=staff`) ทุกคน,
+  ครูผู้ดูแล (`accounts.role=student`) เฉพาะลำดับของตัวเอง (`accounts.no`) · รูปนักเรียนอัปโหลดได้เฉพาะผู้ดูแล/เจ้าหน้าที่
+
+### ติดตั้ง (ครั้งเดียว ~5 นาที)
+1. ล็อกอิน Google ด้วยบัญชีที่ **แก้ไขโฟลเดอร์ Drive ปลายทางได้** → เปิด https://script.google.com → **New project**
+   ตั้งชื่อ `DLTV Fund – Files`
+2. ลบโค้ดตัวอย่าง วาง `gas/DriveFiles.gs` ทั้งไฟล์ → บันทึก
+3. เลือกฟังก์ชัน `testSetup` → **Run** → อนุญาตสิทธิ์ (Drive + เชื่อมต่อภายนอก) → Log ต้องขึ้น "เข้าถึงได้"
+4. **Deploy → New deployment →** ไอคอนเฟือง เลือก **Web app**
+   - Execute as: **Me** · Who has access: **Anyone** → Deploy → คัดลอก **Web app URL** (ลงท้าย `/exec`)
+5. เปิด `js/drive-store.js` วาง URL ใน `window.DRIVE_SCRIPT_URL = '...'` → อัปโหลดไฟล์ขึ้นเว็บ
+6. ทดสอบ: แนบไฟล์ 1 ไฟล์ในแบบฟอร์มที่ 2 → ไฟล์ต้องขึ้นในโฟลเดอร์ Drive "ลำดับ n / ภาคเรียน …"
+
+แก้โค้ด Apps Script ภายหลัง: Deploy → **Manage deployments** → แก้ deployment เดิม → Version: New version
+(URL เดิมใช้ต่อได้ ไม่ต้องแก้ `drive-store.js`)
+
+ข้อจำกัด: ไฟล์ละ ≤ 10 MB (ฝั่งเว็บ) · อัปโหลดช้ากว่า Storage เล็กน้อย (ผ่าน Apps Script) ·
+โควตา Apps Script บัญชีทั่วไป ~20,000 คำขอ/วัน และใช้พื้นที่ Drive ของบัญชีเจ้าของสคริปต์
