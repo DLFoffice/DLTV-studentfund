@@ -48,6 +48,14 @@
   const thDateTime = iso => { try { const d = new Date(iso); return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) + ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'; } catch (e) { return ''; } };
   const thDate = iso => { try { return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
 
+  // v48: เอกสารแนบจำเป็นของแบบฟอร์มที่ 2 (ผลการเรียน + สมุดบัญชี)
+  function attachInfo(s, term) {
+    try {
+      const f = sfFindField('form2', 'attachments'); const req = ((f && f.kinds) || []).filter(k => k.required);
+      const v = (s.forms && s.forms[term] && s.forms[term].form2 && s.forms[term].form2.attachments) || {};
+      return { need: req.length, ok: req.filter(k => (v[k.id] || []).length).length, missing: req.filter(k => !(v[k.id] || []).length).map(k => k.short || k.label) };
+    } catch (e) { return { need: 0, ok: 0, missing: [] }; }
+  }
   function rowsFor(term) {
     return (DB.students || []).map((s, idx) => {
       const sum = Worklist.summary(s, term);
@@ -138,6 +146,7 @@
     }
     else if (t.state === 'locked') { label = 'ปิดรับ'; }
     else { label = 'ยังไม่ส่ง'; }
+    if (k === 'form2') { const a = attachInfo(r.s, term); if (a.need) detail = (detail ? detail + ' · ' : '') + (a.ok === a.need ? '📎 เอกสารครบ' : `📎 เอกสาร ${a.ok}/${a.need}`); }
     const canOpen = t.state !== 'locked';
     const tip = !canOpen ? '' : (k !== 'sdq' && t.state === 'submitted') ? 'ดูตัวอย่างแบบฟอร์มที่ส่ง' : 'เปิดงานนี้';
     return `<td class="ft2-cell" data-label="${TASK_NAME[k]}">
@@ -228,12 +237,12 @@
     const safe = v => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
     const txt = t => t.state === 'submitted' ? 'ส่งแล้ว' : t.state === 'locked' ? 'ปิดรับ' : 'ยังไม่ส่ง';
     const when = t => t.at ? thDateTime(t.at) : '';
-    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'จังหวัด', 'ฟอร์ม 1', 'ฟอร์ม 1 ส่งล่าสุด', 'ฟอร์ม 2', 'ฟอร์ม 2 ส่งล่าสุด', 'SDQ', 'SDQ ส่งล่าสุด', 'ส่งแล้ว (จาก 3)'];
+    const head = ['ลำดับ', 'ชื่อ-สกุล', 'โรงเรียน', 'จังหวัด', 'ฟอร์ม 1', 'ฟอร์ม 1 ส่งล่าสุด', 'ฟอร์ม 2', 'ฟอร์ม 2 ส่งล่าสุด', 'SDQ', 'SDQ ส่งล่าสุด', 'ส่งแล้ว (จาก 3)', 'เอกสารแนบที่ยังขาด'];
     const lines = [head.map(safe).join(',')];
     rowsFor(term).sort((a, b) => (a.s.no || 0) - (b.s.no || 0)).forEach(r => {
       const f1 = r.tasks.form1, f2 = r.tasks.form2, sd = r.tasks.sdq;
       lines.push([r.s.no, r.s.name, r.s.school_m1, r.s.province,
-        txt(f1), when(f1), txt(f2), when(f2), txt(sd), when(sd), r.sum.doneCount].map(safe).join(','));
+        txt(f1), when(f1), txt(f2), when(f2), txt(sd), when(sd), r.sum.doneCount, attachInfo(r.s, term).missing.join(' / ') || 'ครบ'].map(safe).join(','));
     });
     const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');

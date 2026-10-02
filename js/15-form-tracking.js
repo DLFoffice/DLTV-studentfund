@@ -770,7 +770,7 @@ function sfPrintCurrentForm(){
 /* ---------------- PREVIEW MODAL (ดูตัวอย่างก่อนพิมพ์) ---------------- */
 const SF_SECTION_ICON = {
   school:'🏫', personal:'🧑', health:'🩺', family:'👨‍👩‍👧', relations:'❤️', study:'🎓',
-  support:'🤝', needs:'📋', finance:'💰', general:'🧑', grades:'📊', assistance:'🤝', behavior:'🌟'
+  support:'🤝', needs:'📋', finance:'💰', general:'🧑', grades:'📊', assistance:'🤝', behavior:'🌟', attachments:'📎'
 };
 function sfFieldSummaryValue(formKey, field){
   if(field.type==='text'||field.type==='number'||field.type==='date'||field.type==='textarea'){
@@ -786,6 +786,10 @@ function sfFieldSummaryValue(formKey, field){
     const rows = sfPV(formKey, field.id)||[];
     const filled = rows.filter(r=>Object.values(r.cells||{}).some(v=>v));
     return filled.length ? `${filled.length} รายการ` : '';
+  }
+  if(field.type==='files'){
+    const v = sfPV(formKey, field.id) || {};
+    return (field.kinds||[]).map(k=>{ const n=(v[k.id]||[]).length; return n ? `${k.short||k.label} ${n} ไฟล์` : (k.required ? `${k.short||k.label}: ยังไม่แนบ` : ''); }).filter(Boolean).join(' · ');
   }
   if(field.type==='matrix'){
     const m = sfPV(formKey, field.id);
@@ -924,6 +928,10 @@ function sfFlattenFormForSheet(formKey, student){
         val = arr.filter(r=>Object.values(r.cells||{}).some(Boolean))
           .map(r=> f.columns.map(c=>(r.cells&&r.cells[c.id])?`${c.label}:${r.cells[c.id]}`:'').filter(Boolean).join(' / '))
           .join('  |  ');
+      } else if(f.type==='files'){
+        // v48: เอกสารแนบ → "ประเภท: ชื่อไฟล์ (ลิงก์)"
+        const v = sfPV(formKey, f.id) || {};
+        val = (f.kinds||[]).map(k=>(v[k.id]||[]).map(x=>`${k.short||k.label}: ${x.name} (${x.url})`).join('  |  ')).filter(Boolean).join('  |  ');
       } else if(f.type==='matrix'){
         const m = sfPV(formKey, f.id);
         if(m && m.cols){

@@ -68,6 +68,12 @@
             if (fk === 'm1' || fk === 'm2') { put(`forms.${t}.${fk}`, `${FORM_NAME[fk]} ${t} · สถานะการส่ง`, st.submittedAt || '', st.submittedAt ? sent(st.submittedAt) : 'ยังไม่ส่ง'); return; }
             if (fk !== 'form1' && fk !== 'form2') return;
             Object.keys(st).forEach(fid => { if (fid.startsWith('_')) return;
+              if (fid === 'attachments' && st[fid] && typeof st[fid] === 'object') {   // v48: เอกสารแนบ → รายการชื่อไฟล์
+                Object.keys(st[fid]).forEach(kd => { const l = Array.isArray(st[fid][kd]) ? st[fid][kd] : [];
+                  put(`forms.${t}.${fk}.attachments.${kd}`, `เอกสารแนบ ${t} · ${({ grades: 'ผลการเรียน', bankbook: 'สมุดบัญชี', other: 'อื่น ๆ' })[kd] || kd}`,
+                    l.map(x => x.path || x.name), l.length ? l.map(x => x.name).join(', ') : ''); });
+                return;
+              }
               put(`forms.${t}.${fk}.${fid}`, `${FORM_NAME[fk]} ${t} · ${fieldLabel(fk, fid)}`, st[fid]); });
           }); });
         return;

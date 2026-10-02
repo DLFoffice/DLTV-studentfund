@@ -314,6 +314,16 @@ const SF_FORM2 = [
     { id:'director_name', type:'text', label:'ชื่อผู้อำนวยการสถานศึกษา', from:s=>(s.school_m1_addr&&s.school_m1_addr.directorM1)||s.directorM1||s.directorM_1||'' },
     { id:'director_sign_date', type:'date', label:'วันที่ลงนามผู้อำนวยการ' },
   ]},
+  // v48: เอกสารแนบประจำภาคเรียน (เก็บไฟล์บน Firebase Storage · ข้อมูลไฟล์อยู่ในแบบฟอร์มของภาคเรียนนั้น)
+  { id:'attachments', title:'เอกสารแนบ', short:'เอกสารแนบ', fields:[
+    { id:'attachments_note', type:'note', full:true,
+      text:'แนบไฟล์ประกอบแบบฟอร์มของภาคเรียนนี้ — รองรับ PDF และรูปภาพ (JPG/PNG) ไฟล์ละไม่เกิน 10 MB · ถ่ายรูปจากมือถือได้ ระบบย่อรูปให้อัตโนมัติ' },
+    { id:'attachments', type:'files', full:true, optional:true, label:'เอกสารแนบ', kinds:[
+      { id:'grades', label:'ผลการเรียนของนักเรียน', short:'ผลการเรียน', hint:'ใบรายงานผลการเรียน/ปพ. ของภาคเรียนนี้ ที่มีลายมือชื่อรับรอง', required:true },
+      { id:'bankbook', label:'สำเนาสมุดบัญชีเงินฝาก', short:'สมุดบัญชี', hint:'หน้าแรก (ชื่อบัญชี/เลขที่บัญชี) และหน้ารายการล่าสุด พร้อมรับรองสำเนาถูกต้อง', required:true },
+      { id:'other', label:'เอกสารอื่น ๆ', short:'อื่น ๆ', hint:'เช่น ใบเสร็จค่าบำรุงการศึกษา หรือเอกสารประกอบอื่น' }
+    ]},
+  ]},
 ];
 
 
@@ -434,6 +444,9 @@ function sfRenderField(formKey, field){
     }
     return `<label class="${wrapClass}"><span class="sf-label">${sfEscapeHtml(field.label)}</span>${hint}
       ${ta}</label>`;
+  }
+  if(field.type==='files'){   // v48: เอกสารแนบ (วาดโดย js/42-attachments.js)
+    return (typeof window.sfRenderFiles==='function') ? window.sfRenderFiles(formKey, field, value) : '';
   }
   if(field.type==='radio'){
     const opts = field.options.map(opt=>`

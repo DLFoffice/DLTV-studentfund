@@ -22,6 +22,21 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
       allow delete: if isStaff();
     }
+    // v48: เอกสารแนบ (ผลการเรียน / สมุดบัญชี) — โฟลเดอร์ = ลำดับนักเรียน
+    // ครูผู้ดูแล (บัญชีนักเรียน) อัปโหลด/อ่าน/ลบได้เฉพาะโฟลเดอร์ของลำดับตัวเอง · ผู้ดูแล/เจ้าหน้าที่ได้ทุกโฟลเดอร์
+    function isOwnStudentNo(no) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/accounts/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/accounts/$(request.auth.uid)).data.role == 'student'
+        && string(firestore.get(/databases/(default)/documents/accounts/$(request.auth.uid)).data.no) == no;
+    }
+    match /studentDocs/{no}/{file} {
+      allow read: if isStaff() || isOwnStudentNo(no);
+      allow create, update: if (isStaff() || isOwnStudentNo(no))
+        && request.resource.size < 12 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+      allow delete: if isStaff() || isOwnStudentNo(no);
+    }
     match /{all=**} { allow read, write: if false; }
   }
 }

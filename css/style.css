@@ -2770,3 +2770,54 @@ i.g-ok{background:var(--sq-ok)}i.g-risk{background:var(--sq-risk)}i.g-prob{backg
 .al-item i{color:var(--text3);font-style:normal}
 .al-more{text-align:center;color:var(--text3)}
 .al-empty,.al-loading{padding:30px;text-align:center;color:var(--text3);font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:10px}
+
+/* ============================================================
+   v48 — เอกสารแนบ (แบบฟอร์มที่ 2 + หน้ารายละเอียด)
+   ============================================================ */
+.at-wrap{display:flex;flex-direction:column;gap:14px}
+.at-summary{padding:10px 14px;border-radius:12px;font-size:13.5px;font-weight:600}
+.at-summary.ok{background:var(--green-lt);color:#15803D}
+.at-summary.warn{background:#FEF6E7;color:#B45309}
+.at-off{font-weight:400;color:var(--text3);margin-left:6px}
+.at-kind{border:1px solid var(--border);border-radius:14px;padding:14px 16px;background:#fff}
+.at-kind.is-ok{border-color:#BFE6CC}
+.at-kind.is-need{border-color:#F5D9A8}
+.at-kind header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.at-kind h5{margin:0;font-size:14.5px;font-weight:700;color:var(--text)}
+.at-kind h5 em{font-style:normal;font-size:11px;font-weight:700;color:#B45309;background:#FEF3E1;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+.at-kind header p{margin:2px 0 0;font-size:12.5px;color:var(--text3)}
+.at-state{flex:none;font-size:12.5px;font-weight:600;color:var(--text3)}
+.at-kind.is-ok .at-state{color:#15803D}
+.at-kind.is-need .at-state{color:#B45309}
+.at-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.at-file{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--border)}
+.at-thumb{flex:none;width:52px;height:52px;border-radius:8px;overflow:hidden;background:#fff;border:1px solid var(--border)}
+.at-thumb img{width:100%;height:100%;object-fit:cover}
+.at-ic{flex:none;width:52px;height:52px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;background:#fff;border:1px solid var(--border)}
+.at-meta{flex:1;min-width:0;display:flex;flex-direction:column}
+.at-name{font-size:13.5px;font-weight:600;color:var(--blue-dk);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.at-name:hover{text-decoration:underline}
+.at-meta span{font-size:11.5px;color:var(--text3)}
+.at-btn{flex:none;border:1px solid var(--border2);background:#fff;border-radius:9px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);text-decoration:none;cursor:pointer}
+.at-btn:hover{border-color:var(--blue);color:var(--blue)}
+.at-btn.danger{color:#B91C1C;border-color:#F3C4C4}
+.at-btn.danger:hover{background:#FDEEEE;border-color:#DC2626}
+.at-drop{position:relative;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:16px;border:2px dashed var(--border2);
+  border-radius:12px;background:#FAFBFE;font-size:13px;color:var(--text2);cursor:pointer;text-align:center;transition:border-color .2s,background .2s}
+.at-drop:hover,.at-drop.is-over{border-color:var(--blue);background:var(--blue-lt)}
+.at-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.at-drop b{color:var(--blue-dk)}
+.at-drop.is-busy{cursor:progress;flex-direction:column}
+.at-drop.is-busy input{display:none}
+.at-drop-ic{font-size:18px}
+.at-prog{display:block;width:min(320px,100%);height:8px;border-radius:6px;background:#E2E8F0;overflow:hidden}
+.at-prog span{display:block;height:100%;background:var(--blue);transition:width .2s}
+.at-tw{overflow-x:auto}
+.at-table{width:100%;border-collapse:collapse;font-size:13px}
+.at-table th,.at-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.at-table thead th{background:var(--bg2);font-size:12px;color:var(--text3)}
+.at-chip{display:inline-block;margin:0 4px 4px 0;padding:3px 9px;border-radius:8px;background:var(--blue-lt);color:var(--blue-dk);text-decoration:none;font-size:12px;font-weight:600}
+.at-chip:hover{text-decoration:underline}
+.at-miss{font-size:12px;font-weight:600;color:#B45309}
+.at-dash{color:var(--text3);font-size:12.5px}
+.at-detail{margin-top:24px}
