@@ -125,7 +125,7 @@ function renderDashboard(){
   document.getElementById('watch-tbody').innerHTML=watchList.map(s=>{const g=getLatestGpa(s);const cg=CareGroup.compute(s);return`<tr>
     <td>${s.no}</td>
     <td style="width:46px">${photoEl(s)}</td>
-    <td style="font-weight:600">${s.name}<br><span style="font-size:11px;color:var(--text3)">${s.nickname}</span></td>
+    <td style="font-weight:600">${s.name}<br><span style="font-size:11px;color:var(--text3)">${escHtml(s.nickname||"")}</span></td>
     <td style="font-size:12px">${s.school_m1}</td>
     <td><span class="badge b-blue">${s.province}</span></td>
     <td><span style="font-weight:700;font-size:15px;color:${gpaColor(g.gpa)}">${g.gpa||'-'}</span></td>

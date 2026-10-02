@@ -129,7 +129,7 @@ function renderMapMarkers(filter){
         <div style="font-size:12px;color:#555;margin-bottom:4px">📍 ${s.province}</div>
         <div style="font-size:12px;color:#555;margin-bottom:4px">สังกัด: ${s.org||'-'}</div>
         <hr style="margin:6px 0;border-color:#eee">
-        <div style="font-size:12px;margin-bottom:2px"><b>นักเรียน:</b> ${s.name} (${s.nickname})</div>
+        <div style="font-size:12px;margin-bottom:2px"><b>นักเรียน:</b> ${escHtml(s.name||"")}${s.nickname?` (${escHtml(s.nickname)})`:""}</div>
         <div style="font-size:12px;margin-bottom:6px">GPA: <b style="color:${gpaColor(g.gpa)}">${g.gpa||'-'}</b>
           &nbsp;|&nbsp; กลุ่มการดูแล: <b style="color:${color}">${cg.label}</b></div>
         <a href="${gmUrl}" target="_blank"
@@ -150,7 +150,7 @@ function renderMapMarkers(filter){
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.school_m1||'-'}</div>
           <div style="font-size:11px;color:var(--text2)">📍 ${s.province} &bull; ${s.org||''}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.name} (${s.nickname}) GPA ${g.gpa||'-'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(s.name||"")}${s.nickname?` (${escHtml(s.nickname)})`:""} GPA ${g.gpa||'-'}</div>
         </div>
         <a href="${gmUrl}" target="_blank" onclick="event.stopPropagation()"
           title="เปิด Google Maps"
