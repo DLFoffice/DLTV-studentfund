@@ -86,7 +86,7 @@
       const oc = b.getAttribute('onclick') || '';
       const keep = oc.indexOf("'scholarform'") !== -1 || oc.indexOf("'formtrack'") !== -1
         || oc.indexOf("'sdqform'") !== -1 || oc.indexOf("'sdqdashboard'") !== -1
-        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash';
+        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash' || b.id === 'mi-nav';
       if (!keep) b.style.display = 'none';
       else if (oc.indexOf("'scholarform'") !== -1) formBtn = b;
     });
@@ -194,7 +194,7 @@
 
   /* v15: บัญชีนักเรียนเขียนได้เฉพาะฟิลด์แบบฟอร์ม — ต้องตรงกับ STUDENT_WRITABLE ใน firestore.rules
      (ประวัติเบิกจ่าย / GPA / เลขบัญชี / ข้อมูลส่วนตัว เป็นงานของครูเท่านั้น) */
-  const STUDENT_WRITABLE_FIELDS = ['form1', 'form2', 'forms', 'sdq'];
+  const STUDENT_WRITABLE_FIELDS = ['form1', 'form2', 'forms', 'sdq', 'mi'];
   function payloadFor(s) {
     const c = cleanForCloud(s);
     if (!studentMode) return c;

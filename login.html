@@ -431,11 +431,13 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
     return;
   }
   firebase.initializeApp(window.FIREBASE_CONFIG);
+  // v53: กลับไปหน้าที่มาจาก (?next=mi.html) — อนุญาตเฉพาะหน้า .html ในเว็บนี้
+  const NEXT = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return /^[\w-]+\.html$/.test(n) ? n : 'index.html'; })();
   const auth = firebase.auth();
   const db   = firebase.firestore();
 
   // ล็อกอินอยู่แล้ว → เข้าแอปเลย
-  auth.onAuthStateChanged(u => { if (u && !window._loggingIn) location.replace('index.html'); });
+  auth.onAuthStateChanged(u => { if (u && !window._loggingIn) location.replace(NEXT); });
 
   /* ---- ตาดูรหัสผ่าน ---- */
   const passInput = document.getElementById('login-pass');
@@ -496,7 +498,7 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
       btn.classList.remove('loading'); btn.classList.add('success');
       const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       setTimeout(() => { const sh = document.getElementById('shell'); if (sh) sh.classList.add('leaving'); }, reduce ? 0 : 450);
-      setTimeout(() => location.replace('index.html'), reduce ? 60 : 900);
+      setTimeout(() => location.replace(NEXT), reduce ? 60 : 900);
       return;
     } catch (e) {
       err(({

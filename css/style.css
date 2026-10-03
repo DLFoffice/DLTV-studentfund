@@ -2971,3 +2971,44 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .sf-data-table .sf-btn-icon:hover{color:#DC2626;background:#FDEEEE}
 .sf-table-wrap .sf-btn-add{margin:10px 12px 12px}
 .sf-table-wrap .sf-matrix-foot{padding:0 12px 10px}
+
+/* ============================================================
+   v53 — ผลแบบสำรวจแววความสามารถพิเศษ (MI) ในหน้ารายละเอียด
+   ============================================================ */
+.mi-card{margin-top:22px;border:1px solid var(--border);border-radius:16px;background:#fff;padding:16px 18px;box-shadow:0 8px 24px -16px rgba(15,26,64,.25)}
+.mi-card header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.mi-card h4{margin:0;font-size:15.5px;font-weight:700;color:var(--text)}
+.mi-card header p{margin:3px 0 0;font-size:12.5px;color:var(--text3)}
+.mi-acts{display:flex;gap:8px;flex-wrap:wrap}
+.mi-btn{display:inline-flex;align-items:center;border:1px solid var(--border2);background:#fff;color:var(--text);border-radius:10px;padding:7px 13px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none}
+.mi-btn:hover{border-color:var(--blue);color:var(--blue)}
+.mi-btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.mi-btn.primary:hover{background:var(--blue-dk);color:#fff}
+.mi-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.mi-sum>div{padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--border)}
+.mi-sum span{display:block;font-size:11.5px;color:var(--text3)}
+.mi-sum b{font-size:13.5px;color:var(--text)}
+.mi-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px}
+.mi-sub{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.mi-sub small{font-weight:400;color:var(--text3)}
+.mi-bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.mi-bars li{display:grid;grid-template-columns:150px minmax(60px,1fr) 44px;gap:8px;align-items:center;font-size:12.5px}
+.mi-bars .mi-st{grid-column:1/-1;margin:-3px 0 2px 18px}
+.mi-bars .mi-st:empty{display:none}
+.mi-dn{display:flex;align-items:center;gap:6px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi-dn i{width:9px;height:9px;border-radius:3px;flex:none}
+.mi-track{position:relative;height:9px;border-radius:6px;background:#EDF1F7}
+.mi-track>span{display:block;height:100%;border-radius:6px;opacity:.85}
+.mi-track em{position:absolute;top:-3px;width:2px;height:15px;background:#1A1F36;border-radius:1px}
+.mi-sc{text-align:right;color:var(--text2);font-variant-numeric:tabular-nums}
+.mi-ok{font-size:11.5px;font-weight:600;color:#15803D}
+.mi-lv{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:999px}
+.mi-lv.lv2{background:#DCFCE7;color:#15803D}.mi-lv.lv1{background:#FEF3C7;color:#B45309}.mi-lv.lv0{background:var(--bg3);color:var(--text3)}
+.mi-careers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.mi-careers li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:linear-gradient(150deg,#F5F8FF,#fff);border:1px solid #DCE4FB}
+.mi-ci{font-size:22px;flex:none}
+.mi-careers b{display:block;font-size:13.5px;color:var(--text)}
+.mi-careers small{display:block;font-size:11.5px;color:var(--text3);line-height:1.5}
+.mi-cs{margin-left:auto;font-size:12px;font-weight:800;color:var(--blue-dk)}
+.mi-ext{margin-left:auto;font-size:11px;opacity:.6}
+@media (max-width:800px){.mi-grid,.mi-sum{grid-template-columns:1fr}.mi-bars li{grid-template-columns:120px 1fr 40px}}

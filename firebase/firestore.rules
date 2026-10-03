@@ -52,7 +52,7 @@ service cloud.firestore {
     // ฟิลด์ในเอกสารนักเรียนที่ "บัญชีนักเรียน" แก้ได้ (ต้องตรงกับ STUDENT_WRITABLE_FIELDS ใน 18-firebase-bridge.js)
     function studentWritableOnly() {
       return request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['form1', 'form2', 'forms', 'sdq']);
+               .hasOnly(['form1', 'form2', 'forms', 'sdq', 'mi']);   // v53: mi = ผลแบบสำรวจแววความสามารถพิเศษ
     }
     // ผูก studentId ได้เฉพาะเอกสารที่ "ลำดับ" ตรงกับบัญชีตัวเอง
     function studentDocMatchesMyNo(sid) {

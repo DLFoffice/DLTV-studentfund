@@ -60,6 +60,8 @@
         (Number(g.gpa) > 0 ? 'GPA ' + Number(g.gpa).toFixed(2) : 'ไม่มี GPA') + (g.weakSubjects ? ' · วิชาที่ควรพัฒนา: ' + short(g.weakSubjects, 50) : ''))); return; }
       if (k === 'semPayments' && Array.isArray(v)) { v.forEach(p => p && p.term && put('semPayments.' + p.term, 'การเบิกจ่าย ' + p.term, p,
         `ส่วนที่ 1 ${money(Number(p.p1) || 0)} · ส่วนที่ 2 ${money(Number(p.p2) || 0)} บาท`)); return; }
+      if (k === 'mi') { const mm = v || {}; put('mi', 'แบบสำรวจแววความสามารถพิเศษ (MI)', mm.answers || null,
+        mm.updatedAt ? 'ผลวันที่ ' + new Date(mm.updatedAt).toLocaleDateString('th-TH') + (mm.passed && mm.passed.length && typeof MI !== 'undefined' ? ' · ผ่าน: ' + mm.passed.map(MI.name).join(', ') : '') : ''); return; }
       if (k === 'schoolHistory') { put(k, 'ประวัติสถานศึกษา', v, Array.isArray(v) ? v.length + ' โรงเรียนเดิม' : ''); return; }
       if (k === 'forms' && v && typeof v === 'object') {
         Object.keys(v).forEach(t => { const b = v[t] || {};
