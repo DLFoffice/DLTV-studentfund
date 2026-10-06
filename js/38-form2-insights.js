@@ -375,12 +375,8 @@
       const row = (k, lbl, col) => `<li><span class="fx-dot" style="background:${col}"></span><span>${lbl}</span><b>${c[k]}</b><small>${pct(c[k], tot)}%</small></li>`;
       const holder = bank.parentElement;
       holder.style.height = 'auto';
-      holder.innerHTML = `<canvas id="chartBank" style="display:none"></canvas><div class="fx-trend">
-        <div class="fx-trend-bar">${[['up', '#16A34A'], ['same', '#94A3B8'], ['down', '#F59E0B'], ['drop', '#DC2626']].map(([k, col]) => c[k] ? `<span style="flex:${c[k]};background:${col}" title="${c[k]}"></span>` : '').join('')}</div>
-        <ul>${row('up', 'ดีขึ้น (> +0.05)', '#16A34A')}${row('same', 'ใกล้เคียงเดิม', '#94A3B8')}${row('down', 'ลดลงเล็กน้อย', '#F59E0B')}${row('drop', 'ลดลงตั้งแต่ 0.30', '#DC2626')}</ul>
-        <p>${tot ? `เทียบได้ ${tot} คน` : 'ยังไม่มีนักเรียนที่มี GPA 2 ภาคเรียนขึ้นไป'}${c.one ? ` · มี GPA ภาคเดียว ${c.one} คน` : ''}</p>
-        ${dropList.length ? `<div class="fx-droplist">${dropList.sort((a, b) => a.d - b.d).slice(0, 4).map(x => `<button type="button" onclick="openStudentDetail(${x.idx})">${E(x.s.name || '')} <b>▼ ${Math.abs(x.d).toFixed(2)}</b></button>`).join('')}</div>` : ''}
-      </div>`;
+      // v55: ใช้การ์ดกลาง (js/46-gpa-trend.js) — เกณฑ์เดียวกับหน้าผลการเรียน + กดดูรายชื่อได้
+      holder.innerHTML = '<canvas id="chartBank" style="display:none"></canvas>' + (window.GpaTrend ? GpaTrend.cardHtml(GpaTrend.rows(null), { withLow: false }) : '');
       if (typeof charts !== 'undefined' && charts.chartBank) { try { charts.chartBank.destroy(); } catch (e) {} delete charts.chartBank; }
     }
   }

@@ -69,33 +69,46 @@ function populateGpsTermFilter(){
   const cur = sel.value;
   const fg = gSel ? gSel.value : '';
   const shown = fg ? terms.filter(t=>gradeFromTerm(t)===fg) : terms;
-  sel.innerHTML = '<option value="">ทุกภาคเรียน</option>' + gradeTermOptions(shown, shown.includes(cur)?cur:'', t=>`ภาคเรียนที่ ${t}`);
+  sel.innerHTML = '<option value="">ภาคเรียนล่าสุดของแต่ละคน</option>' + gradeTermOptions(shown, shown.includes(cur)?cur:'', t=>`ภาคเรียนที่ ${t}`);
 }
 
-function renderGpaSheet(){
-  populateGpsTermFilter();
+/* v56: 1 แถว = นักเรียน 1 คน · ใช้ "ภาคเรียนล่าสุด" (หรือภาคที่กรอง) เทียบภาคก่อนหน้า + ค่าเฉลี่ยปีการศึกษาล่าสุดเทียบปีก่อน
+   (เดิมแสดงทุกภาคของทุกคนและเทียบกับ GPA ป.6) */
+const E8 = v => (typeof escHtml === 'function') ? escHtml(v ?? '') : String(v ?? '');
+const gpsTkey = t => { const m = String(t||'').match(/(\d)\/(\d{4})/); return m ? +m[2]*10 + +m[1] : 0; };
+function gpsYearAvg(ser, year){ const v = ser.filter(x=>String(x.term).split('/')[1]===String(year)).map(x=>x.gpa); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length*100)/100 : null; }
+function gpsRows(){
   const q  = (document.getElementById('gps-search').value||'').toLowerCase();
   const fg = document.getElementById('gps-filter-grade').value;
   const ft = document.getElementById('gps-filter-term').value;
-
-  // Build flat rows [{s, g, grade}]
   const rows = [];
   DB.students.forEach(s=>{
-    (s.semGpa||[]).forEach(g=>{
-      const grade = gradeFromTerm(g.term);
-      if(fg && grade !== fg) return;
-      if(ft && g.term !== ft) return;
-      if(q && !(s.name+(s.school_m1||'')+(s.province||'')).toLowerCase().includes(q)) return;
-      rows.push({s, g, grade});
-    });
+    if(q && !((s.name||'')+(s.school_m1||'')+(s.province||'')+(s.no??'')).toLowerCase().includes(q)) return;
+    const full = (s.semGpa||[]).filter(g=>g && g.term && Number(g.gpa)>0)
+      .map(g=>Object.assign({}, g, {gpa: Math.round(Number(g.gpa)*100)/100})).sort((a,b)=>gpsTkey(a.term)-gpsTkey(b.term));
+    const scope = full.filter(g=>(!fg || gradeFromTerm(g.term)===fg) && (!ft || g.term===ft));
+    const g = scope[scope.length-1];
+    if(!g) return;
+    const i = full.findIndex(x=>x.term===g.term), prev = i>0 ? full[i-1] : null;
+    const d = prev ? Math.round((g.gpa-prev.gpa)*100)/100 : null;
+    const year = String(g.term).split('/')[1], yAvg = gpsYearAvg(full, year), pyAvg = gpsYearAvg(full, +year-1);
+    rows.push({s, g, grade: gradeFromTerm(g.term), prev, d, cat: window.GpaTrend ? GpaTrend.classify(d) : null,
+      year, yAvg, pyAvg, yd: (yAvg!=null && pyAvg!=null) ? Math.round((yAvg-pyAvg)*100)/100 : null});
   });
-
-  // Sort: grade → term → name
-  rows.sort((a,b)=>{
-    if(a.grade!==b.grade) return gradeCmp(a.grade,b.grade);
-    if(a.g.term!==b.g.term) return String(a.g.term).localeCompare(String(b.g.term));
-    return (a.s.name||'').localeCompare(b.s.name||'','th');
-  });
+  rows.sort((a,b)=>(+a.s.no||0)-(+b.s.no||0));
+  return rows;
+}
+function gpsDelta(d, cat){
+  if(d==null) return '<span style="color:var(--text3)">—</span>';
+  const C = (window.GpaTrend && cat) ? GpaTrend.CATS[cat] : null;
+  const c = d>0.05 ? '#15803D' : d < -0.05 ? (d <= -0.30 ? '#B91C1C' : '#B45309') : '#64748B';
+  return `<span style="font-weight:700;color:${c}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d).toFixed(2)}</span>${C?`<div style="font-size:11px;color:${c}">${C.t}</div>`:''}`;
+}
+function renderGpaSheet(){
+  populateGpsTermFilter();
+  const ft = document.getElementById('gps-filter-term').value;
+  const fg = document.getElementById('gps-filter-grade').value;
+  const rows = gpsRows();
 
   // ── KPI ──
   const gpas = rows.map(r=>r.g.gpa||0).filter(v=>v>0);
@@ -240,37 +253,36 @@ function renderGpaSheet(){
   });
 
   // ── Detail Table ──
-  document.getElementById('gps-tbody').innerHTML = rows.map(({s,g,grade},i)=>{
+  const newest = rows.reduce((m,r)=>gpsTkey(r.g.term)>gpsTkey(m)?r.g.term:m,'');
+  document.getElementById('gps-tbody').innerHTML = rows.map((r,i)=>{
+    const {s,g,grade,prev,d,cat,year,yAvg,pyAvg,yd} = r;
     const idx = DB.students.indexOf(s);
-    const delta = (s.gpa_p6&&g.gpa) ? (g.gpa-s.gpa_p6).toFixed(2) : null;
-    const deltaHtml = delta!=null
-      ? `<span style="font-weight:600;color:${parseFloat(delta)>=0?'var(--green)':'var(--red)'}">
-           ${parseFloat(delta)>=0?'▲':'▼'} ${Math.abs(delta)}</span>`
-      : '<span style="color:var(--text3)">—</span>';
+    const cg = CareGroup.compute(s);
+    const sq = cg.sdq;
     return `<tr>
-      <td>${i+1}</td>
+      <td>${E8(s.no ?? i+1)}</td>
       <td class="photo-cell">${photoEl(s)}</td>
-      <td style="font-weight:600">${s.name}<div style="font-size:11px;color:var(--text3)">${s.nickname||''}</div></td>
-      <td><span class="badge b-blue">${grade}</span></td>
-      <td style="font-size:12px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.school_m1||'-'}</td>
-      <td><span class="badge b-gray">${s.province||'-'}</span></td>
-      <td><span class="badge b-teal">${g.term||'-'}</span></td>
+      <td style="font-weight:600">${E8(s.name)}<div style="font-size:11px;color:var(--text3)">${E8(s.nickname||'')}</div></td>
+      <td><span class="badge b-blue">${E8(grade)}</span></td>
+      <td style="font-size:12px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${E8(s.school_m1||'-')}</td>
+      <td><span class="badge b-gray">${E8(s.province||'-')}</span></td>
+      <td><span class="badge ${!ft && g.term!==newest ? 'b-gray' : 'b-teal'}">${E8(g.term)}</span>${!ft && newest && g.term!==newest ? `<div style="font-size:10.5px;color:#B45309">ยังไม่มี GPA ${E8(newest)}</div>` : ''}</td>
       <td>
-        <div style="font-weight:700;font-size:16px;color:${gpaColor(g.gpa)}">${g.gpa||'-'}</div>
-        ${g.gpa?`<div class="gpa-bar"><div class="gpa-fill" style="width:${(g.gpa/4*100).toFixed(0)}%;background:${gpaColor(g.gpa)}"></div></div>`:''}
+        <div style="font-weight:700;font-size:16px;color:${gpaColor(g.gpa)}">${g.gpa.toFixed(2)}</div>
+        <div class="gpa-bar"><div class="gpa-fill" style="width:${(g.gpa/4*100).toFixed(0)}%;background:${gpaColor(g.gpa)}"></div></div>
       </td>
-      <td style="font-weight:600;color:${gpaColor(s.gpa_p6)}">${s.gpa_p6||'-'}</td>
-      <td>${deltaHtml}</td>
-      <td><span class="${CareGroup.compute(s).badgeClass}" title="${CareGroup.compute(s).note}">${CareGroup.compute(s).label}</span></td>
-      <td>${(()=>{const sb=s.sdq&&s.sdq[g.term];const sr=(sb&&typeof window.SDQ==='object')?SDQ.compute(sb):null;return (sr&&sr.complete)?`<span class="badge ${sdqGroupBadge(sr.totalGroup)}">${sr.totalGroup}</span>`:'<span class="badge b-gray">ยังไม่ประเมิน</span>';})()}</td>
-      <td style="font-size:12px;color:var(--red);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.weakSubjects||'-'}</td>
+      <td>${prev?`<span style="font-weight:600;color:${gpaColor(prev.gpa)}">${prev.gpa.toFixed(2)}</span><div style="font-size:11px;color:var(--text3)">${E8(prev.term)}</div>`:'<span style="color:var(--text3)">ภาคแรก</span>'}</td>
+      <td>${gpsDelta(d,cat)}</td>
+      <td>${yAvg!=null?`<span style="font-weight:700;color:${gpaColor(yAvg)}">${yAvg.toFixed(2)}</span><div style="font-size:11px;color:var(--text3)">ปี ${E8(year)}${yd!=null?` · <span style="color:${yd>0.05?'#15803D':yd<-0.05?'#B91C1C':'#64748B'}">${yd>0?'▲':yd<0?'▼':'●'} ${Math.abs(yd).toFixed(2)} จากปี ${+year-1}</span>`:''}</div>`:'—'}</td>
+      <td><span class="${cg.badgeClass}" title="${E8(cg.note)}">${cg.label}</span></td>
+      <td>${sq?`<span class="badge ${sdqGroupBadge(sq.group)}">${E8(sq.group)}</span><div style="font-size:10.5px;color:var(--text3)">${E8(sq.term)}</div>`:'<span class="badge b-gray">ยังไม่ประเมิน</span>'}</td>
       <td>
         <button class="btn btn-sm" onclick="openStudentDetail(${idx});setTimeout(()=>switchTabByName('📊 ประวัติ GPA'),200)">✏️ แก้ไข</button>
       </td>
     </tr>`;
   }).join('');
-  document.getElementById('gps-footer').textContent = `แสดง ${rows.length} รายการ (${[...new Set(rows.map(r=>r.s.id||r.s.no))].length} คน)`;
-  document.getElementById('gpa-sheet-count').textContent = `— ${rows.length} รายการ`;
+  document.getElementById('gps-footer').textContent = `แสดง ${rows.length} คน · ใช้ GPA ${ft ? 'ภาคเรียนที่ '+ft : 'ภาคเรียนล่าสุดของแต่ละคน'} เทียบภาคก่อนหน้า และเฉลี่ยปีการศึกษาเทียบปีก่อน`;
+  document.getElementById('gpa-sheet-count').textContent = `— ${rows.length} คน`;
 }
 
 function openAddGpaRecord(){
@@ -292,9 +304,6 @@ function openAddGpaRecord(){
       </div>
       <div class="fg"><label>GPA</label>
         <input type="number" id="add-gpa-val" step="0.01" min="0" max="4" placeholder="0.00–4.00">
-      </div>
-      <div class="fg fg-full"><label>วิชาที่อ่อน</label>
-        <input id="add-gpa-weak" placeholder="เช่น คณิตศาสตร์, ภาษาอังกฤษ">
       </div>
       <div class="fg fg-full"><label>การช่วยเหลือของโรงเรียน</label>
         <input id="add-gpa-support" placeholder="เช่น ติวเสริม, ครูที่ปรึกษา">
@@ -320,7 +329,7 @@ window.saveSemData = function(){
     const gpa  = parseFloat(document.getElementById('add-gpa-val').value)||0;
     const rec = {
       term, gpa,
-      weakSubjects: document.getElementById('add-gpa-weak').value||'',
+      weakSubjects: (document.getElementById('add-gpa-weak')||{}).value||'',
       schoolSupport:document.getElementById('add-gpa-support').value||''
     };
     if(!DB.students[idx].semGpa) DB.students[idx].semGpa=[];
@@ -352,25 +361,14 @@ window.saveSemData = function(){
 function exportGpaSheet(){
   const q  = (document.getElementById('gps-search').value||'').toLowerCase();
   const fg = document.getElementById('gps-filter-grade').value;
-  const ft = document.getElementById('gps-filter-term').value;
-  const rows=[];
-  DB.students.forEach(s=>{
-    (s.semGpa||[]).forEach(g=>{
-      const grade=gradeFromTerm(g.term);
-      if(fg&&grade!==fg) return;
-      if(ft&&g.term!==ft) return;
-      if(q&&!(s.name+(s.school_m1||'')+(s.province||'')).toLowerCase().includes(q)) return;
-      rows.push({s,g,grade});
-    });
-  });
-  const header='ลำดับ,ชื่อ-สกุล,ชั้น,โรงเรียน,จังหวัด,ภาคเรียน,GPA,GPA ป.6,Δ vs ป.6,กลุ่มการดูแล (วิเคราะห์อัตโนมัติ),ผล SDQ ภาคเรียนนี้,วิชาที่อ่อน,การช่วยเหลือโรงเรียน';
-  const csv=[header,...rows.map(({s,g,grade},i)=>{
-    const delta=(s.gpa_p6&&g.gpa)?(g.gpa-s.gpa_p6).toFixed(2):'';
-    const cg=CareGroup.compute(s);
-    const sb=s.sdq&&s.sdq[g.term];
-    const sr=(sb&&typeof window.SDQ==='object')?SDQ.compute(sb):null;
-    const sdqTxt=(sr&&sr.complete)?sr.totalGroup:'ยังไม่ประเมิน';
-    return [i+1,s.name,grade,s.school_m1||'',s.province||'',g.term||'',g.gpa||'',s.gpa_p6||'',delta,cg.label,sdqTxt,g.weakSubjects||'',g.schoolSupport||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  const rows = gpsRows();
+  const safe = v => { let x = String(v ?? ''); if (/^[=+\-@\t\r]/.test(x)) x = "'" + x; return '"' + x.replace(/"/g,'""') + '"'; };
+  const header=['ลำดับ','ชื่อ-สกุล','ชั้น','โรงเรียน','จังหวัด','ภาคเรียนล่าสุด','GPA','ภาคก่อน','GPA ภาคก่อน','เปลี่ยนแปลง','แนวโน้ม','ปีการศึกษา','เฉลี่ยปี','เฉลี่ยปีก่อน','กลุ่มการดูแล (วิเคราะห์อัตโนมัติ)','SDQ ล่าสุด','การช่วยเหลือโรงเรียน'].map(safe).join(',');
+  const csv=[header,...rows.map(r=>{
+    const cg=CareGroup.compute(r.s), sq=cg.sdq;
+    return [r.s.no??'',r.s.name,r.grade,r.s.school_m1||'',r.s.province||'',r.g.term,r.g.gpa.toFixed(2),r.prev?r.prev.term:'',r.prev?r.prev.gpa.toFixed(2):'',
+      r.d!=null?r.d.toFixed(2):'',r.cat&&window.GpaTrend?GpaTrend.CATS[r.cat].t:'',r.year,r.yAvg!=null?r.yAvg.toFixed(2):'',r.pyAvg!=null?r.pyAvg.toFixed(2):'',
+      cg.label,sq?sq.group+' ('+sq.term+')':'ยังไม่ประเมิน',r.g.schoolSupport||''].map(safe).join(',');
   })].join('\n');
   const bom='\uFEFF';
   const blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8'});
