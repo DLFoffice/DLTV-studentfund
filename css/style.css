@@ -3144,3 +3144,41 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .ac-kpi.gt-kpi .gt-drops b{font-size:11.5px;color:#991B1B;line-height:1}
 .ac-kpi.gt-kpi .gt-drops button{display:inline-flex;align-items:center;gap:4px}
 .ac-kpi.gt-kpi small{margin:0}
+
+/* ============================================================
+   v57 — แบนเนอร์ฝั่งผู้ใช้ (.hx-user) + คำชี้แจงการกรอกแบบฟอร์ม (.gd)
+   ============================================================ */
+#sf-root .hx-user{margin-bottom:18px}
+.hx-user ~ .wl .wl-overall{display:none}
+.hx-btn{text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.hx-btn.is-done{background:rgba(52,211,153,.16);border-color:rgba(52,211,153,.45)}
+.hx-btn.is-static{cursor:default;transform:none}
+.hx-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+@media (max-width:600px){.hx-user .hx-actions{display:grid;grid-template-columns:1fr 1fr}.hx-user .hx-btn{justify-content:center;padding:9px 8px;font-size:13px;white-space:nowrap}.hx-user .hx-btn.primary{grid-column:1/-1}}
+
+.gd{margin:0 0 16px;border:1px solid #C9D7FF;border-radius:16px;background:linear-gradient(180deg,#F5F8FF,#fff);box-shadow:var(--shadow);overflow:hidden}
+.gd>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none}
+.gd>summary::-webkit-details-marker{display:none}
+.gd>summary:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.gd-ic{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--lg-grad,linear-gradient(135deg,#1E3FD1,#2F6BFF));color:#fff;font:italic 800 16px/1 Georgia,serif}
+.gd-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.gd-t b{font-size:15px;color:var(--blue-dk,#16309E)}
+.gd-t small{font-size:12.5px;color:var(--text-muted,#64748B)}
+.gd-tg{flex:none;width:28px;height:28px;border-radius:8px;background:#E8EEFF;position:relative}
+.gd-tg::before{content:'';position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-6px 0 0 -4px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:rotate(45deg);transition:transform .25s}
+.gd[open] .gd-tg::before{transform:rotate(-135deg);margin-top:-2px}
+.gd-body{padding:0 18px 16px;font-size:13.5px;line-height:1.65;color:#334155}
+.gd-intro{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#fff;border:1px dashed #C9D7FF}
+.gd-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.gd-steps li{display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #E2E8F0}
+.gd-n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--blue-lt,#E8EEFF);color:var(--blue-dk,#16309E);font-weight:800;font-size:12.5px;display:grid;place-items:center}
+.gd-steps b{display:block;color:#0F172A;font-size:13.5px}
+.gd-steps p{margin:2px 0 0;font-size:12.8px;color:#475569}
+.gd-tips{margin:12px 0 0;padding:10px 14px 10px 32px;border-radius:12px;background:#FFF8E6;border:1px solid #FDE7A9;font-size:13px}
+.gd-tips li{margin:2px 0}
+.gd-tips li::marker{color:#D99A00}
+.gd-foot{display:flex;justify-content:flex-end;margin-top:10px}
+.gd-close{border:1px solid #C9D7FF;background:#fff;color:var(--blue-dk,#16309E);border-radius:10px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.gd-close:hover{background:#EEF3FF}
+.sq2 .gd{margin-top:14px}
+@media print{.gd,.hx-user{display:none!important}}

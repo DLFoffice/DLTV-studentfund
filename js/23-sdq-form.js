@@ -396,6 +396,7 @@
       </header>
       ${!sdqIsStaff() ? `<div class="sq2-note">นักเรียนเห็นเฉพาะแบบประเมินและผลของตัวเองเท่านั้น</div>` : ''}
       ${locked ? `<div class="sq2-banner">ฟอร์มนี้ปิดรับอยู่ ไม่สามารถกรอกหรือแก้ไขได้ในขณะนี้</div>` : ''}
+      ${window.FormGuide ? FormGuide.html('sdq') : ''}
 
       <section class="sq2-card sq2-meta">
         <label>ระดับชั้น<input type="text" id="sdq-f-grade" value="${sdqEsc(data.grade || '')}" placeholder="เช่น ม.1/1" ${dis}></label>
