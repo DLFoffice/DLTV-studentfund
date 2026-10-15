@@ -86,7 +86,7 @@
       const oc = b.getAttribute('onclick') || '';
       const keep = oc.indexOf("'scholarform'") !== -1 || oc.indexOf("'formtrack'") !== -1
         || oc.indexOf("'sdqform'") !== -1 || oc.indexOf("'sdqdashboard'") !== -1
-        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash' || b.id === 'mi-nav';
+        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash';   // v58: ไม่แสดงเมนูแบบสำรวจแววความสามารถ (MI) ให้บัญชีครู — ส่งลิงก์ให้นักเรียนทำเอง
       if (!keep) b.style.display = 'none';
       else if (oc.indexOf("'scholarform'") !== -1) formBtn = b;
     });

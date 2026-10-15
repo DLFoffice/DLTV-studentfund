@@ -97,6 +97,7 @@
       </div></section>`;
   }
   function renderCard(idx) {
+    if (window.STUDENT_MODE) return;
     const host = document.getElementById('st-panel-2'); if (!host) return;
     const old = document.getElementById('mi-card'); if (old) old.remove();
     host.insertAdjacentHTML('beforeend', cardHtml(idx));
@@ -118,7 +119,15 @@
     b.onclick = () => window.open('mi.html', '_blank', 'noopener');
     const sdqDash = document.getElementById('sdq-nav-dash');
     if (sdqDash) sdqDash.insertAdjacentElement('afterend', b); else nav.appendChild(b);
+    hideForUser();
   }
+  /* v58: ฝั่ง User (บัญชีครูผู้ดูแล) ไม่เห็นระบบวัดแวว — แบบสำรวจ MI ส่งให้นักเรียนทำเองเท่านั้น */
+  function hideForUser() {
+    if (!window.STUDENT_MODE) return;
+    ['mi-nav', 'midash-nav'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    const c = document.getElementById('mi-card'); if (c) c.remove();
+  }
+  window.addEventListener('dltv:students-loaded', () => { hideForUser(); setTimeout(hideForUser, 300); });
   function addListButton() {
     const bar = document.querySelector('#page-students .toolbar'); if (!bar || !isStaff() || document.getElementById('mi-sync-all')) return;
     const b = document.createElement('button'); b.className = 'btn'; b.id = 'mi-sync-all'; b.textContent = '🧠 ดึงผลแบบสำรวจ MI';

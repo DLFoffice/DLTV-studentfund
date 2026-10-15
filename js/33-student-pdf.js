@@ -163,7 +163,7 @@
         <p class="sp-note">ตัวเลข = คะแนนรายด้าน (เต็ม 10) · สีเขียว ปกติ/จุดแข็ง · สีส้ม เสี่ยง · สีแดง มีปัญหา</p>`
         : '<p class="sp-none">ยังไม่มีผลการประเมิน SDQ ที่ส่งแล้ว</p>'}
 
-      ${s.mi && s.mi.basic && typeof MI !== 'undefined' ? `<h3 class="sp-keep"><span>${n()}</span>แววความสามารถพิเศษ (แบบสำรวจ MI)</h3>
+      ${s.mi && s.mi.basic && typeof MI !== 'undefined' && !window.STUDENT_MODE ? `<h3 class="sp-keep"><span>${n()}</span>แววความสามารถพิเศษ (แบบสำรวจ MI)</h3>
       <table class="sp-table sp-avoid"><tbody>
         <tr><th style="width:42mm">ผ่านเกณฑ์ขั้นต้น</th><td>${E((s.mi.passed || []).map(MI.name).join(', ') || 'ยังไม่มีด้านที่ผ่าน')}</td></tr>
         <tr><th>มีแววความสามารถพิเศษ</th><td>${E(MI.DOMS.filter(d => s.mi.spec && s.mi.spec[d] && s.mi.spec[d].level === 2).map(MI.name).join(', ') || '—')}</td></tr>
