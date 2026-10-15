@@ -95,7 +95,7 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
 
   <div class="card">
     <h2 style="font-size:16px;margin:0 0 4px">📨 คำขอรับรหัสนักเรียนทุนจากครู <span id="req-count" class="badge no" style="display:none"></span></h2>
-    <div class="sub" style="margin-bottom:10px">ครูส่งคำขอผ่านหน้า <b>request-code.html</b> — กด "อนุมัติ &amp; ดูรหัส" เพื่อดูรหัสของนักเรียนลำดับนั้น (ที่สร้างไว้แล้ว) และส่งให้ครูทาง e-mail</div>
+    <div class="sub" style="margin-bottom:10px">ครูส่งคำขอผ่านหน้า <b>request-code.html</b> — กด "อนุมัติ &amp; ส่งอีเมล" ระบบจะส่งชื่อผู้ใช้และรหัสของนักเรียนลำดับนั้น (ที่สร้างไว้แล้ว) ไปที่ e-mail ของครูอัตโนมัติ</div>
     <div id="req-log" style="background:#1A1D2E;color:#9fefb0;font-family:monospace;font-size:12.5px;padding:12px;border-radius:10px;max-height:220px;overflow:auto;white-space:pre-wrap;display:none;margin-bottom:12px"></div>
     <div style="overflow-x:auto">
       <table>
@@ -106,6 +106,15 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
         <tbody id="req-rows"><tr><td colspan="9" style="text-align:center;color:var(--muted)">กำลังโหลด...</td></tr></tbody>
       </table>
     </div>
+    <details id="req-done" style="margin-top:14px">
+      <summary style="cursor:pointer;font-weight:600;font-size:14px">📬 อนุมัติแล้วล่าสุด (ส่งอีเมลซ้ำได้ ถ้าครูแจ้งว่าไม่ได้รับ)</summary>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table>
+          <thead><tr><th>อนุมัติเมื่อ</th><th>ลำดับ</th><th>นักเรียนทุน</th><th>ครูผู้ขอ</th><th>e-mail</th><th>ส่งอีเมลล่าสุด</th><th></th></tr></thead>
+          <tbody id="req-done-rows"><tr><td colspan="7" style="text-align:center;color:var(--muted)">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </details>
   </div>
 
   <div class="card">
@@ -124,7 +133,6 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -133,23 +141,13 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 /* ============================================================
-   ตั้งค่าส่งอีเมลอัตโนมัติด้วย EmailJS  (https://www.emailjs.com — สมัครฟรี)
-   วิธีตั้งค่า:
-     1) สมัคร EmailJS แล้วเพิ่ม Email Service (เช่น Gmail) → ได้ Service ID
-     2) สร้าง Email Template ที่ใช้ตัวแปร: {{to_email}} {{teacher_name}}
-        {{student_no}} {{student_name}} {{school}} {{username}} {{password}} {{login_url}}
-        และตั้งช่อง "To Email" ของเทมเพลตเป็น {{to_email}}  → ได้ Template ID
-     3) Account → General → คัดลอก Public Key
-     4) วางค่า 3 อย่างด้านล่างนี้ แล้ว Deploy ใหม่
+   v59: ส่งอีเมลแจ้งรหัสให้ครูผ่าน Google Apps Script (gas/MailCodes.gs)
+   ผู้ส่ง: adipong@school.dltv.ac.th (บัญชีที่ Deploy สคริปต์)
+   วาง Web app URL (https://script.google.com/macros/s/…/exec) ด้านล่าง
    ถ้าเว้นว่างไว้ ระบบจะถอยไปใช้ "เปิดร่างอีเมล" (mailto) ให้ส่งเองเหมือนเดิม
    ============================================================ */
-const EMAILJS = {
-  publicKey: 'BNbaLHozfHyh_WqsF',   // เช่น 'AbCdEf12345...'
-  serviceId: 'service_t0oqgqb',   // เช่น 'service_xxxxxxx'
-  templateId: 'template_k84ubnf'   // เช่น 'template_xxxxxxx'
-};
-const emailjsReady = () => !!(window.emailjs && EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId);
-if (emailjsReady()) { try { emailjs.init({ publicKey: EMAILJS.publicKey }); } catch(_){} }
+const MAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPMPjrVqG5iRMi6TA_WYP1uB5LqahUQzWvt9xsrq6IDkOSInYu_RWphK-wAHQaPRJrwQ/exec';
+const mailReady = () => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec\/?$/.test(MAIL_SCRIPT_URL.trim());
 
 const logBox = document.getElementById('log');
 function plog(m){ logBox.style.display='block'; logBox.textContent += m + '\n'; logBox.scrollTop = logBox.scrollHeight; }
@@ -669,6 +667,7 @@ const reqLog = document.getElementById('req-log');
 function rlog(m){ reqLog.style.display='block'; reqLog.textContent += m + '\n'; reqLog.scrollTop = reqLog.scrollHeight; }
 
 async function loadCodeRequests(){
+  loadApprovedRequests();
   const tb = document.getElementById('req-rows');
   const badge = document.getElementById('req-count');
   try {
@@ -704,7 +703,7 @@ async function loadCodeRequests(){
         '<td class="mono">' + escapeHtml(r.email || '-') + '</td>' +
         '<td class="sub">' + escapeHtml(r.note || '') + '</td>' +
         '<td style="white-space:nowrap">' +
-          '<button class="btn small approve-btn">✅ อนุมัติ &amp; ดูรหัส</button> ' +
+          '<button class="btn small approve-btn">✅ อนุมัติ &amp; ส่งอีเมล</button> ' +
           '<button class="btn small gray reject-req-btn" data-id="' + escapeHtml(r._id) + '" data-name="' + escapeHtml(r.teacherName||'') + '">ปฏิเสธ</button>' +
         '</td>';
       tr.querySelector('.approve-btn')._req = r;
@@ -736,19 +735,40 @@ function openCodeEmail(r, username, pass){
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-// ส่งอีเมลจริงผ่าน EmailJS (ถ้าตั้งค่าไว้) — คืน true ถ้าสำเร็จ
-async function sendCodeViaEmailJS(r, username, pass){
-  const params = {
-    to_email: r.email,
-    teacher_name: r.teacherName || '',
-    student_no: r.no,
-    student_name: r.studentName || '',
-    school: r.school || '',
-    username: username,
-    password: pass,
-    login_url: new URL('login.html', location.href).href
-  };
-  await emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, params, { publicKey: EMAILJS.publicKey });
+// ส่งอีเมลจริงผ่าน Apps Script — ผู้รับ/ข้อมูลนักเรียนอ่านจากคำขอใน Firestore ฝั่งสคริปต์
+async function sendCodeViaAppsScript(r, username, pass){
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch(MAIL_SCRIPT_URL.trim(), { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'sendCode', idToken, requestId: r._id, username, password: pass }) });
+  if (!res.ok) throw new Error('เชื่อมต่อ Apps Script ไม่สำเร็จ (HTTP ' + res.status + ')');
+  const j = await res.json();
+  if (j.status !== 'ok') throw new Error(j.message || 'Apps Script ตอบกลับผิดพลาด');
+  try {
+    await db.collection('codeRequests').doc(r._id).set({
+      emailSentAt: firebase.firestore.FieldValue.serverTimestamp(),
+      emailSentCount: firebase.firestore.FieldValue.increment(1),
+      emailSentBy: auth.currentUser ? auth.currentUser.email : ''
+    }, { merge: true });
+  } catch(_) {}
+  return j;
+}
+// ส่ง (หรือส่งซ้ำ) + บันทึกผลใน log — ถ้าไม่สำเร็จเสนอเปิดร่างอีเมล
+async function deliverCode(r, username, pass){
+  if (!mailReady()) {
+    rlog('ℹ️ ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ — วาง Web app URL ของ gas/MailCodes.gs ที่ MAIL_SCRIPT_URL ใน accounts.html');
+    if (confirm('ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ\nเปิดโปรแกรมอีเมลเพื่อส่งรหัสให้ ' + r.email + ' เองไหม?')) openCodeEmail(r, username, pass);
+    return false;
+  }
+  rlog('• กำลังส่งอีเมลถึง ' + r.email + ' ...');
+  try {
+    const j = await sendCodeViaAppsScript(r, username, pass);
+    rlog('✅ ส่งอีเมลถึงครูเรียบร้อยแล้ว' + (j.quota != null ? ' (โควตาคงเหลือวันนี้ ' + j.quota + ' ฉบับ)' : ''));
+    return true;
+  } catch(e) {
+    rlog('❌ ส่งอีเมลไม่สำเร็จ: ' + (e && e.message || e));
+    if (confirm('ส่งอัตโนมัติไม่สำเร็จ — เปิดร่างอีเมลเพื่อส่งเองไหม?')) openCodeEmail(r, username, pass);
+    return false;
+  }
 }
 
 async function approveRequest(r, btn){
@@ -803,22 +823,44 @@ async function approveRequest(r, btn){
   }
 
   // ── ส่งอีเมลถึงครู ──
-  if (emailjsReady()) {
-    rlog('• กำลังส่งอีเมลถึง ' + r.email + ' ...');
-    try {
-      await sendCodeViaEmailJS(r, stu.username, stu.pass);
-      rlog('✅ ส่งอีเมลถึงครูเรียบร้อยแล้ว');
-    } catch(e) {
-      rlog('❌ ส่งอีเมลไม่สำเร็จ: ' + (e && (e.text || e.message) || JSON.stringify(e)));
-      rlog('   (ตรวจค่า EmailJS: Service/Template/Public Key และช่อง To ในเทมเพลตต้องเป็น {{to_email}})');
-      if (confirm('ส่งอัตโนมัติไม่สำเร็จ — เปิดร่างอีเมลเพื่อส่งเองไหม?')) openCodeEmail(r, stu.username, stu.pass);
-    }
-  } else {
-    rlog('ℹ️ ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ (EmailJS) — จะเปิด "ร่างอีเมล" ให้ส่งเอง');
-    rlog('   วิธีเปิดใช้งานส่งอัตโนมัติ: ตั้งค่าตัวแปร EMAILJS ที่ต้นสคริปต์ในไฟล์ accounts.html');
-    if (confirm('เปิดโปรแกรมอีเมลเพื่อส่งรหัสให้\n' + r.email + ' ?')) openCodeEmail(r, stu.username, stu.pass);
-  }
+  await deliverCode(r, stu.username, stu.pass);
   await loadCodeRequests();
+}
+
+/* v59: คำขอที่อนุมัติแล้ว 20 รายการล่าสุด + ปุ่มส่งอีเมลซ้ำ */
+async function loadApprovedRequests(){
+  const tb = document.getElementById('req-done-rows'); if (!tb) return;
+  try {
+    const snap = await db.collection('codeRequests').where('status','==','approved').get();
+    const list = []; snap.forEach(d => { const x = d.data(); x._id = d.id; list.push(x); });
+    list.sort((a,b) => (b.approvedAt?.seconds||0) - (a.approvedAt?.seconds||0));
+    const fmt = t => t && t.toDate ? t.toDate().toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}) : '';
+    tb.innerHTML = list.length ? '' : '<tr><td colspan="7" style="text-align:center;color:var(--muted)">ยังไม่มีคำขอที่อนุมัติ</td></tr>';
+    list.slice(0, 20).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + escapeHtml(fmt(r.approvedAt) || '-') + '</td><td>' + escapeHtml(String(r.no ?? '-')) + '</td>' +
+        '<td>' + escapeHtml(r.studentName || '-') + '</td><td>' + escapeHtml(r.teacherName || '-') + '</td>' +
+        '<td class="mono">' + escapeHtml(r.email || '-') + '</td>' +
+        '<td>' + (r.emailSentAt ? escapeHtml(fmt(r.emailSentAt)) + (r.emailSentCount > 1 ? ' (' + r.emailSentCount + ' ครั้ง)' : '') : '<span style="color:#B45309">ยังไม่ได้ส่งอัตโนมัติ</span>') + '</td>' +
+        '<td><button class="btn small resend-btn">📧 ส่งอีกครั้ง</button></td>';
+      tr.querySelector('.resend-btn').onclick = e => resendCode(r, e.currentTarget);
+      tb.appendChild(tr);
+    });
+  } catch(e) {
+    tb.innerHTML = '<tr><td colspan="7" style="color:#DC2626">โหลดไม่สำเร็จ: ' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+async function resendCode(r, btn){
+  const stu = rowsData.find(x => Number(x.no) === Number(r.no));
+  if (!stu || !stu.has) { alert('ไม่พบบัญชีของนักเรียนลำดับ ' + r.no + ' แล้ว — สร้างบัญชีใหม่ก่อน'); return; }
+  if (stu.changed || !stu.pass) { alert('นักเรียนลำดับ ' + r.no + ' ตั้งรหัสผ่านเองแล้ว จึงส่งรหัสเดิมไม่ได้\nถ้าต้องการออกรหัสใหม่: ลบบัญชีแล้วสร้างใหม่ จากนั้นกดส่งอีกครั้ง'); return; }
+  if (r.issuedUsername && r.issuedUsername !== stu.username) { alert('ชื่อผู้ใช้ปัจจุบันไม่ตรงกับที่อนุมัติไว้ — ตรวจบัญชีของนักเรียนลำดับนี้ก่อน'); return; }
+  if (!confirm('ส่งรหัสของนักเรียนลำดับ ' + r.no + ' (' + stu.name + ') ไปที่\n' + r.email + ' อีกครั้ง?')) return;
+  btn.disabled = true; reqLog.textContent = '';
+  rlog('ส่งอีเมลซ้ำ — นักเรียนลำดับ ' + r.no + ' ' + stu.name + ' → ' + (r.teacherName||'') + ' <' + r.email + '>');
+  await deliverCode(r, stu.username, stu.pass);
+  btn.disabled = false;
+  loadApprovedRequests();
 }
 
 async function rejectRequest(id, name){

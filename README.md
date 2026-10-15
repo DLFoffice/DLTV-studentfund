@@ -981,3 +981,22 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 ไฟล์: `js/18-firebase-bridge.js`, `js/44-mi.js`, `js/33-student-pdf.js`, `manual.md`/`manual.html`, `index.html` (`?v=20261015a`)
 • STUDENT_MODE: ซ่อนเมนู "🌟 แบบสำรวจแววความสามารถ" (และ "🧭 สรุปผลแววความสามารถ") · ไม่แสดงการ์ด MI ในหน้ารายละเอียด · ไม่พิมพ์ส่วน MI ใน PDF
 • แบบสำรวจ `mi.html` ยังใช้ได้ตามเดิม — ผู้ดูแลส่งลิงก์ให้นักเรียนทำเอง ผลเข้า Google Sheet แล้วกด "🧠 ดึงผลแบบสำรวจ MI"
+
+---
+
+## v59 — ส่งอีเมลแจ้งรหัสให้ครูอัตโนมัติด้วย Google Apps Script
+
+ไฟล์: `gas/MailCodes.gs` (ใหม่), `accounts.html` (เลิกใช้ EmailJS), `manual.md`/`manual.html`
+
+**ติดตั้งครั้งเดียว** (ล็อกอิน Google ด้วย adipong@school.dltv.ac.th — บัญชีนี้จะเป็นผู้ส่ง)
+1. https://script.google.com → New project → ชื่อ "DLTV Fund – Mail" → วางโค้ด `gas/MailCodes.gs` ทั้งไฟล์ → บันทึก
+2. เลือกฟังก์ชัน `testSetup` → Run → Review permissions → Allow (ระบบส่งอีเมลตัวอย่างเข้า adipong@school.dltv.ac.th)
+3. Deploy → New deployment → ⚙️ Web app · Execute as: **Me** · Who has access: **Anyone** → Deploy
+4. คัดลอก Web app URL (ลงท้าย `/exec`) ไปวางที่ `const MAIL_SCRIPT_URL = '';` ใน `accounts.html` → อัปโหลดขึ้น GitHub
+
+**การทำงาน**
+• "✅ อนุมัติ & ส่งอีเมล" → บันทึกสถานะอนุมัติ → เรียกสคริปต์ `sendCode` → ส่งอีเมล HTML (ข้อมูลนักเรียน + username/รหัส + ปุ่มเข้าสู่ระบบ)
+• สคริปต์รับเฉพาะผู้ดูแล (`admins/{email}` ตรวจด้วย Firebase ID token) และอ่านอีเมลผู้รับจาก `codeRequests/{id}` เอง — ส่งได้เฉพาะครูที่ยื่นคำขอ
+• บันทึก `emailSentAt`, `emailSentCount`, `emailSentBy` ในคำขอ · ส่วน "📬 อนุมัติแล้วล่าสุด" มีปุ่มส่งซ้ำ
+• ยังไม่ใส่ URL หรือส่งไม่สำเร็จ → เสนอเปิดร่างอีเมล (mailto) แบบเดิม
+• โควตา MailApp: Workspace 1,500 ผู้รับ/วัน · Gmail ทั่วไป 100 ผู้รับ/วัน · ถ้าแก้โค้ดสคริปต์ต้อง Deploy → Manage deployments → Edit → New version
