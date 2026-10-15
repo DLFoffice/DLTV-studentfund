@@ -144,9 +144,9 @@ const db = firebase.firestore();
    ถ้าเว้นว่างไว้ ระบบจะถอยไปใช้ "เปิดร่างอีเมล" (mailto) ให้ส่งเองเหมือนเดิม
    ============================================================ */
 const EMAILJS = {
-  publicKey: '',   // เช่น 'AbCdEf12345...'
-  serviceId: '',   // เช่น 'service_xxxxxxx'
-  templateId: ''   // เช่น 'template_xxxxxxx'
+  publicKey: 'BNbaLHozfHyh_WqsF',   // เช่น 'AbCdEf12345...'
+  serviceId: 'service_t0oqgqb',   // เช่น 'service_xxxxxxx'
+  templateId: 'template_k84ubnf'   // เช่น 'template_xxxxxxx'
 };
 const emailjsReady = () => !!(window.emailjs && EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId);
 if (emailjsReady()) { try { emailjs.init({ publicKey: EMAILJS.publicKey }); } catch(_){} }
