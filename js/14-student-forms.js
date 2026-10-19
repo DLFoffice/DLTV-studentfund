@@ -342,7 +342,8 @@ function sfGetValue(formKey, fieldId, field){
     // (แก้ปัญหาเปิดฟอร์มก่อนข้อมูลคลาวด์มา แล้วค่าว่างค้างถาวร)
     const v = store[fieldId];
     if(field && field.from && (v==='' || v===null || v===undefined)){
-      const fresh = field.from(student);
+      let fresh = field.from(student);
+      if(typeof fresh==='number' && isFinite(fresh)) fresh = String(fresh);
       if(fresh !== '' && fresh !== null && fresh !== undefined){ store[fieldId] = fresh; return fresh; }
     }
     return v;
@@ -357,7 +358,8 @@ function sfGetValue(formKey, fieldId, field){
     const cols = Array.from({length:field.defaultCols||2}).map(()=>({_id:sfUid(), label:''}));
     def = {cols, values:{}};
   } else if(field.from){
-    def = field.from(student) || '';
+    def = field.from(student);
+    def = (typeof def==='number' && isFinite(def)) ? String(def) : (def || '');   // v66: ตัวเลข → ข้อความ
   } else def = '';
   store[fieldId] = def;
   return def;

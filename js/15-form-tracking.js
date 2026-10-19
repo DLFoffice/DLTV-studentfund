@@ -354,7 +354,9 @@ function sfPV(formKey, fieldId){
 }
 function sfPText(formKey, fieldId){
   const field = sfFindField(formKey, fieldId);
-  const v = sfPV(formKey, fieldId);
+  let v = sfPV(formKey, fieldId);
+  // v66: ค่าที่เป็นตัวเลข (เช่น เลขที่บัญชีที่นำเข้าจาก Sheet) เดิมถูกข้ามจนเอกสารว่าง → แปลงเป็นข้อความ
+  if(typeof v==='number' && isFinite(v)) v = String(v);
   if(typeof v!=='string') return '';
   return (field && field.type==='date') ? sfFormatDatePrint(v) : v;
 }
