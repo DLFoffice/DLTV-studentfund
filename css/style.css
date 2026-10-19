@@ -3202,3 +3202,11 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .tc-btn.ghost{background:#fff;color:#067647;border-color:#ABEFC6}
 .tc-btn.ghost:hover{background:#F6FEF9}
 @media print{.tc-banner{display:none!important}}
+
+/* v63 — ติดตามแบบฟอร์ม: เลือกภาคเรียนย้อนหลัง */
+.ft2-termsel{display:inline-flex;align-items:center;gap:8px;margin:4px 0 8px;font-size:13px;color:var(--text-muted,#64748B)}
+.ft2-termsel select{font:inherit;font-size:14px;font-weight:600;color:var(--blue-dk,#16309E);background:#F5F8FF;border:1px solid #C9D7FF;border-radius:10px;padding:6px 30px 6px 12px;cursor:pointer}
+.ft2-termsel select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.ft2-access.past{background:#FFF8E6;color:#8A5A00;border:1px solid #FDE7A9}
+.ft2-access-row .ft2-link{margin-left:8px}
+.tv-term{color:#8A5A00;font-weight:700}

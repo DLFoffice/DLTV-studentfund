@@ -22,7 +22,23 @@
   const TASK_NAME = { form1: 'แบบฟอร์มที่ 1', form2: 'แบบฟอร์มที่ 2', sdq: 'แบบประเมิน SDQ' };
   const TASK_HINT = { form1: 'ข้อมูลรายบุคคล', form2: 'ผลการเรียน ความประพฤติ การใช้จ่าย', sdq: 'พฤติกรรม 25 ข้อ' };
 
-  const st = { page: 1, group: 'all', task: null, q: '', sort: 'no' };
+  const st = { page: 1, group: 'all', task: null, q: '', sort: 'no', term: '' };
+  /* v63: ผู้ดูแลเลือกดูภาคเรียนย้อนหลังได้ (ไม่เปลี่ยนภาคเรียนที่ใช้งาน) */
+  const viewTerm = () => (isStaff() && st.term) ? st.term : activeTerm();
+  const isPast = () => viewTerm() !== activeTerm();
+  function termsWithData() {
+    const set = new Set([activeTerm()]);
+    (DB.students || []).forEach(s => {
+      if (s.forms) Object.keys(s.forms).forEach(t => set.add(t));
+      if (s.sdq) Object.keys(s.sdq).forEach(t => set.add(t));
+    });
+    return [...set].filter(t => Term.isValid(t)).sort(Term.cmp).reverse();
+  }
+  function hasFormData(s, key, term) {
+    const st2 = s.forms && s.forms[term] && s.forms[term][key];
+    const has = v => window.TermCarry ? TermCarry.hasData(v) : (v !== '' && v != null);
+    return !!(st2 && Object.keys(st2).some(k => k.indexOf('__') !== 0 && has(st2[k])));
+  }
 
   /* ---------- สถานะ ---------- */
   const isDone = s => s === 'done' || s === 'submitted';
@@ -84,8 +100,12 @@
       <div class="ft2-ov-top">
         <div>
           <h2 class="ft2-title">ติดตามการกรอกแบบฟอร์ม</h2>
-          <p class="ft2-term">${E(Term.label(term))}</p>
-          <div class="ft2-access-row">${pill('ฟอร์ม 1', acc.form1)}${pill('ฟอร์ม 2', acc.form2)}${pill('SDQ', sdqOpen)}</div>
+          ${isStaff() ? `<label class="ft2-termsel"><span>ภาคเรียน</span><select data-ft2="term">${termsWithData().map(t =>
+              `<option value="${E(t)}" ${t === term ? 'selected' : ''}>${E(Term.label(t))}${t === activeTerm() ? ' (ปัจจุบัน)' : ''}</option>`).join('')}</select></label>`
+            : `<p class="ft2-term">${E(Term.label(term))}</p>`}
+          <div class="ft2-access-row">${isPast()
+            ? `<span class="ft2-access past">📂 ดูย้อนหลัง (อ่านอย่างเดียว) · กดช่องสถานะเพื่อดูข้อมูลที่กรอก</span><button type="button" class="ft2-link" data-ft2-back>กลับภาคเรียนปัจจุบัน</button>`
+            : pill('ฟอร์ม 1', acc.form1) + pill('ฟอร์ม 2', acc.form2) + pill('SDQ', sdqOpen)}</div>
         </div>
         ${isStaff() ? `<button type="button" class="ft2-btn" data-ft2="csv">ส่งออก CSV</button>` : ''}
       </div>
@@ -144,11 +164,12 @@
       const d = t.at || submittedAt(r.s, k, term);
       detail = d ? 'ล่าสุด ' + thDateTime(d) : '';
     }
+    else if (isPast()) { label = 'ไม่ได้ส่ง'; if (k !== 'sdq' && hasFormData(r.s, k, term)) detail = 'มีข้อมูลที่กรอกไว้'; else if (k === 'sdq' && r.s.sdq && r.s.sdq[term]) detail = 'มีข้อมูลที่กรอกไว้'; }
     else if (t.state === 'locked') { label = 'ปิดรับ'; }
     else { label = 'ยังไม่ส่ง'; }
     if (k === 'form2') { const a = attachInfo(r.s, term); if (a.need) detail = (detail ? detail + ' · ' : '') + (a.ok === a.need ? '📎 เอกสารครบ' : `📎 เอกสาร ${a.ok}/${a.need}`); }
-    const canOpen = t.state !== 'locked';
-    const tip = !canOpen ? '' : (k !== 'sdq' && t.state === 'submitted') ? 'ดูตัวอย่างแบบฟอร์มที่ส่ง' : 'เปิดงานนี้';
+    const canOpen = isPast() || t.state !== 'locked';
+    const tip = !canOpen ? '' : isPast() ? 'ดูข้อมูลที่กรอกในภาคเรียนนี้' : (k !== 'sdq' && t.state === 'submitted') ? 'ดูตัวอย่างแบบฟอร์มที่ส่ง' : 'เปิดงานนี้';
     return `<td class="ft2-cell" data-label="${TASK_NAME[k]}">
       <button type="button" class="ft2-state s-${t.state}" ${canOpen ? '' : 'disabled'} data-ft2-cell="${k}" data-idx="${r.idx}" title="${E(tip)}">
         <span class="ft2-state-lbl">${E(label)}</span>
@@ -159,7 +180,9 @@
     const photo = (typeof photoEl === 'function') ? photoEl(r.s) : '';
     const dots = TASK_KEYS.map(k => `<i class="${isDone(r.tasks[k].state) ? 'ok' : ''}"></i>`).join('');
     const next = r.sum.next;
-    const btn = next
+    const btn = isPast()
+      ? `<button type="button" class="ft2-btn" data-ft2-view="form2" data-idx="${r.idx}">ดูฟอร์ม 2</button>`
+      : next
       ? `<button type="button" class="ft2-btn ft2-btn-primary" data-ft2-open="${next.key}" data-idx="${r.idx}">ไปที่ ${next.key === 'sdq' ? 'SDQ' : 'ฟอร์ม ' + next.key.slice(-1)}</button>`
       : (r.sum.group === 'done'
           ? `<button type="button" class="ft2-btn" data-ft2-open="form1" data-idx="${r.idx}">เปิดดู</button>`
@@ -232,8 +255,18 @@
     sfState.studentIdx = idx; sfState.formKey = key; sfState.sectionIndex = 0; sfState.lastDir = 'jump';
     showPage('scholarform', document.querySelector('.nav-btn[onclick*="scholarform"]'));
   }
+  /** ดูข้อมูลที่กรอกของภาคเรียนย้อนหลัง: ฟอร์ม → พรีวิว (อ่านอย่างเดียว) · SDQ → หน้าแบบประเมินของภาคนั้น */
+  function viewAt(idx, key, term) {
+    const s = DB.students[idx]; if (!s) return;
+    if (key === 'sdq') {
+      if (!(s.sdq && s.sdq[term])) { UIDialog.alert({ tone: 'info', title: 'ไม่มีข้อมูล SDQ', message: `${s.name || 'นักเรียน'} ยังไม่มีแบบประเมิน SDQ ใน${Term.label(term)}` }); return; }
+      if (window.SDQ && SDQ.openFor) SDQ.openFor(idx, term); return;
+    }
+    if (!hasFormData(s, key, term)) { UIDialog.alert({ tone: 'info', title: 'ไม่มีข้อมูล', message: `${s.name || 'นักเรียน'} ยังไม่ได้กรอก${TASK_NAME[key]}ใน${Term.label(term)}` }); return; }
+    if (window.TermView) TermView.preview(idx, key, term);
+  }
   function exportCsv() {
-    const term = activeTerm();
+    const term = viewTerm();
     const safe = v => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
     const txt = t => t.state === 'submitted' ? 'ส่งแล้ว' : t.state === 'locked' ? 'ปิดรับ' : 'ยังไม่ส่ง';
     const when = t => t.at ? thDateTime(t.at) : '';
@@ -256,7 +289,8 @@
   function render() {
     const page = document.getElementById('page-formtrack');
     if (!page || !window.Worklist || !window.Term) return;
-    const term = activeTerm();
+    if (st.term && !termsWithData().includes(st.term)) st.term = '';
+    const term = viewTerm();
     const rows = rowsFor(term);
     // คงตำแหน่งเคอร์เซอร์ในช่องค้นหาระหว่างพิมพ์
     const a = document.activeElement;
@@ -286,11 +320,15 @@
       const c = e.target.closest('[data-ft2-cell]');
       if (c && !c.disabled) {
         const k = c.getAttribute('data-ft2-cell'), idx = +c.getAttribute('data-idx');
+        if (isPast()) { viewAt(idx, k, viewTerm()); return; }
         const state = rowsFor(activeTerm())[idx].tasks[k].state;
         if (k !== 'sdq' && state === 'submitted' && typeof ftOpenPreview === 'function') ftOpenPreview(idx, k);
         else openTask(idx, k);
         return;
       }
+      const v = e.target.closest('[data-ft2-view]');
+      if (v) { viewAt(+v.getAttribute('data-idx'), v.getAttribute('data-ft2-view'), viewTerm()); return; }
+      if (e.target.closest('[data-ft2-back]')) { st.term = ''; st.page = 1; render(); return; }
       const o = e.target.closest('[data-ft2-open]');
       if (o) { openTask(+o.getAttribute('data-idx'), o.getAttribute('data-ft2-open')); return; }
       if (e.target.closest('[data-ft2="csv"]')) exportCsv();
@@ -300,6 +338,7 @@
     });
     page.addEventListener('change', e => {
       if (e.target.getAttribute('data-ft2') === 'sort') { st.sort = e.target.value; st.page = 1; render(); }
+      if (e.target.getAttribute('data-ft2') === 'term') { st.term = e.target.value === activeTerm() ? '' : e.target.value; st.page = 1; render(); }
     });
   }
 
