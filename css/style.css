@@ -3188,3 +3188,17 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .mi-btn.danger:hover{background:#FEF3F2;border-color:#D92D20;color:#B42318}
 .md-table td.act .md-del{margin-left:6px;color:#B42318;border-color:#F5C2BD;background:#fff}
 .md-table td.act .md-del:hover{background:#FEF3F2;border-color:#D92D20}
+
+/* v62 — แถบแจ้งยกข้อมูลจากภาคเรียนก่อน */
+.tc-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border-radius:14px;
+  background:#ECFDF3;border:1px solid #ABEFC6;color:#05603A}
+.tc-ic{font-size:22px;flex:none}
+.tc-tx{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}
+.tc-tx b{font-size:14.5px}
+.tc-tx span{font-size:13px;color:#067647}
+.tc-acts{display:flex;gap:8px;flex-wrap:wrap}
+.tc-btn{border:1px solid #079455;background:#079455;color:#fff;border-radius:10px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.tc-btn:hover{background:#067647}
+.tc-btn.ghost{background:#fff;color:#067647;border-color:#ABEFC6}
+.tc-btn.ghost:hover{background:#F6FEF9}
+@media print{.tc-banner{display:none!important}}
