@@ -456,8 +456,10 @@ async function selectId(id,quiet){
       const dn=j.done||{};
       TESTS.forEach(k=>{
         if(isDone(k)&&!dn[k]){
-          if(S.sent&&S.sent[k]){if(k==="basic")S.basic=null;else delete S.spec[k];delete S.sent[k]} // ผู้ดูแลอนุญาตให้ทำใหม่
-          else sendResult(k,0);                                                                  // ส่งค้างไว้ ส่งซ้ำอีกครั้ง
+          // v61: ส่งซ้ำเฉพาะผลที่ "ทำเสร็จในเครื่องนี้แต่ยังส่งไม่สำเร็จ" (pending) เท่านั้น
+          //      ผลที่เคยอยู่ใน Sheet แล้วหายไป = ผู้ดูแลลบแถว → ล้างในเครื่องนี้ ให้ทำใหม่ได้ (ไม่ส่งกลับไปอีก)
+          if(S.pending&&S.pending[k])sendResult(k,0);
+          else{if(k==="basic")S.basic=null;else delete S.spec[k];if(S.sent)delete S.sent[k];if(S.at)delete S.at[k]}
         }
       });
       TESTS.forEach(k=>{
@@ -466,6 +468,7 @@ async function selectId(id,quiet){
         const arr=String(s).replace(/[^01]/g,"").split("").map(Number);if(arr.length!==len)return;
         if(k==="basic")S.basic=arr;else S.spec[k]=arr;
         delete S.partial[k];if(j.at&&j.at[k])S.at[k]=j.at[k];
+        (S.sent=S.sent||{})[k]=true;if(S.pending)delete S.pending[k];   // v61: มีใน Sheet แล้ว = ส่งแล้ว
       });
     }
   }catch(e){if(my!==reqNo)return;console.error(e);note=" (เชื่อมต่อฐานข้อมูลไม่ได้ ใช้ข้อมูลในเครื่องนี้แทน)"}
@@ -626,6 +629,7 @@ function rankPaths(p){
 async function sendResult(id,seconds){
   if(!WEB_APP_URL.startsWith("http"))return;
   const P=S;
+  (P.pending=P.pending||{})[id]=true;try{DB.people[P.p.id]=P;localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
   const careers=S.basic?rankPaths(profile()).slice(0,3).map(x=>x.n):[];
   const ans=id==="basic"?S.basic:S.spec[id];
   const payload={id:+S.p.id,key:id,label:label(id),respondent:RESP[S.p.resp],answers:ans.join(""),careers,
@@ -641,7 +645,7 @@ async function sendResult(id,seconds){
   }
   try{
     await fetch(WEB_APP_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
-    (P.sent=P.sent||{})[id]=true;DB.people[P.p.id]=P;try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
+    (P.sent=P.sent||{})[id]=true;if(P.pending)delete P.pending[id];DB.people[P.p.id]=P;try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
   }
   catch(e){console.error(e);toast("ส่งผลเข้าระบบไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต")}
 }
