@@ -12,16 +12,13 @@
 (function () {
   'use strict';
   const E = v => (typeof escHtml === 'function') ? escHtml(v) : String(v ?? '');
+  /* v65: ยกมาทุกช่อง ยกเว้นข้อมูลที่ต้องเป็นของภาคเรียนใหม่เท่านั้น (ภาค/ปี/ชั้น วันที่ลงนาม เอกสารแนบ) */
   const SKIP = {
-    form1: ['academic_year', 'fund_year', 'achievement', 'student_sign_date', 'teacher_sign_date',
-      'teacher_comment_study', 'teacher_comment_behavior', 'teacher_comment_other'],
-    form2: ['semester', 'academic_year', 'grade_level',
-      'activities_participation', 'family_responsibility', 'community_loyalty', 'behavior_summary',
-      'receipts', 'total_received', 'total_disbursed', 'part1_amount', 'part2_amount', 'part3_amount', 'balance', 'balance_date',
-      'student_sign_date', 'teacher_sign_date', 'director_sign_date',
-      'teacher_comment_study', 'teacher_comment_behavior', 'teacher_comment_expense',
-      'achievement', 'attachments', 'attachments_note'],
+    form1: ['academic_year', 'fund_year', 'student_sign_date', 'teacher_sign_date'],
+    form2: ['semester', 'academic_year', 'grade_level', 'balance_date',
+      'student_sign_date', 'teacher_sign_date', 'director_sign_date', 'attachments', 'attachments_note'],
   };
+  const CARRY_V = 2;
   const NOVAL = { heading: 1, note: 1, files: 1 };
   const clone = v => JSON.parse(JSON.stringify(v));
 
@@ -41,34 +38,45 @@
     try { sfGetSections(fk).forEach(sec => sec.fields.forEach(f => { if (!NOVAL[f.type]) out.push(f); })); } catch (e) {}
     return out;
   }
+  /** ภาคเรียนก่อน term ทั้งหมด (ใหม่ → เก่า) */
+  function prevTerms(s, term) {
+    if (!s || !s.forms || !window.Term) return [];
+    return Object.keys(s.forms).filter(t => t !== term && Term.isValid(t) && Term.cmp(t, term) < 0).sort(Term.cmp).reverse();
+  }
   /** ภาคเรียนล่าสุดก่อน term ที่ฟอร์ม fk มีข้อมูลจริง */
   function prevTermWithData(s, fk, term) {
-    if (!s || !s.forms || !window.Term) return null;
     const fields = fieldsOf(fk);
-    const cands = Object.keys(s.forms).filter(t => t !== term && Term.isValid(t) && Term.cmp(t, term) < 0).sort(Term.cmp).reverse();
-    for (const t of cands) {
-      const st = s.forms[t] && s.forms[t][fk];
-      if (st && fields.some(f => hasData(st[f.id]))) return t;
-    }
-    return null;
+    return prevTerms(s, term).find(t => { const st = s.forms[t] && s.forms[t][fk]; return st && fields.some(f => hasData(st[f.id])); }) || null;
   }
 
   function carry(s, fk) {
     if (!s || !window.Term || (fk !== 'form1' && fk !== 'form2')) return null;
     const term = Term.active();
     sfEnsureFormStore(s);
-    const store = s[fk]; if (!store || store.__carriedFrom || store.__carryOff) return null;
+    const store = s[fk]; if (!store || store.__carryOff) return null;
+    if (store.__carriedFrom && (store.__carryV || 1) >= CARRY_V) return null;   // v65: รุ่นเก่ายกมาไม่ครบ → ยกเพิ่มอีกรอบ
     try { if (Term.state(s, fk, term) === 'submitted') return null; } catch (e) {}
-    const from = prevTermWithData(s, fk, term); if (!from) return null;
-    const src = s.forms[from][fk], skip = new Set(SKIP[fk] || []), copied = [];
+    const terms = prevTerms(s, term); if (!terms.length) return null;
+    const skip = new Set(SKIP[fk] || []);
+    const copied = store.__carriedFields ? store.__carriedFields.slice() : [];
+    const sig = Object.assign({}, store.__carriedSig || {});
+    let from = store.__carriedFrom || null;
     fieldsOf(fk).forEach(f => {
-      if (skip.has(f.id) || !hasData(src[f.id]) || hasData(store[f.id])) return;
+      if (skip.has(f.id) || hasData(store[f.id])) return;
       if (f.from) { let fresh = ''; try { fresh = f.from(s); } catch (e) {} if (hasData(fresh)) return; }
-      store[f.id] = clone(src[f.id]); copied.push(f.id);
+      // ใช้ค่าจากภาคเรียนล่าสุดที่ช่องนี้มีข้อมูล (ภาคก่อนหน้าอาจกรอกไม่ครบ)
+      const t = terms.find(t2 => { const st = s.forms[t2] && s.forms[t2][fk]; return st && hasData(st[f.id]); });
+      if (!t) return;
+      store[f.id] = clone(s.forms[t][fk][f.id]);
+      if (!copied.includes(f.id)) copied.push(f.id);
+      sig[f.id] = JSON.stringify(store[f.id]);
+      if (!from || Term.cmp(t, from) > 0) from = t;
     });
+    if (!from) return null;
     store.__carriedFrom = from;
+    store.__carryV = CARRY_V;
     store.__carriedFields = copied;
-    store.__carriedSig = copied.reduce((o, id) => (o[id] = JSON.stringify(store[id]), o), {});
+    store.__carriedSig = sig;
     try { if (typeof _sfDebouncedSave === 'function') _sfDebouncedSave(); else if (window.fbSaveNow) fbSaveNow(); } catch (e) {}
     return { from, n: copied.length };
   }
@@ -95,11 +103,11 @@
     let hidden = false; try { hidden = sessionStorage.getItem('dltv.carry.hide.' + fk + '.' + (s.no ?? '')) === '1'; } catch (e) {}
     if (hidden) return '';
     const lbl = window.Term ? Term.label(store.__carriedFrom) : store.__carriedFrom;
-    const per = fk === 'form2' ? 'ความประพฤติ การรับ-จ่ายเงิน ยอดเงิน วันที่ลงนาม ข้อคิดเห็นครู และเอกสารแนบ' : 'วันที่ลงนาม ข้อคิดเห็นครู และผลงานดีเด่น';
+    const per = fk === 'form2' ? 'ภาคเรียน ปีการศึกษา ระดับชั้น วันที่ลงนาม และเอกสารแนบ' : 'ปีการศึกษา รับทุนปีที่ และวันที่ลงนาม';
     return `<div class="tc-banner" role="status">
       <span class="tc-ic" aria-hidden="true">📋</span>
       <div class="tc-tx"><b>ยกข้อมูลจาก${E(lbl)} มาให้แล้ว ${n} ช่อง</b>
-        <span>ตรวจทานและแก้ให้เป็นปัจจุบันก่อนกดส่ง · ข้อมูลรายภาคเรียน (${per}) เว้นว่างไว้ให้กรอกใหม่</span></div>
+        <span>ตรวจทานและแก้ให้เป็นข้อมูลของภาคเรียนนี้ก่อนกดส่ง (โดยเฉพาะความประพฤติ การรับ-จ่ายเงิน และข้อคิดเห็นครู) · ${per} เว้นว่างไว้ให้กรอกใหม่</span></div>
       <div class="tc-acts"><button type="button" class="tc-btn" data-tc-hide="${fk}">รับทราบ</button>
         <button type="button" class="tc-btn ghost" data-tc-undo>ไม่ใช้ข้อมูลที่ยกมา</button></div>
     </div>`;
