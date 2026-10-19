@@ -1000,3 +1000,13 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 • บันทึก `emailSentAt`, `emailSentCount`, `emailSentBy` ในคำขอ · ส่วน "📬 อนุมัติแล้วล่าสุด" มีปุ่มส่งซ้ำ
 • ยังไม่ใส่ URL หรือส่งไม่สำเร็จ → เสนอเปิดร่างอีเมล (mailto) แบบเดิม
 • โควตา MailApp: Workspace 1,500 ผู้รับ/วัน · Gmail ทั่วไป 100 ผู้รับ/วัน · ถ้าแก้โค้ดสคริปต์ต้อง Deploy → Manage deployments → Edit → New version
+
+---
+
+## v60 — ผู้ดูแลลบผลแบบสำรวจแววความสามารถ (MI) ได้
+
+ไฟล์: `js/44-mi.js`, `js/45-mi-dashboard.js`, `js/mi-bridge.js`, `css/style.css`, `manual.md`/`manual.html`, `index.html`/`mi.html` (`?v=20261019a`)
+• ปุ่ม "🗑 ลบผล" (เฉพาะผู้ดูแล/เจ้าหน้าที่): การ์ด MI ในหน้ารายละเอียด + ท้ายแถวตารางหน้า "สรุปผลแววความสามารถ"
+• ลบ `students/{id}.mi` บนคลาวด์จริง (`fbDeleteField`) และเก็บ `miCleared {at, sig, by}` กันผลชุดเดิมถูกดึงกลับ
+  (ปุ่มดึงผลจาก Sheet และ mi.html ข้ามผลที่คำตอบเหมือนชุดที่ลบ และไม่มีเวลาทำใหม่หลังวันที่ลบ)
+• ให้นักเรียนทำใหม่: ลบแถวของลำดับนั้นใน Google Sheet ของแบบสำรวจ MI ด้วย

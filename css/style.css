@@ -3182,3 +3182,9 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .gd-close:hover{background:#EEF3FF}
 .sq2 .gd{margin-top:14px}
 @media print{.gd,.hx-user{display:none!important}}
+
+/* v60 — ปุ่มลบผลแบบสำรวจ MI (ผู้ดูแล) */
+.mi-btn.danger{color:#B42318;border-color:#F5C2BD}
+.mi-btn.danger:hover{background:#FEF3F2;border-color:#D92D20;color:#B42318}
+.md-table td.act .md-del{margin-left:6px;color:#B42318;border-color:#F5C2BD;background:#fff}
+.md-table td.act .md-del:hover{background:#FEF3F2;border-color:#D92D20}

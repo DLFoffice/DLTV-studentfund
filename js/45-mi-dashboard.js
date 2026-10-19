@@ -132,7 +132,7 @@
         <td>${r.top ? r.top.map((x, i) => `<div class="md-path${r.bestPath === x.n ? ' hit' : ''}">${i + 1}. ${icon(x.n)} ${E(x.n)}</div>`).join('') : '<span class="md-dash">—</span>'}</td>
         <td>${r.text ? `<div class="md-want">${E(r.text.length > 90 ? r.text.slice(0, 88) + '…' : r.text)}</div>` : '<span class="md-dash">—</span>'}</td>
         <td><span class="md-al" style="--c:${al.c}">${al.t}</span>${r.best && r.best < 99 ? `<small class="md-rank">${E(r.bestPath)} อยู่อันดับ ${r.best}</small>` : ''}</td>
-        <td class="act"><button type="button" class="btn btn-sm" data-md-open="${r.idx}">ดูข้อมูล</button></td></tr>`;
+        <td class="act"><button type="button" class="btn btn-sm" data-md-open="${r.idx}">ดูข้อมูล</button>${r.m && !window.STUDENT_MODE ? `<button type="button" class="btn btn-sm md-del" data-mi-clear="${r.idx}" title="ลบผลแบบสำรวจ MI ของนักเรียนคนนี้" aria-label="ลบผลแบบสำรวจ MI ของ ${E(r.s.name || '')}">🗑 ลบผล</button>` : ''}</td></tr>`;
     };
 
     host.innerHTML = `<div class="md">
@@ -194,6 +194,7 @@
       if (b.dataset.mdAl) { st.al = b.dataset.mdAl; render(); return; }
       if (b.dataset.mdOpen) { openStudentDetail(+b.dataset.mdOpen); setTimeout(() => { try { sdxShowGroup(2); document.getElementById('mi-card').scrollIntoView({ block: 'start' }); } catch (x) {} }, 200); return; }
       if (b.hasAttribute('data-md-csv')) { csv(p._rows || []); return; }
+      if (b.dataset.miClear && window.MISystem && MISystem.clear) { MISystem.clear(+b.dataset.miClear).then(ok => { if (ok) render(); }); return; }
       if (b.hasAttribute('data-md-sync') && window.MISystem) MISystem.syncAll().then(render);
     });
     p.addEventListener('input', e => { if (e.target.classList.contains('md-q')) { st.q = e.target.value; render._keep = e.target.selectionStart; render(); } });

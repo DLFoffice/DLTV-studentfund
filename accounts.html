@@ -146,7 +146,7 @@ const db = firebase.firestore();
    วาง Web app URL (https://script.google.com/macros/s/…/exec) ด้านล่าง
    ถ้าเว้นว่างไว้ ระบบจะถอยไปใช้ "เปิดร่างอีเมล" (mailto) ให้ส่งเองเหมือนเดิม
    ============================================================ */
-const MAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPMPjrVqG5iRMi6TA_WYP1uB5LqahUQzWvt9xsrq6IDkOSInYu_RWphK-wAHQaPRJrwQ/exec';
+const MAIL_SCRIPT_URL = '';
 const mailReady = () => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec\/?$/.test(MAIL_SCRIPT_URL.trim());
 
 const logBox = document.getElementById('log');

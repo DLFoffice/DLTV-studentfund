@@ -65,7 +65,7 @@
     }
     if (!doc) return (cache[no] = null);
     const x = doc.data();
-    return (cache[no] = { docId: doc.id, name: x.name || '', school: x.school_m1 || '', mi: x.mi || null });
+    return (cache[no] = { docId: doc.id, name: x.name || '', school: x.school_m1 || '', mi: x.mi || null, miCleared: x.miCleared || null });
   }
 
   /* ---------- บันทึกสรุปผลลงข้อมูลนักเรียน ---------- */
@@ -78,6 +78,9 @@
       if (!sum) return;
       // ไม่เขียนซ้ำถ้าคำตอบเหมือนที่มีในระบบแล้ว
       if (info.mi && JSON.stringify(info.mi.answers || {}) === JSON.stringify(sum.answers)) return;
+      // v60: ผลชุดที่ผู้ดูแลลบไปแล้ว ไม่บันทึกกลับ (ยกเว้นทำใหม่หลังวันที่ลบ)
+      const c = info.miCleared;
+      if (c && JSON.stringify(sum.answers || {}) === c.sig && !Object.values(sum.at || {}).some(t => Date.parse(t) > Date.parse(c.at || ''))) return;
       sum.by = ctx.user.email || ctx.no || '';
       await (saving = db.collection('students').doc(info.docId).update({ mi: sum }));
       info.mi = sum;

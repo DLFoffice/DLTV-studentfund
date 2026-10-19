@@ -26,8 +26,36 @@
     const specAns = {}; MI.DOMS.forEach(d => { if (dn[d]) specAns[d] = dn[d]; });
     return MI.summarize({ basicAns: dn.basic, specAns, at: j.at || {}, respondent: j.respondent || '', source: 'sheet' });
   }
+  /* v60: ผลที่ผู้ดูแลลบไปแล้ว (miCleared) — ไม่ดึงกลับเข้ามาอีก ยกเว้นนักเรียนทำแบบสำรวจใหม่หลังวันที่ลบ */
+  function isCleared(s, sum) {
+    const c = s && s.miCleared; if (!c || !sum) return false;
+    const t0 = Date.parse(c.at || '');
+    const newer = Object.values(sum.at || {}).some(t => Date.parse(t) > t0);
+    return !newer && JSON.stringify(sum.answers || {}) === c.sig;
+  }
+  async function clearMi(idx) {
+    const s = DB.students[idx]; if (!s || !s.mi || !isStaff()) return false;
+    const ok = await uiAsk(`ลบผลแบบสำรวจแววความสามารถ (MI) ของ ${s.name || 'นักเรียน'} (ลำดับ ${s.no ?? '-'}) ออกจากระบบ? ผลจะหายจากหน้ารายละเอียด สรุปผล และ PDF · ปุ่ม "ดึงผลแบบสำรวจ" จะไม่นำผลชุดนี้กลับเข้ามาอีก`,
+      { tone: 'danger', title: 'ลบผลแบบสำรวจ MI?', confirmText: 'ลบผล' });
+    if (!ok) return false;
+    const close = UIDialog.busy('กำลังลบผลแบบสำรวจ…', s.name || '');
+    try {
+      let by = ''; try { by = (firebase.auth().currentUser || {}).email || ''; } catch (e) {}
+      s.miCleared = { at: new Date().toISOString(), sig: JSON.stringify(s.mi.answers || {}), by };
+      delete s.mi;
+      if (window.fbDeleteField) { const r = await fbDeleteField(s, 'mi'); if (r && r.ok === false) throw r.error || new Error('ลบบนคลาวด์ไม่สำเร็จ'); }
+      try { if (window.fbSaveNow) await fbSaveNow(); else saveToStorage(); } catch (e) {}
+      close();
+      try { renderCard(idx); } catch (e) {}
+      try { if (typeof renderStudents === 'function') renderStudents(); } catch (e) {}
+      UIDialog.alert({ tone: 'success', title: 'ลบผลแบบสำรวจแล้ว', message: 'ถ้าต้องการให้นักเรียนทำแบบสำรวจใหม่ ให้ลบแถวของลำดับนี้ใน Google Sheet ของแบบสำรวจ MI ด้วย (หน้าแบบสำรวจจึงจะเปิดให้ทำใหม่)' });
+      return true;
+    } catch (e) {
+      close(); UIDialog.alert({ tone: 'danger', title: 'ลบผลไม่สำเร็จ', message: e.message || String(e) }); return false;
+    }
+  }
   function apply(s, sum) {
-    if (!sum) return false;
+    if (!sum || isCleared(s, sum)) return false;
     if (s.mi && JSON.stringify(s.mi.answers || {}) === JSON.stringify(sum.answers)) return false;
     s.mi = sum; return true;
   }
@@ -73,6 +101,7 @@
     const s = DB.students[idx], m = s.mi;
     const open = `<a class="mi-btn primary" href="mi.html" target="_blank" rel="noopener">${m ? 'เปิดแบบสำรวจ (ทำเฉพาะด้านเพิ่ม)' : 'เปิดแบบสำรวจ'}</a>`;
     const sync = isStaff() ? `<button type="button" class="mi-btn" data-mi-sync="${idx}">ดึงผลล่าสุด</button>` : '';
+    const del = isStaff() && m ? `<button type="button" class="mi-btn danger" data-mi-clear="${idx}" title="ลบผลแบบสำรวจของนักเรียนคนนี้">🗑 ลบผล</button>` : '';
     if (!m || !m.basic) return `<section class="mi-card" id="mi-card"><header><div><h4>🧠 แววความสามารถพิเศษ (แบบสำรวจ MI)</h4>
       <p>ยังไม่มีผลแบบสำรวจ — ให้นักเรียนทำแบบสำรวจขั้นต้น 58 ข้อ ระบบจะแสดงผลที่นี่อัตโนมัติ</p></div><div class="mi-acts">${sync}${open}</div></header></section>`;
     const bars = MI.DOMS.map(d => { const b = m.basic[d] || {}, sp = m.spec && m.spec[d];
@@ -86,7 +115,7 @@
     return `<section class="mi-card" id="mi-card">
       <header><div><h4>🧠 แววความสามารถพิเศษ (แบบสำรวจ MI)</h4>
         <p>อัปเดต ${E(fmtD(m.updatedAt))}${m.respondent ? ' · ผู้ตอบ: ' + E(m.respondent) : ''}${m.source === 'sheet' ? ' · ดึงจากแบบสำรวจ' : ''}</p></div>
-        <div class="mi-acts">${sync}${open}</div></header>
+        <div class="mi-acts">${del}${sync}${open}</div></header>
       <div class="mi-sum">
         <div><span>ผ่านเกณฑ์ขั้นต้น</span><b>${passed.length ? E(passed.join(', ')) : 'ยังไม่มีด้านที่ผ่าน'}</b></div>
         <div><span>มีแววความสามารถพิเศษ (ยืนยันจากแบบเฉพาะด้าน)</span><b>${strong.length ? E(strong.join(', ')) : (Object.keys(m.spec || {}).length ? 'ยังไม่มีด้านที่ยืนยัน' : 'ยังไม่ได้ทำแบบเฉพาะด้าน')}</b></div>
@@ -106,6 +135,7 @@
   if (typeof _open === 'function') window.openStudentDetail = function (idx) { const r = _open.apply(this, arguments); try { renderCard(idx); } catch (e) { console.warn(e); } return r; };
   document.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('[data-mi-sync]'); if (b) { syncOne(+b.dataset.miSync).catch(() => {}); return; }
+    const c = e.target.closest && e.target.closest('[data-mi-clear]'); if (c && !c.closest('.md')) { clearMi(+c.dataset.miClear); return; }
     const a = e.target.closest && e.target.closest('#mi-sync-all'); if (a) syncAll();
   });
 
@@ -138,5 +168,5 @@
   const boot = () => { addNav(); setTimeout(addNav, 1500); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 
-  window.MISystem = { syncOne, syncAll, cardHtml };
+  window.MISystem = { syncOne, syncAll, cardHtml, clear: clearMi, isCleared };
 })();
