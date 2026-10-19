@@ -16,11 +16,16 @@
     const c1 = JSON.parse(JSON.stringify(b.form1 || {})), c2 = JSON.parse(JSON.stringify(b.form2 || {}));
     const prevEnsure = window.sfEnsureFormStore;
     const prevIdx = sfState.studentIdx, prevFk = sfState.formKey;
+    // v64: ให้ทุกส่วนของพรีวิว/พิมพ์ (หัวเอกสาร ภาคเรียน ปีการศึกษา ระดับชั้น ตารางผลการเรียน) ใช้ "ภาคเรียนที่ดู"
+    const realActive = Term.active;
+    Term.active = () => term;
+    TermView.realActive = realActive;
     window.sfEnsureFormStore = function (st) {
       if (st === s) { st.form1 = c1; st.form2 = c2; return; }
       return prevEnsure.apply(this, arguments);
     };
     restore = () => {
+      Term.active = realActive; TermView.realActive = null;
       window.sfEnsureFormStore = prevEnsure;
       try { Term.bind(s, Term.active()); } catch (e) {}
       sfState.studentIdx = prevIdx; sfState.formKey = prevFk;
@@ -42,5 +47,5 @@
     };
     try { sfClosePreview = window.sfClosePreview; } catch (e) {}
   }
-  window.TermView = { preview };
+  const TermView = window.TermView = { preview, realActive: null };
 })();

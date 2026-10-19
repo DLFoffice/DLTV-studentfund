@@ -30,7 +30,8 @@
   'use strict';
 
   const isStaff = () => !window.STUDENT_MODE;
-  const activeTerm = () => (window.Term && Term.active) ? Term.active() : null;
+  // v64: ระหว่างดูภาคเรียนย้อนหลัง (TermView) ให้กระทบยอดกับภาคเรียนที่ใช้งานจริงเท่านั้น
+  const activeTerm = () => (window.TermView && TermView.realActive) ? TermView.realActive() : (window.Term && Term.active) ? Term.active() : null;
   const isBlank = v => v === undefined || v === null || String(v).trim() === '';
   const same = (a, b) => String(a ?? '').trim() === String(b ?? '').trim();
 
