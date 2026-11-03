@@ -130,6 +130,7 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
 </div>
 
 <script src="firebase/firebase-config.js"></script>
+<script src="js/mail-config.js?v=20261103a"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -146,8 +147,9 @@ const db = firebase.firestore();
    วาง Web app URL (https://script.google.com/macros/s/…/exec) ด้านล่าง
    ถ้าเว้นว่างไว้ ระบบจะถอยไปใช้ "เปิดร่างอีเมล" (mailto) ให้ส่งเองเหมือนเดิม
    ============================================================ */
-const MAIL_SCRIPT_URL = '';
-const mailReady = () => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec\/?$/.test(MAIL_SCRIPT_URL.trim());
+// v67: ตั้งค่า URL ที่ไฟล์ js/mail-config.js ไฟล์เดียว (ใช้ร่วมกับหน้าเข้าสู่ระบบ/ลืมรหัสผ่าน)
+const MAIL_SCRIPT_URL = String(window.MAIL_SCRIPT_URL || '');
+const mailReady = () => !!(window.mailScriptReady && window.mailScriptReady());
 
 const logBox = document.getElementById('log');
 function plog(m){ logBox.style.display='block'; logBox.textContent += m + '\n'; logBox.scrollTop = logBox.scrollHeight; }
@@ -229,6 +231,7 @@ function renderRows(){
       username: acc ? acc.username : '', pass: acc ? (acc.initialPassword || '') : '',
       changed: acc ? acc.mustChangePassword === false : false, has: !!acc,
       email: acc ? acc.email : '', uid: acc ? acc._uid : '',
+      recovery: acc ? (acc.recoveryEmail || '') : '',
       self: acc ? !!acc.selfRegistered : false,
       offPattern: !!(acc && acc.username && acc.username !== ('dltv' + String(s.no).padStart(3,'0'))) };
   });
@@ -250,8 +253,14 @@ function renderRows(){
       + '<td>' + passCell + '</td>'
       + '<td>' + (r.has ? (r.changed ? '<span class="badge ok">ใช้งาน • เปลี่ยนรหัสแล้ว</span>'
                                      : '<span class="badge ok">สร้างแล้ว</span>')
-                        : '<span class="badge no">ยังไม่สร้าง</span>') + '</td>'
-      + '<td>' + (r.has && r.email && r.email.indexOf('@dltvfund.local') === -1
+                        : '<span class="badge no">ยังไม่สร้าง</span>')
+        + (r.has ? (r.recovery
+            ? '<div class="sub" style="margin-top:4px" title="' + escapeHtml(r.recovery) + '">📧 อีเมลกู้คืน: ' + escapeHtml(r.recovery) + '</div>'
+            : '<div class="sub" style="margin-top:4px;color:#B45309">ยังไม่ผูกอีเมลกู้คืน</div>') : '') + '</td>'
+      + '<td>' + (r.has && r.recovery
+          ? '<button class="btn small gray reset-rec-btn" data-user="' + escapeHtml(r.username) + '" data-rec="' + escapeHtml(r.recovery) + '">ส่งลิงก์ตั้งรหัสใหม่</button> '
+            + '<button class="btn small gray clear-rec-btn" data-uid="' + escapeHtml(r.uid) + '" data-rec="' + escapeHtml(r.recovery) + '" title="ล้างอีเมลกู้คืน (เช่น เปลี่ยนครูผู้ดูแล)">ล้างอีเมลกู้คืน</button>'
+          : r.has && r.email && !/@dltvfund\.(local|web\.app)$/.test(r.email)
           ? '<button class="btn small gray reset-btn" data-email="' + escapeHtml(r.email) + '">ส่งเมลรีเซ็ต</button>' : '')
         + (r.has ? ' <button class="btn small del-btn" style="background:#DC2626" title="ลบบัญชีนี้ (ข้อมูลนักเรียนไม่ถูกลบ)"'
               + ' data-uid="' + escapeHtml(r.uid) + '" data-user="' + escapeHtml(r.username) + '"'
@@ -322,6 +331,21 @@ function renderRows(){
     if (!confirm('ส่งอีเมลรีเซ็ตรหัสผ่านไปที่ ' + b.dataset.email + ' ?')) return;
     try { await auth.sendPasswordResetEmail(b.dataset.email); alert('✅ ส่งแล้ว'); }
     catch(e){ alert('❌ ' + e.message); }
+  });
+  // v67: บัญชีชื่อผู้ใช้ที่ผูกอีเมลกู้คืนแล้ว → ส่งลิงก์ตั้งรหัสใหม่ไปที่อีเมลนั้น (ผ่าน Apps Script)
+  tb.querySelectorAll('.reset-rec-btn').forEach(b => b.onclick = async () => {
+    if (!mailReady()) { alert('ยังไม่ได้ตั้งค่า MAIL_SCRIPT_URL ใน js/mail-config.js'); return; }
+    if (!confirm('ส่งลิงก์ตั้งรหัสผ่านใหม่ของ ' + b.dataset.user + ' ไปที่ ' + b.dataset.rec + ' ?')) return;
+    try { await window.mailScriptCall({ action: 'forgot', login: b.dataset.user }); alert('✅ ส่งลิงก์แล้ว (ให้ครูตรวจถังขยะ/สแปมด้วย)'); }
+    catch(e){ alert('❌ ' + e.message); }
+  });
+  tb.querySelectorAll('.clear-rec-btn').forEach(b => b.onclick = async () => {
+    if (!confirm('ล้างอีเมลกู้คืน ' + b.dataset.rec + ' ออกจากบัญชีนี้?\nครูผู้ดูแลคนใหม่จะผูกอีเมลของตัวเองได้หลังเข้าระบบ')) return;
+    try {
+      await db.collection('accounts').doc(b.dataset.uid).update({
+        recoveryEmail: firebase.firestore.FieldValue.delete(), recoveryVerifiedAt: firebase.firestore.FieldValue.delete() });
+      alert('✅ ล้างแล้ว'); await loadAll();
+    } catch(e){ alert('❌ ' + e.message); }
   });
 }
 document.getElementById('q').addEventListener('input', renderRows);
@@ -755,7 +779,7 @@ async function sendCodeViaAppsScript(r, username, pass){
 // ส่ง (หรือส่งซ้ำ) + บันทึกผลใน log — ถ้าไม่สำเร็จเสนอเปิดร่างอีเมล
 async function deliverCode(r, username, pass){
   if (!mailReady()) {
-    rlog('ℹ️ ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ — วาง Web app URL ของ gas/MailCodes.gs ที่ MAIL_SCRIPT_URL ใน accounts.html');
+    rlog('ℹ️ ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ — วาง Web app URL ของ gas/MailCodes.gs ที่ js/mail-config.js');
     if (confirm('ยังไม่ได้ตั้งค่าส่งอีเมลอัตโนมัติ\nเปิดโปรแกรมอีเมลเพื่อส่งรหัสให้ ' + r.email + ' เองไหม?')) openCodeEmail(r, username, pass);
     return false;
   }

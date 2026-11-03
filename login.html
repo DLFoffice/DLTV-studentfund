@@ -346,9 +346,9 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
   <div class="modal">
     <div class="mic"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2"/></svg></div>
     <h3 id="forgot-title">ลืมรหัสผ่าน</h3>
-    <p>กรอก<b>อีเมล</b>ที่ใช้สมัคร ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ทางอีเมล
-      <span class="warn">บัญชีนักเรียนที่ใช้ชื่อผู้ใช้ (เช่น dltv001) ให้ติดต่อครูผู้ดูแลระบบเพื่อออกรหัสใหม่</span></p>
-    <input id="forgot-email" type="email" placeholder="อีเมลของคุณ" autocomplete="email">
+    <p>กรอก<b>ชื่อผู้ใช้</b> (เช่น dltv001) หรือ<b>อีเมล</b> ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่<b>อีเมลกู้คืน</b>ที่ผูกไว้
+      <span class="warn">ยังไม่เคยผูกอีเมลกู้คืน? ติดต่อผู้ดูแลระบบเพื่อออกรหัสใหม่ — หลังเข้าระบบได้แล้ว ผูกอีเมลไว้จะรีเซ็ตเองได้ครั้งต่อไป</span></p>
+    <input id="forgot-email" type="text" placeholder="ชื่อผู้ใช้ หรืออีเมล" autocomplete="username" autocapitalize="none" spellcheck="false">
     <div class="mmsg" id="forgot-msg" role="status"></div>
     <div class="actions">
       <button class="mcancel" id="forgot-cancel" type="button">ยกเลิก</button>
@@ -410,6 +410,7 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
 })();
 </script>
 <script src="firebase/firebase-config.js"></script>
+<script src="js/mail-config.js?v=20261103a"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -531,16 +532,21 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
   document.getElementById('forgot-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('forgot-send').click(); });
   fm.addEventListener('click', e => { if (e.target === fm) fm.classList.remove('open'); });
   document.getElementById('forgot-send').onclick = async () => {
-    const email = document.getElementById('forgot-email').value.trim();
-    if (!email || email.indexOf('@') === -1) { fmsg.style.color = '#DC2626'; fmsg.textContent = 'กรอกอีเมลให้ถูกต้อง'; return; }
+    const login = document.getElementById('forgot-email').value.trim();
+    if (!login) { fmsg.style.color = '#DC2626'; fmsg.textContent = 'กรอกชื่อผู้ใช้หรืออีเมล'; return; }
+    const btn = document.getElementById('forgot-send');
+    btn.disabled = true; fmsg.style.color = '#475569'; fmsg.textContent = 'กำลังส่ง…';
     try {
-      await auth.sendPasswordResetEmail(email);
+      // v67: ผ่าน Apps Script → ส่งลิงก์ไปที่อีเมลกู้คืน (อีเมลไม่ถูกเปิดเผยในหน้าเว็บ)
+      if (window.mailScriptReady && window.mailScriptReady()) await window.mailScriptCall({ action: 'forgot', login });
+      else if (login.indexOf('@') > 0) await auth.sendPasswordResetEmail(login);
+      else throw new Error('ระบบลืมรหัสผ่านสำหรับชื่อผู้ใช้ยังไม่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ');
       fmsg.style.color = '#15803D';
-      fmsg.textContent = '✓ ส่งลิงก์แล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม)';
+      fmsg.textContent = '✓ ถ้าบัญชีนี้ผูกอีเมลกู้คืนไว้ ระบบส่งลิงก์ตั้งรหัสผ่านใหม่ไปแล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม) ภายใน 5 นาที ถ้าไม่ได้รับ ติดต่อผู้ดูแลระบบ';
     } catch (e) {
       fmsg.style.color = '#DC2626';
-      fmsg.textContent = e.code === 'auth/user-not-found' ? 'ไม่พบอีเมลนี้ในระบบ' : e.message;
-    }
+      fmsg.textContent = e.code === 'auth/user-not-found' ? '✓ ถ้ามีบัญชีนี้ ระบบส่งลิงก์ไปแล้ว' : (e.message || String(e));
+    } finally { btn.disabled = false; }
   };
 })();
 </script>

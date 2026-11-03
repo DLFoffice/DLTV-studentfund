@@ -1066,3 +1066,23 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 • สาเหตุ: ค่าที่เก็บเป็น "ตัวเลข" (เช่น เลขที่บัญชีที่นำเข้าจาก Google Sheet) ถูกข้ามตอนสร้างเอกสาร เพราะรับเฉพาะข้อความ
 • แก้: แปลงตัวเลขเป็นข้อความทั้งตอนพิมพ์และตอนเติมค่าจากทะเบียน
 • หมายเหตุ: เลขที่บัญชีที่เก็บเป็นตัวเลขอาจเสียเลข 0 ข้างหน้า (เช่น 020… → 20…) ตรวจและแก้ในหน้า "บัญชีธนาคาร"
+
+---
+
+## v67 — ลืมรหัสผ่านด้วย "อีเมลกู้คืน" (บัญชีชื่อผู้ใช้ dltv001 ฯลฯ)
+
+ไฟล์: `gas/MailCodes.gs` (actions ใหม่), `js/mail-config.js` (ใหม่ — ที่ตั้ง URL ไฟล์เดียว), `js/50-recovery-email.js` (ใหม่),
+`login.html`, `accounts.html`, `css/style.css` (`.rv-*`, `.hx-rec`), `manual.md`/`manual.html`, `index.html` (`?v=20261103a`)
+
+**ตั้งค่า (ครั้งเดียว)**
+1. วาง Web app URL ของ MailCodes.gs ที่ `window.MAIL_SCRIPT_URL` ใน `js/mail-config.js` (accounts.html ใช้ค่านี้แล้ว)
+2. Apps Script (บัญชี adipong@school.dltv.ac.th): วางโค้ด `gas/MailCodes.gs` ใหม่ทั้งไฟล์
+3. Firebase Console → Project settings → Service accounts → Generate new private key → Apps Script → Project Settings →
+   Script Properties → `SERVICE_ACCOUNT_JSON` = เนื้อหาไฟล์ .json ทั้งไฟล์ → Run `testServiceAccount` (✅)
+4. Deploy → Manage deployments → ✏️ → New version → Deploy (URL เดิม)
+
+**การทำงาน**
+• ผูกอีเมล: `recoveryStart` (ส่งรหัส 6 หลัก, 15 นาที, ≤5 ครั้ง/ชม.) → `recoveryVerify` (ผิดได้ 5 ครั้ง) → Service Account เขียน `accounts/{uid}.recoveryEmail`
+• ลืมรหัส: `forgot` {login = ชื่อผู้ใช้ หรืออีเมลกู้คืน} → Identity Toolkit `sendOobCode` (returnOobLink) → ส่งลิงก์ไปที่อีเมลกู้คืน
+  ตอบ ok เสมอ (กันการเดาบัญชี) · จำกัด 3 ครั้ง/30 นาที/บัญชี · บัญชีอีเมลจริงให้ Firebase ส่งเอง
+• อีเมลครูไม่อยู่ในตาราง `usernames` (ที่อ่านได้ก่อนล็อกอิน) → ไม่รั่วไหล · ไม่ต้องแก้ Firestore Rules
