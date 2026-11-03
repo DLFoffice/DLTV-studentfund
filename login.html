@@ -197,6 +197,8 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
 .modal .mic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .modal h3{font-size:19px;margin-bottom:6px}
 .modal p{font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:14px}
+.modal p .uhint{display:block;margin-top:8px;padding:8px 10px;border-radius:10px;background:#F5F8FF;color:#334155;font-size:12.8px}
+.fhelp{display:block;margin:2px 0 12px;font-size:12.8px;color:#1E3FD1;font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .modal p .warn{display:block;margin-top:6px;color:#B45309;font-size:12.5px}
 .modal input{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;font:inherit;font-size:15px;background:#F7F9FD}
 .modal input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(47,92,255,.14);background:#fff}
@@ -346,10 +348,11 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
   <div class="modal">
     <div class="mic"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2"/></svg></div>
     <h3 id="forgot-title">ลืมรหัสผ่าน</h3>
-    <p>กรอก<b>ชื่อผู้ใช้</b> (เช่น dltv001) หรือ<b>อีเมล</b> ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่<b>อีเมลกู้คืน</b>ที่ผูกไว้
-      <span class="warn">ยังไม่เคยผูกอีเมลกู้คืน? ติดต่อผู้ดูแลระบบเพื่อออกรหัสใหม่ — หลังเข้าระบบได้แล้ว ผูกอีเมลไว้จะรีเซ็ตเองได้ครั้งต่อไป</span></p>
+    <p>กรอก<b>ชื่อผู้ใช้</b> หรือ<b>อีเมล</b> ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่<b>อีเมลกู้คืน</b>ของบัญชี
+      <span class="uhint">💡 ชื่อผู้ใช้ = <b>dltv</b> ตามด้วย<b>ลำดับนักเรียน 3 หลัก</b> เช่น ลำดับ 2 → <b>dltv002</b>, ลำดับ 15 → <b>dltv015</b></span></p>
     <input id="forgot-email" type="text" placeholder="ชื่อผู้ใช้ หรืออีเมล" autocomplete="username" autocapitalize="none" spellcheck="false">
     <div class="mmsg" id="forgot-msg" role="status"></div>
+    <a class="fhelp" href="request-code.html?mode=reset">เข้าอีเมลเดิมไม่ได้ / ไม่มีอีเมลกู้คืน? ขอให้ผู้ดูแลส่งลิงก์ไปที่อีเมลใหม่ →</a>
     <div class="actions">
       <button class="mcancel" id="forgot-cancel" type="button">ยกเลิก</button>
       <button class="mok" id="forgot-send" type="button">ส่งลิงก์รีเซ็ต</button>
@@ -538,11 +541,24 @@ body{font-family:'Noto Sans Thai',sans-serif;color:var(--ink);min-height:100vh;m
     btn.disabled = true; fmsg.style.color = '#475569'; fmsg.textContent = 'กำลังส่ง…';
     try {
       // v67: ผ่าน Apps Script → ส่งลิงก์ไปที่อีเมลกู้คืน (อีเมลไม่ถูกเปิดเผยในหน้าเว็บ)
-      if (window.mailScriptReady && window.mailScriptReady()) await window.mailScriptCall({ action: 'forgot', login });
+      let j = null;
+      if (window.mailScriptReady && window.mailScriptReady()) j = await window.mailScriptCall({ action: 'forgot', login });
       else if (login.indexOf('@') > 0) await auth.sendPasswordResetEmail(login);
       else throw new Error('ระบบลืมรหัสผ่านสำหรับชื่อผู้ใช้ยังไม่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ');
-      fmsg.style.color = '#15803D';
-      fmsg.textContent = '✓ ถ้าบัญชีนี้ผูกอีเมลกู้คืนไว้ ระบบส่งลิงก์ตั้งรหัสผ่านใหม่ไปแล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม) ภายใน 5 นาที ถ้าไม่ได้รับ ติดต่อผู้ดูแลระบบ';
+      // v69: บอกปลายทางแบบปิดบางส่วน (ad****@gm***.com) ให้ครูรู้ว่าต้องเปิดอีเมลไหน
+      if (j && j.sent && j.hint) {
+        fmsg.style.color = '#15803D';
+        fmsg.textContent = '✓ ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + j.hint + ' แล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม) ภายใน 5 นาที';
+      } else if (j && j.limited) {
+        fmsg.style.color = '#B45309';
+        fmsg.textContent = 'ขอบ่อยเกินไป ลองใหม่ในอีก 30 นาที หรือตรวจอีเมลที่ส่งไปก่อนหน้า (รวมถังขยะ/สแปม)';
+      } else if (j) {
+        fmsg.style.color = '#B45309';
+        fmsg.textContent = 'ไม่พบอีเมลกู้คืนของ "' + login + '" — ตรวจชื่อผู้ใช้อีกครั้ง หรือกดลิงก์ด้านล่างเพื่อขอให้ผู้ดูแลส่งลิงก์ไปที่อีเมลของคุณครู';
+      } else {
+        fmsg.style.color = '#15803D';
+        fmsg.textContent = '✓ ถ้ามีบัญชีนี้ ระบบส่งลิงก์ตั้งรหัสผ่านใหม่ไปแล้ว — ตรวจกล่องจดหมาย (และถังขยะ/สแปม)';
+      }
     } catch (e) {
       fmsg.style.color = '#DC2626';
       fmsg.textContent = e.code === 'auth/user-not-found' ? '✓ ถ้ามีบัญชีนี้ ระบบส่งลิงก์ไปแล้ว' : (e.message || String(e));

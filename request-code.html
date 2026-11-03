@@ -68,9 +68,9 @@ input:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 
   <div id="form-view">
     <div class="logo" aria-hidden="true"><span class="ring"><i></i></span>
       <span class="lg"><img src="https://dltv.ac.th/upload/data/users/0/316/CMS/images/logo%20dlf%20%E0%B8%AA%E0%B8%A1%E0%B8%9A%E0%B8%B9%E0%B8%A3%E0%B8%93%E0%B9%8C.png" alt=""></span></div>
-    <h1>ครูขอรับรหัสนักเรียนทุน</h1>
-    <p class="hint">สำหรับครูผู้ดูแล ขอรับรหัสเข้าใช้งานของนักเรียนทุน (ที่ผู้ดูแลออกไว้แล้ว)<br>
-      กรอกครั้งเดียว — เมื่ออนุมัติ ผู้ดูแลจะส่งรหัสให้ทาง e-mail</p>
+    <h1 id="rc-title">ครูขอรับรหัสนักเรียนทุน</h1>
+    <p class="hint" id="rc-hint">สำหรับครูผู้ดูแล ขอรับรหัสเข้าใช้งานของนักเรียนทุน (ที่ผู้ดูแลออกไว้แล้ว)<br>
+      กรอกครั้งเดียว — เมื่ออนุมัติ ผู้ดูแลจะส่งรหัสให้ทาง e-mail · ลืมรหัสผ่าน/เข้าอีเมลเดิมไม่ได้ ก็ใช้หน้านี้ได้</p>
 
     <div class="sect">🎓 ข้อมูลนักเรียนทุน</div>
     <label for="r-no">ลำดับนักเรียน <small>(ตามบัญชีรายชื่อนักเรียนทุน)</small></label>
@@ -220,6 +220,17 @@ btn.onclick = async () => {
   }
 };
 })();
+
+/* v69: มาจาก "ลืมรหัสผ่าน" (เข้าอีเมลเดิมไม่ได้) → ปรับข้อความหน้าให้ตรงกรณี (ใช้คำขอแบบเดียวกัน ผู้ดูแลอนุมัติแล้วระบบส่งลิงก์ตั้งรหัสใหม่) */
+try {
+  if (new URLSearchParams(location.search).get('mode') === 'reset') {
+    document.title = 'ขอตั้งรหัสผ่านใหม่ — DLTV Fund';
+    document.getElementById('rc-title').textContent = 'ขอตั้งรหัสผ่านใหม่ / เปลี่ยนอีเมลกู้คืน';
+    document.getElementById('rc-hint').innerHTML = 'สำหรับครูที่ลืมรหัสผ่านและเข้าอีเมลเดิมไม่ได้ (หรือเปลี่ยนครูผู้ดูแล)<br>กรอกข้อมูลนักเรียนและ<b>อีเมลใหม่ของคุณครู</b> — เมื่อผู้ดูแลอนุมัติ ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลนั้น';
+    const n = document.getElementById('r-note'); if (n && !n.value) n.value = 'ลืมรหัสผ่าน / เข้าอีเมลเดิมไม่ได้';
+    const b = document.getElementById('btn-send'); if (b) b.textContent = 'ส่งคำขอตั้งรหัสใหม่ →';
+  }
+} catch (e) {}
 </script>
 </body>
 </html>

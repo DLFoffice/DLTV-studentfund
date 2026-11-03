@@ -806,7 +806,8 @@ async function approveRequest(r, btn){
       + 'กด "➕ สร้างบัญชีให้นักเรียนที่ยังไม่มี" ด้านบนก่อน แล้วค่อยกดอนุมัติคำขอนี้อีกครั้ง');
     return;
   }
-  // 2) นักเรียนตั้งรหัสเองแล้ว — ดูรหัสเดิมไม่ได้
+  // 2) v69: ตั้งรหัสเองแล้ว (ลืมรหัส / เข้าอีเมลเดิมไม่ได้) → ส่งลิงก์ตั้งรหัสใหม่ไปที่อีเมลในคำขอ ไม่ต้องลบบัญชี
+  if ((stu.changed || !stu.pass) && mailReady()) { await approveAsReset(r, stu, btn); return; }
   if (stu.changed || !stu.pass) {
     alert('นักเรียนลำดับ ' + no + ' (' + stu.name + ') ตั้งรหัสผ่านเองแล้ว จึงดูรหัสเดิมไม่ได้\n\n'
       + 'ถ้าต้องการออกรหัสใหม่: กด "🗑 ลบบัญชี" ที่แถวนักเรียนลำดับนี้ในตารางด้านบน\n'
@@ -854,12 +855,42 @@ async function approveRequest(r, btn){
 }
 
 /* v59: คำขอที่อนุมัติแล้ว 20 รายการล่าสุด + ปุ่มส่งอีเมลซ้ำ */
+/* v69: อนุมัติแบบ "ส่งลิงก์ตั้งรหัสใหม่" — ใช้เมื่อรหัสเริ่มต้นถูกเปลี่ยนไปแล้ว */
+async function approveAsReset(r, stu, btn){
+  const nameWarn = (accNormName(stu.name) && accNormName(r.studentName) && accNormName(stu.name) !== accNormName(r.studentName)
+      && !accNormName(stu.name).includes(accNormName(r.studentName)) && !accNormName(r.studentName).includes(accNormName(stu.name)))
+    ? '\n\n⚠️ ชื่อในทะเบียน (' + stu.name + ') ไม่ตรงกับที่ครูกรอก (' + r.studentName + ') — ตรวจให้แน่ใจก่อน' : '';
+  if (!confirm('อนุมัติคำขอของครู ' + (r.teacherName||'') + '\n'
+    + 'บัญชี ' + stu.username + ' (' + stu.name + ') ตั้งรหัสผ่านเองแล้ว\n\n'
+    + 'ระบบจะ:\n• ตั้ง ' + r.email + ' เป็นอีเมลกู้คืนของบัญชีนี้' + (stu.recovery && stu.recovery !== String(r.email).toLowerCase() ? ' (แทน ' + stu.recovery + ')' : '')
+    + '\n• ส่งลิงก์ "ตั้งรหัสผ่านใหม่" ไปที่อีเมลนั้น' + nameWarn)) return;
+  btn.disabled = true; reqLog.textContent = '';
+  rlog('อนุมัติคำขอ (ตั้งรหัสใหม่) — ' + stu.username + ' ' + stu.name + ' → ' + r.email);
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const j = await window.mailScriptCall({ action: 'adminReset', idToken, requestId: r._id, username: stu.username });
+    await db.collection('codeRequests').doc(r._id).set({
+      status: 'approved', issuedUsername: stu.username, issuedNo: Number(r.no), resolution: 'resetLink',
+      approvedBy: auth.currentUser ? auth.currentUser.email : '', approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      emailSentAt: firebase.firestore.FieldValue.serverTimestamp(), emailSentCount: firebase.firestore.FieldValue.increment(1)
+    }, { merge: true });
+    rlog('✅ ตั้งอีเมลกู้คืนเป็น ' + j.to + ' และส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว');
+    rlog('   ครูกดลิงก์ในอีเมล → ตั้งรหัสใหม่ → เข้าระบบด้วย ' + stu.username);
+  } catch(e) {
+    rlog('❌ ไม่สำเร็จ: ' + (e.message || e));
+    rlog('   (ตรวจ js/mail-config.js · Service Account ใน Apps Script · และ Deploy เป็นเวอร์ชันล่าสุด)');
+    btn.disabled = false; return;
+  }
+  await loadAll(); await loadCodeRequests();
+}
+
 /* v68: e-mail ที่ครูกรอกตอนขอรับรหัส = อีเมลกู้คืนรหัสผ่านของบัญชี (ครูไม่ต้องผูกเอง)
    ไม่ทับอีเมลที่ผูกไว้แล้ว · ครูเปลี่ยนเองภายหลังได้ */
 const isRealEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')) && !/@dltvfund\.(web\.app|local)$/i.test(String(e || ''));
 async function setRecoveryFromRequest(stu, email){
   email = String(email || '').trim().toLowerCase();
-  if (!stu || !stu.uid || stu.recovery || !isRealEmail(email)) return false;
+  // v69: คำขอที่ผู้ดูแลอนุมัติ = อีเมลล่าสุดของครูผู้ดูแล → ใช้แทนอีเมลเดิม (กรณีเปลี่ยนครู/เข้าอีเมลเดิมไม่ได้)
+  if (!stu || !stu.uid || stu.recovery === email || !isRealEmail(email)) return false;
   try {
     await db.collection('accounts').doc(stu.uid).set({
       recoveryEmail: email, recoverySource: 'codeRequest',

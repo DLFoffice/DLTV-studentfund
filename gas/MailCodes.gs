@@ -50,6 +50,7 @@ function doPost(e) {
     switch (body.action) {
       case 'mailPing': return json_({ status: 'ok', quota: MailApp.getRemainingDailyQuota(), admin: admin.email });
       case 'sendCode': return json_(sendCode_(admin, body));
+      case 'adminReset': return json_(adminReset_(admin, body));
       default:         return json_({ status: 'error', message: 'unknown action' });
     }
   } catch (err) {
@@ -212,9 +213,9 @@ function recoveryVerify_(u, b) {
 /** ลืมรหัสผ่าน — ตอบ ok เสมอ (ไม่บอกว่าบัญชี/อีเมลมีอยู่หรือไม่) */
 function forgot_(b) {
   const login = String(b.login || '').trim().toLowerCase();
-  const generic = { status: 'ok' };
+  const generic = { status: 'ok', sent: false };
   if (!login || login.length > 200) return generic;
-  if (!limit_('fg:' + login, 3, 1800) || !limit_('fg:all', 200, 3600)) return generic;
+  if (!limit_('fg:' + login, 3, 1800) || !limit_('fg:all', 200, 3600)) return { status: 'ok', sent: false, limited: true };
   try {
     let acc = null;
     if (login.indexOf('@') < 0) {
@@ -234,6 +235,7 @@ function forgot_(b) {
           '<p style="text-align:center;margin:18px 0"><a href="' + link + '" style="display:inline-block;background:#1E3FD1;color:#fff;text-decoration:none;font-weight:700;padding:12px 26px;border-radius:12px">ตั้งรหัสผ่านใหม่</a></p>' +
           '<p style="margin:0 0 8px;font-size:13.5px;color:#64748B">ตั้งรหัสใหม่แล้ว เข้าสู่ระบบด้วยชื่อผู้ใช้ <b>' + esc_(acc.username) + '</b> และรหัสผ่านใหม่ได้ที่ <a href="' + LOGIN_URL + '">หน้าเข้าสู่ระบบ</a></p>' +
           '<p style="margin:0;font-size:13.5px;color:#64748B">ลิงก์ใช้ได้ครั้งเดียวภายในเวลาจำกัด · ถ้าคุณไม่ได้ขอ ไม่ต้องทำอะไร รหัสเดิมยังใช้ได้</p>') });
+      return { status: 'ok', sent: true, hint: maskEmail_(acc.recoveryEmail) };   // v69: บอกปลายทางแบบปิดบางส่วน
     } else if (acc && acc.authEmail && login.indexOf('@') > 0 && acc.authEmail.toLowerCase() === login && !/@dltvfund\./.test(login)) {
       resetLink_(acc.authEmail, true);   // บัญชีอีเมลจริง (เช่น เจ้าหน้าที่) → ให้ Firebase ส่งเอง
     }
@@ -241,6 +243,42 @@ function forgot_(b) {
   return generic;
 }
 
+/** v69: ผู้ดูแลอนุมัติคำขอ (ครูลืมรหัส/เข้าอีเมลเดิมไม่ได้) → ตั้งอีเมลกู้คืนเป็นอีเมลในคำขอ แล้วส่งลิงก์ตั้งรหัสใหม่ไปที่อีเมลนั้น */
+function adminReset_(admin, b) {
+  const id = String(b.requestId || '');
+  if (!/^[A-Za-z0-9_-]{5,64}$/.test(id)) throw new Error('requestId ไม่ถูกต้อง');
+  const r = fsGet_('codeRequests/' + id, b.idToken);
+  if (r.code !== 200) throw new Error('ไม่พบคำขอในระบบ (' + r.code + ')');
+  const f = r.data.fields || {};
+  const to = String(val_(f.email)).trim().toLowerCase();
+  if (!EMAIL_RE.test(to)) throw new Error('อีเมลในคำขอไม่ถูกต้อง');
+  const username = String(b.username || '').trim().toLowerCase();
+  const un = saFs_('GET', '/usernames/' + encodeURIComponent(username));
+  const authEmail = un && un.fields && un.fields.email && un.fields.email.stringValue;
+  const acc = authEmail && queryAccount_('email', authEmail);
+  if (!acc) throw new Error('ไม่พบบัญชี ' + username);
+  saFs_('PATCH', '/accounts/' + acc.uid + '?updateMask.fieldPaths=recoveryEmail&updateMask.fieldPaths=recoveryVerifiedAt&updateMask.fieldPaths=recoverySource',
+    { fields: { recoveryEmail: { stringValue: to }, recoveryVerifiedAt: { timestampValue: new Date().toISOString() }, recoverySource: { stringValue: 'adminReset' } } });
+  const link = resetLink_(acc.authEmail);
+  const teacher = val_(f.teacherName), student = val_(f.studentName), no = val_(f.no);
+  MailApp.sendEmail({ to, name: SENDER_NAME, replyTo: SENDER_EMAIL,
+    subject: 'ตั้งรหัสผ่านใหม่ — ระบบดูแลนักเรียนทุน DLTV Fund (นักเรียนทุนลำดับ ' + no + ')',
+    body: 'เรียน คุณครู' + teacher + '\nกดลิงก์นี้เพื่อตั้งรหัสผ่านใหม่ของบัญชี ' + acc.username + '\n' + link,
+    htmlBody: shell_('ตั้งรหัสผ่านใหม่',
+      '<p style="margin:0 0 12px">เรียน คุณครู' + esc_(teacher) + '</p>' +
+      '<p style="margin:0 0 12px">มูลนิธิฯ อนุมัติคำขอของคุณครูแล้ว สำหรับนักเรียนทุนลำดับ <b>' + esc_(no) + '</b> ' + esc_(student) + '<br>ชื่อผู้ใช้: <b style="font-family:Consolas,Menlo,monospace">' + esc_(acc.username) + '</b></p>' +
+      '<p style="text-align:center;margin:18px 0"><a href="' + link + '" style="display:inline-block;background:#1E3FD1;color:#fff;text-decoration:none;font-weight:700;padding:12px 26px;border-radius:12px">ตั้งรหัสผ่านใหม่</a></p>' +
+      '<p style="margin:0 0 8px;font-size:13.5px;color:#64748B">ตั้งรหัสแล้ว เข้าสู่ระบบด้วยชื่อผู้ใช้ข้างต้นที่ <a href="' + LOGIN_URL + '">หน้าเข้าสู่ระบบ</a></p>' +
+      '<p style="margin:0;font-size:13.5px;color:#64748B">อีเมลนี้ถูกตั้งเป็น "อีเมลกู้คืนรหัสผ่าน" ของบัญชีแล้ว — ครั้งต่อไปกด "ลืมรหัสผ่าน?" ได้เอง</p>') });
+  return { status: 'ok', to, username: acc.username };
+}
+
+/** v69: ad****@gm***.com — ให้ครูรู้ว่าต้องเปิดกล่องจดหมายไหน โดยไม่เปิดเผยอีเมลเต็ม */
+function maskEmail_(e) {
+  const m = String(e || '').match(/^([^@]+)@([^.]+)(\..+)$/); if (!m) return '';
+  const keep = (s, n) => s.slice(0, n) + '*'.repeat(Math.max(3, s.length - n));
+  return keep(m[1], Math.min(2, m[1].length)) + '@' + keep(m[2], Math.min(2, m[2].length)) + m[3];
+}
 function queryAccount_(field, value) {
   const res = saFetch_('POST', FS_BASE + ':runQuery', { structuredQuery: { from: [{ collectionId: 'accounts' }],
     where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: value } } }, limit: 1 } });
