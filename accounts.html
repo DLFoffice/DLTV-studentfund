@@ -96,6 +96,7 @@ input[type=search]:focus{outline:none;border-color:var(--gold)}
   <div class="card">
     <h2 style="font-size:16px;margin:0 0 4px">📨 คำขอรับรหัสนักเรียนทุนจากครู <span id="req-count" class="badge no" style="display:none"></span></h2>
     <div class="sub" style="margin-bottom:10px">ครูส่งคำขอผ่านหน้า <b>request-code.html</b> — กด "อนุมัติ &amp; ส่งอีเมล" ระบบจะส่งชื่อผู้ใช้และรหัสของนักเรียนลำดับนั้น (ที่สร้างไว้แล้ว) ไปที่ e-mail ของครูอัตโนมัติ</div>
+    <div style="margin:0 0 10px"><button class="btn small gray" id="btn-rec-backfill" title="นำ e-mail ที่ครูกรอกตอนขอรับรหัส (คำขอที่อนุมัติแล้ว) มาตั้งเป็นอีเมลกู้คืนรหัสผ่าน ให้บัญชีที่ยังไม่ได้ผูก">📧 ตั้งอีเมลกู้คืนจากคำขอที่อนุมัติแล้ว</button></div>
     <div id="req-log" style="background:#1A1D2E;color:#9fefb0;font-family:monospace;font-size:12.5px;padding:12px;border-radius:10px;max-height:220px;overflow:auto;white-space:pre-wrap;display:none;margin-bottom:12px"></div>
     <div style="overflow-x:auto">
       <table>
@@ -848,10 +849,56 @@ async function approveRequest(r, btn){
 
   // ── ส่งอีเมลถึงครู ──
   await deliverCode(r, stu.username, stu.pass);
+  await setRecoveryFromRequest(stu, r.email);
   await loadCodeRequests();
 }
 
 /* v59: คำขอที่อนุมัติแล้ว 20 รายการล่าสุด + ปุ่มส่งอีเมลซ้ำ */
+/* v68: e-mail ที่ครูกรอกตอนขอรับรหัส = อีเมลกู้คืนรหัสผ่านของบัญชี (ครูไม่ต้องผูกเอง)
+   ไม่ทับอีเมลที่ผูกไว้แล้ว · ครูเปลี่ยนเองภายหลังได้ */
+const isRealEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')) && !/@dltvfund\.(web\.app|local)$/i.test(String(e || ''));
+async function setRecoveryFromRequest(stu, email){
+  email = String(email || '').trim().toLowerCase();
+  if (!stu || !stu.uid || stu.recovery || !isRealEmail(email)) return false;
+  try {
+    await db.collection('accounts').doc(stu.uid).set({
+      recoveryEmail: email, recoverySource: 'codeRequest',
+      recoveryVerifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    stu.recovery = email;
+    rlog('📧 ตั้งอีเมลกู้คืนรหัสผ่านของ ' + stu.username + ' เป็น ' + email + ' แล้ว (ครูใช้ "ลืมรหัสผ่าน?" ได้เอง)');
+    return true;
+  } catch(e) { rlog('⚠️ ตั้งอีเมลกู้คืนไม่สำเร็จ: ' + e.message); return false; }
+}
+document.getElementById('btn-rec-backfill').onclick = async () => {
+  const b = document.getElementById('btn-rec-backfill');
+  b.disabled = true; reqLog.textContent = '';
+  try {
+    const snap = await db.collection('codeRequests').where('status','==','approved').get();
+    const latest = {};   // ลำดับนักเรียน → คำขอที่อนุมัติล่าสุด
+    snap.forEach(d => { const x = d.data(); const no = Number(x.issuedNo ?? x.no);
+      if (!no || !isRealEmail(x.email)) return;
+      if (!latest[no] || (x.approvedAt?.seconds||0) > (latest[no].approvedAt?.seconds||0)) latest[no] = x; });
+    const todo = rowsData.filter(r => r.has && r.uid && !r.recovery && latest[Number(r.no)])
+      .filter(r => !latest[Number(r.no)].issuedUsername || latest[Number(r.no)].issuedUsername === r.username)
+      .map(r => ({ r, email: String(latest[Number(r.no)].email).trim().toLowerCase(), teacher: latest[Number(r.no)].teacherName || '' }));
+    if (!todo.length) { alert('ไม่มีบัญชีที่ต้องตั้งเพิ่ม — บัญชีที่มีคำขออนุมัติแล้วผูกอีเมลกู้คืนครบแล้ว'); return; }
+    const preview = todo.slice(0, 25).map(t => '• ' + t.r.username + ' ' + t.r.name + ' → ' + t.email).join('\n') + (todo.length > 25 ? '\n… และอีก ' + (todo.length - 25) + ' บัญชี' : '');
+    if (!confirm('ตั้งอีเมลกู้คืนให้ ' + todo.length + ' บัญชี จาก e-mail ที่ครูกรอกตอนขอรับรหัส:\n\n' + preview + '\n\n(ไม่ทับบัญชีที่ผูกอีเมลไว้แล้ว)')) return;
+    let ok = 0;
+    for (let i = 0; i < todo.length; i += 400) {
+      const batch = db.batch();
+      todo.slice(i, i + 400).forEach(t => batch.set(db.collection('accounts').doc(t.r.uid), {
+        recoveryEmail: t.email, recoverySource: 'codeRequest', recoveryVerifiedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+      await batch.commit(); ok += Math.min(400, todo.length - i);
+    }
+    rlog('✅ ตั้งอีเมลกู้คืนแล้ว ' + ok + ' บัญชี');
+    todo.forEach(t => rlog('   ' + t.r.username + ' → ' + t.email));
+    await loadAll();
+  } catch(e) { alert('❌ ' + e.message); }
+  finally { b.disabled = false; }
+};
+
 async function loadApprovedRequests(){
   const tb = document.getElementById('req-done-rows'); if (!tb) return;
   try {
@@ -883,6 +930,7 @@ async function resendCode(r, btn){
   btn.disabled = true; reqLog.textContent = '';
   rlog('ส่งอีเมลซ้ำ — นักเรียนลำดับ ' + r.no + ' ' + stu.name + ' → ' + (r.teacherName||'') + ' <' + r.email + '>');
   await deliverCode(r, stu.username, stu.pass);
+  await setRecoveryFromRequest(stu, r.email);
   btn.disabled = false;
   loadApprovedRequests();
 }
