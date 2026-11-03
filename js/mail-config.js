@@ -3,7 +3,7 @@
    ใช้กับ: ส่งรหัสให้ครู (หน้าจัดการบัญชี) · ผูกอีเมลกู้คืน · ลืมรหัสผ่าน
    วาง URL ที่ลงท้าย /exec ด้านล่าง (ไฟล์นี้ไฟล์เดียว)
    ============================================================ */
-window.MAIL_SCRIPT_URL = '';
+window.MAIL_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPMPjrVqG5iRMi6TA_WYP1uB5LqahUQzWvt9xsrq6IDkOSInYu_RWphK-wAHQaPRJrwQ/exec';
 window.mailScriptReady = () => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec\/?$/.test(String(window.MAIL_SCRIPT_URL || '').trim());
 window.mailScriptCall = async function (body) {
   if (!window.mailScriptReady()) throw new Error('ยังไม่ได้ตั้งค่า MAIL_SCRIPT_URL ใน js/mail-config.js');
