@@ -1,0 +1,181 @@
+/* ============================================================
+   mi-space.css (v70) — ธีม "อวกาศ DLTV" ของแบบสำรวจแววความสามารถ (mi.html)
+   ท้องฟ้าดาว · เนบิวลา · แถบโลโก้สีรุ้ง · น้อง DLTV 3D · การ์ดขาวโค้งมน · ปุ่มเหลือง 3D
+   (ใส่ไว้หลังสไตล์เดิม — ใช้โครงหน้าและฟังก์ชันเดิมทั้งหมด)
+   ============================================================ */
+:root,:root[data-theme="light"]{
+  --space:#0a0f3d;--navy:#101a54;--blue:#2b3990;--blue2:#3d4fc4;
+  --pink:#ff4fa3;--cyan:#22d3ee;--purple:#8b5cf6;--orange:#ff8a00;--green:#22c55e;
+  --rainbow:linear-gradient(90deg,#ffd23f,#ff8a00,#ff4fa3,#8b5cf6,#22d3ee);
+  --y:#fbb900;--spring:cubic-bezier(.34,1.56,.64,1);--ease2:cubic-bezier(.65,0,.35,1);
+  /* ตัวแปรเดิมของหน้า (ใช้ในการ์ดสีขาว) */
+  --bg:#F4F6FD;--paper:#FFFFFF;--ink:#17204d;--dim:#5d6690;--line:#DFE3F3;--soft:#EEF0FA;
+  --pri:#3d4fc4;--pri-2:#2b3990;--on-pri:#fff;--acc:#fbb900;--ok:#17b26a;--warn:#b45309;--bad:#e11d48;
+  --shadow:0 20px 50px -22px rgba(0,0,0,.55);
+  --display:"Kanit","Sarabun",system-ui,sans-serif;
+  --stage-top:92px;--stage-h:300px;--stage-w:100%;--stage-l:0px;--space-top:306px;
+  color-scheme:light;
+}
+/* v71: พื้นหลัง "แสงออโรรา" — คนละโทนกับเกมตอบคำถาม (ฟ้าน้ำทะเล/เขียวมรกต/ทอง แทนม่วง-ชมพู) */
+html{background:#041a24}
+body{color:#fff;background:#041a24;
+  background:radial-gradient(120% 70% at 50% 115%,#0e6f7a 0%,transparent 55%),radial-gradient(70% 50% at 0% 10%,#0b4f6c 0%,transparent 60%),
+    radial-gradient(60% 45% at 100% 0%,#173a7a 0%,transparent 60%),linear-gradient(180deg,#03121d 0%,#062634 45%,#07323d 100%) fixed}
+.bgfx{display:none}
+
+/* ---------- ท้องฟ้า + เนบิวลา + พลุ ---------- */
+#sky,#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#sky{z-index:0}#confetti{z-index:50}
+.nebula{display:none}
+/* ม่านแสงออโรรา 3 สาย พลิ้วช้า ๆ */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
+.aurora i{position:absolute;left:-30%;width:160%;height:44vh;top:-6vh;border-radius:50%;filter:blur(38px);opacity:.55;transform-origin:50% 0;
+  background:linear-gradient(90deg,transparent 4%,rgba(45,255,196,.55) 22%,rgba(34,211,238,.5) 42%,rgba(120,140,255,.38) 62%,rgba(45,255,196,.45) 80%,transparent 96%);
+  animation:aurora 18s ease-in-out infinite alternate}
+.aurora i:nth-child(2){top:4vh;height:30vh;opacity:.4;filter:blur(30px);animation-duration:23s;animation-delay:-7s;
+  background:linear-gradient(90deg,transparent 8%,rgba(255,214,90,.35) 30%,rgba(45,255,196,.5) 52%,rgba(34,211,238,.4) 74%,transparent 94%)}
+.aurora i:nth-child(3){top:14vh;height:22vh;opacity:.3;filter:blur(26px);animation-duration:29s;animation-delay:-13s;
+  background:linear-gradient(90deg,transparent 10%,rgba(160,120,255,.35) 35%,rgba(45,255,196,.35) 60%,transparent 90%)}
+@keyframes aurora{0%{transform:translateX(-6%) skewX(-8deg) scaleY(.9)}50%{transform:translateX(4%) skewX(6deg) scaleY(1.15)}100%{transform:translateX(8%) skewX(-4deg) scaleY(1)}}
+/* ขอบดาวเคราะห์เรืองแสงด้านล่างจอ */
+.horizon{position:fixed;left:50%;bottom:-118vmax;width:150vmax;height:150vmax;transform:translateX(-50%);z-index:0;pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle at 50% 0%,#0f5964 0%,#073640 38%,#041a24 70%);
+  box-shadow:0 -2px 0 rgba(120,255,230,.55),0 -14px 40px rgba(45,255,196,.35),0 -60px 120px rgba(34,211,238,.25);animation:horizon 9s ease-in-out infinite}
+@keyframes horizon{50%{box-shadow:0 -2px 0 rgba(160,255,235,.75),0 -18px 50px rgba(45,255,196,.45),0 -70px 140px rgba(34,211,238,.32)}}
+.wrap{position:relative;z-index:1;padding-top:12px}
+
+/* ---------- แถบโลโก้ ---------- */
+.topbar{position:relative;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.97);color:var(--blue);
+  border-radius:20px;padding:8px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25),0 0 0 3px rgba(255,255,255,.15);animation:dropIn .8s var(--spring) both}
+.topbar::after{content:"";position:absolute;left:16px;right:16px;bottom:-3px;height:4px;border-radius:4px;background:linear-gradient(90deg,#2dffc4,#22d3ee,#788cff,#ffd23f,#2dffc4);background-size:200% 100%;animation:shine 4s linear infinite}
+.topbar .logo-found{height:56px;width:auto}
+.topbar .logo-dltv{height:44px;width:auto;margin-left:auto}
+.topbar-text{display:flex;flex-direction:column;line-height:1.25;font-family:Kanit,sans-serif;min-width:0}
+.topbar-text strong{font-weight:600;font-size:clamp(12px,3.2vw,15px)}
+.topbar-text span{font-size:clamp(11px,2.8vw,13px);opacity:.8}
+@keyframes dropIn{from{transform:translateY(-30px);opacity:0}}
+@keyframes shine{to{background-position:-200% 0}}
+
+/* ---------- เวทีน้อง DLTV (ย้ายตำแหน่งตามหน้าจอ) ---------- */
+.stage{position:absolute;z-index:3;top:var(--stage-top);left:var(--stage-l);width:var(--stage-w);height:var(--stage-h);
+  transition:top .8s var(--ease2),left .8s var(--ease2),width .8s var(--ease2),height .8s var(--ease2);cursor:grab}
+.stage:active{cursor:grabbing}
+.stage canvas{display:block;position:relative;z-index:1}
+.stage-ring{position:absolute;left:50%;bottom:2%;width:min(70%,300px);aspect-ratio:3/1;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(45,255,196,.38),rgba(34,211,238,.18) 55%,transparent);animation:ringPulse 3s ease-in-out infinite}
+@keyframes ringPulse{50%{transform:translateX(-50%) scale(1.08);opacity:.7}}
+.stage-fallback{position:absolute;inset:0;margin:auto;height:92%;width:auto;object-fit:contain;animation:float 3s ease-in-out infinite;z-index:1}
+@keyframes float{50%{transform:translateY(-10px) rotate(2deg)}}
+.bubble{position:absolute;z-index:4;top:calc(var(--stage-top) + 10px);right:4%;max-width:42%;background:#fff;color:var(--ink);
+  font:500 15px/1.4 Kanit,sans-serif;padding:9px 14px;border-radius:16px 16px 16px 4px;box-shadow:0 8px 20px rgba(0,0,0,.25);
+  transform-origin:0 100%;opacity:0;transform:scale(.4) translateY(10px);pointer-events:none;
+  transition:opacity .25s,transform .35s var(--spring),top .8s var(--ease2),right .8s var(--ease2)}
+.bubble.show{opacity:1;transform:none}
+
+body[data-screen="home"]{--stage-h:min(38vh,300px);--space-top:calc(min(38vh,300px) + 4px)}
+body[data-screen="quiz"]{--stage-top:84px;--stage-h:126px;--stage-w:118px;--stage-l:calc(100% - 132px);--space-top:8px}
+body[data-screen="load"]{--stage-top:100px;--stage-h:min(44vh,340px);--space-top:calc(min(44vh,340px) + 30px)}
+body[data-screen="res"]{--stage-h:170px;--space-top:176px}
+body[data-screen="quiz"] .stage-ring{width:92%}
+body[data-screen="quiz"] .bubble{right:10px;top:calc(var(--stage-top) + var(--stage-h) + 2px);border-radius:16px 4px 16px 16px;transform-origin:100% 0;max-width:46%;z-index:6}
+
+/* ---------- หน้าจอ ---------- */
+.screen{padding-top:var(--space-top);transition:padding-top .8s var(--ease2)}
+.screen.on{animation:screenIn .6s var(--spring) both}
+@keyframes screenIn{from{opacity:0;transform:translateY(24px) scale(.98);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+.screen.leaving{display:block;animation:leave .3s var(--ease2) both;pointer-events:none;position:absolute;left:18px;right:18px}
+@keyframes leave{to{opacity:0;transform:translateY(-16px) scale(.97);filter:blur(5px)}}
+
+/* ---------- หน้าแรก ---------- */
+.masthead{padding:4px 0 18px;text-align:center;grid-template-columns:1fr}
+.masthead h1{font-family:Kanit,sans-serif;font-weight:700;font-size:clamp(28px,6.6vw,44px);text-shadow:0 4px 18px rgba(0,0,0,.35)}
+.masthead h1 .hl{background:linear-gradient(90deg,#ffd23f,#ff8a00,#ff4fa3,#ffd23f);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:shine 3.5s linear infinite}
+.masthead p{color:rgba(255,255,255,.82);margin:10px auto 0}
+.masthead .facets{display:none}
+.spectrum{max-width:420px;margin:0 auto 22px;height:6px}
+.who{border:0;border-radius:26px;box-shadow:var(--shadow);color:var(--ink)}
+.who h2{color:var(--blue);font-family:Kanit,sans-serif;font-weight:600}
+#sid{border-radius:16px}
+.seg button{border-radius:999px}
+.seg button[aria-pressed="true"]{background:linear-gradient(135deg,#0e9f8f,#22a3d8);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(14,159,143,.35)}
+.step .n{color:var(--y);text-shadow:0 0 14px rgba(255,210,63,.55);font-family:Kanit,sans-serif}
+.step h2{color:#fff;font-family:Kanit,sans-serif;font-weight:600}
+.step>div>p{color:rgba(255,255,255,.75)}
+.basic-card{border:0;border-radius:22px;color:var(--ink)}
+.tile{border:0;border-left:5px solid var(--c);border-radius:18px;color:var(--ink);box-shadow:0 12px 26px -14px rgba(0,0,0,.55)}
+.tile:hover{box-shadow:0 18px 30px -12px color-mix(in srgb,var(--c) 70%,transparent)}
+.reset button{color:rgba(255,255,255,.7)}
+
+/* ---------- ปุ่ม ---------- */
+.btn{border-radius:18px;font-family:Kanit,sans-serif;font-weight:600;color:var(--navy);
+  background:linear-gradient(135deg,#ffe066 0%,#ffc21a 45%,#ff9a1f 100%);box-shadow:0 5px 0 #d27300,0 12px 26px rgba(255,138,0,.35);
+  transition:transform .2s var(--spring),box-shadow .2s,filter .2s}
+.btn:hover{background:linear-gradient(135deg,#ffe066 0%,#ffc21a 45%,#ff9a1f 100%);filter:brightness(1.05);transform:translateY(-2px);box-shadow:0 7px 0 #d27300,0 16px 30px rgba(255,138,0,.4)}
+.btn:active{transform:translateY(3px) scale(.98);box-shadow:0 2px 0 #c98f00,0 6px 16px rgba(251,185,0,.3)}
+.btn::after{background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);animation:sweep 3.2s ease-in-out infinite 1s}
+@keyframes sweep{40%,100%{transform:translateX(120%)}}
+.btn.line{background:#eef0fa;color:var(--blue);border:0;box-shadow:none}
+.btn.line:hover{background:#e3e7fb;color:var(--blue);box-shadow:none}
+.actions .btn.line,.loader .btn.line{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.28)}
+.btn[disabled]{filter:grayscale(.4);opacity:.55}
+
+/* ---------- ทำแบบสำรวจ ---------- */
+#s-quiz .qtop{min-height:72px;margin-right:132px;flex-wrap:wrap}
+#s-quiz .qtop .back{border:1px solid rgba(255,255,255,.3);color:#fff;background:rgba(255,255,255,.1);border-radius:12px}
+#s-quiz .qtop .exit{color:rgba(255,255,255,.75)}
+.qname{color:#fff;font-family:Kanit,sans-serif;font-size:16px;padding:3px 12px;border-radius:999px;background:color-mix(in srgb,var(--qc,var(--pri)) 55%,transparent);box-shadow:0 0 0 1px rgba(255,255,255,.2) inset}
+.progress{position:relative;height:12px;margin:10px 132px 30px 0;background:rgba(255,255,255,.14);overflow:visible;border-radius:99px}
+.progress b{background:var(--rainbow);background-size:200% 100%;box-shadow:0 0 16px rgba(251,185,0,.55);position:relative;transition:width .6s var(--spring);min-width:16px}
+.progress b::after{content:"🛰️";position:absolute;right:-14px;top:50%;transform:translateY(-55%);font-size:22px;filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
+.qcard{border:0;border-radius:26px;color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.35);perspective:1000px}
+.qcard::before{height:6px;background:linear-gradient(90deg,var(--qc,var(--pri)),color-mix(in srgb,var(--qc,var(--pri)) 40%,#fff))}
+.qnum{font-family:Kanit,sans-serif}
+.qnum big{color:var(--qc,var(--y));display:inline-block}
+.qtext{font-family:Kanit,sans-serif;font-weight:500;color:var(--navy)}
+.yn button{border-radius:20px;font-family:Kanit,sans-serif;border:2px solid #e3e6f5;background:#f6f7fd;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:10px}
+.yn button::before{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-size:18px;border:2px solid currentColor;transition:transform .3s var(--spring)}
+.yn .yes{color:#0f9b6a}.yn .yes::before{content:"✓"}
+.yn .no{color:#e0336f}.yn .no::before{content:"✕"}
+.yn button:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(23,32,77,.12)}
+.yn .yes[aria-pressed="true"]{background:linear-gradient(135deg,#22c55e,#06b6d4);border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(6,182,212,.4)}
+.yn .no[aria-pressed="true"]{background:linear-gradient(135deg,#ff4fa3,#ef4444);border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(255,79,163,.4)}
+.yn button[aria-pressed="true"]::before{transform:rotate(-10deg) scale(1.12);background:rgba(255,255,255,.2)}
+.howto{color:var(--dim)}
+.keys{color:rgba(255,255,255,.6)}
+kbd{border-color:rgba(255,255,255,.35)}
+.qcard.qin{animation:qIn .5s var(--spring) both}.qcard.qin.back{animation-name:qInBack}
+@keyframes qIn{from{opacity:0;transform:translateX(70px) rotateY(-18deg)}}
+@keyframes qInBack{from{opacity:0;transform:translateX(-70px) rotateY(18deg)}}
+
+/* ---------- วิเคราะห์ผล ---------- */
+.loader{padding:0}
+.loader .orbit{width:96px;height:96px;margin-bottom:16px}
+.loader h2{font-family:Kanit,sans-serif;color:#fff}
+.loader p{color:rgba(255,255,255,.75)}
+
+/* ---------- ผลลัพธ์ ---------- */
+.rhead{color:rgba(255,255,255,.8);border-bottom-color:rgba(255,255,255,.2)}
+.verdict,.block,.alt{border:0;color:var(--ink)}
+.verdict{border-radius:28px}
+.verdict h1,.block h2,.alt h3{font-family:Kanit,sans-serif;color:var(--navy)}
+.match{background:linear-gradient(135deg,var(--navy),var(--blue2));color:#fff}
+.caveat{color:rgba(255,255,255,.8);border-left-color:var(--y);background:rgba(255,255,255,.07);border-radius:0 16px 16px 0}
+.caveat b{color:#fff}
+.toast{background:rgba(10,17,64,.92);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:99px;font-family:Kanit,sans-serif}
+.modal{background:rgba(8,6,40,.55)}
+.mbox{color:var(--ink);border-radius:26px}
+.mbox h2{font-family:Kanit,sans-serif;color:var(--blue)}
+
+@media (max-width:640px){
+  .topbar .logo-found{height:46px}.topbar .logo-dltv{height:36px}
+  body[data-screen="quiz"]{--stage-w:96px;--stage-h:110px;--stage-l:calc(100% - 104px)}
+  #s-quiz .qtop{margin-right:104px}.progress{margin-right:104px}
+  body[data-screen="quiz"] .bubble{display:none}
+}
+@media (prefers-reduced-motion:reduce){.aurora i,.horizon{animation:none}#sky{display:none}.stage{transition:none}}
+@media print{
+  html,body{background:#fff!important;color:#000}
+  #sky,#confetti,.nebula,.aurora,.horizon,.stage,.bubble,.topbar{display:none!important}
+  .screen{padding-top:0!important}
+  .verdict h1,.block h2{color:#000}.rhead,.caveat,.caveat b{color:#333}
+}
