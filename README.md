@@ -1124,3 +1124,19 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 `assets/mi/mi-space.css`, `assets/mi/mi-fx.js`, `mi.html` (`?v=20261104b`)
 • โทนฟ้าน้ำทะเล/เขียวมรกต แทนม่วง-ชมพู · ม่านแสงออโรรา 3 สายพลิ้ว · ขอบดาวเคราะห์เรืองแสงด้านล่าง · ดาวพร้อมเส้นกลุ่มดาว
 • เส้นใต้แถบโลโก้ วงแสงใต้น้อง DLTV พลุกระดาษ และปุ่มเลือกผู้ตอบ ปรับเป็นโทนเดียวกัน
+
+---
+
+## v72 — ค่าเทอมนักเรียนทุน: โรงเรียนแจ้ง · ผู้ดูแลกำหนดยอดเบิก · ส่งออก Excel/PDF
+
+ไฟล์: `js/51-tuition-fees.js` (ใหม่), `js/18-firebase-bridge.js`, `firebase/firestore.rules` (**ต้อง Publish ใหม่**), `css/style.css` (`.fe-*`), `manual.md`/`manual.html`, `index.html` (`?v=20261124a`)
+• ข้อมูลต่อภาคเรียน: `fees[term]` (โรงเรียน: items[{id,label,amount,note}], note, files, submittedAt) · `feeReview[term]` (ผู้ดูแล: approved{itemId:amount}, rejected, note, reviewedAt, reviewedBy)
+• บัญชีครูเขียนได้เฉพาะ `fees` (เพิ่มใน STUDENT_WRITABLE_FIELDS + Rules) — `feeReview` เขียนได้เฉพาะผู้ดูแล
+• หมวดมาตรฐาน 9 รายการ + รายการอื่นเพิ่มเองได้ · แนบไฟล์ผ่าน DriveStore (kind `fee`)
+• สถานะ: ยังไม่แจ้ง / ร่าง / รอตรวจ / อนุมัติเต็มจำนวน / อนุมัติบางส่วน / ไม่อนุมัติ · ตรวจแล้วล็อกฝั่งโรงเรียน (ผู้ดูแลเปิดให้แก้ได้)
+• Excel: SheetJS xlsx@0.18.5 (โหลดเมื่อกด) 3 แผ่นงาน + แถวรวม · สำรอง CSV · PDF: รายงานสรุป + ใบสรุปรายคน (หน้าพิมพ์ A4)
+
+### v73 — ยอดเบิกค่าเทอม → รายการเบิกจ่ายส่วนที่ 1 อัตโนมัติ
+`js/51-tuition-fees.js` (`syncPayment`), `manual.md`, `index.html` (`?v=20261124b`)
+• บันทึกยอดเบิก/ไม่อนุมัติ → `semPayments[term=T].p1` = ยอดเบิกได้รวม, `item1` = "ค่าเทอม (รายการ ยอด · …)" (`feeSync:true`)
+• ไม่มีภาคเรียน T → สร้างใหม่ (p2 = 0) · มี p1 ที่กรอกเอง → ยืนยันก่อนแทน · p2 ไม่เปลี่ยน · ส่งต่อ Google Sheet ด้วย `saveStudentToSheet`

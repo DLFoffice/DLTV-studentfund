@@ -86,7 +86,7 @@
       const oc = b.getAttribute('onclick') || '';
       const keep = oc.indexOf("'scholarform'") !== -1 || oc.indexOf("'formtrack'") !== -1
         || oc.indexOf("'sdqform'") !== -1 || oc.indexOf("'sdqdashboard'") !== -1
-        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash';   // v58: ไม่แสดงเมนูแบบสำรวจแววความสามารถ (MI) ให้บัญชีครู — ส่งลิงก์ให้นักเรียนทำเอง
+        || b.id === 'sdq-nav-form' || b.id === 'sdq-nav-dash' || b.id === 'fee-nav';   // v72: แจ้งค่าเทอม   // v58: ไม่แสดงเมนูแบบสำรวจแววความสามารถ (MI) ให้บัญชีครู — ส่งลิงก์ให้นักเรียนทำเอง
       if (!keep) b.style.display = 'none';
       else if (oc.indexOf("'scholarform'") !== -1) formBtn = b;
     });
@@ -194,7 +194,7 @@
 
   /* v15: บัญชีนักเรียนเขียนได้เฉพาะฟิลด์แบบฟอร์ม — ต้องตรงกับ STUDENT_WRITABLE ใน firestore.rules
      (ประวัติเบิกจ่าย / GPA / เลขบัญชี / ข้อมูลส่วนตัว เป็นงานของครูเท่านั้น) */
-  const STUDENT_WRITABLE_FIELDS = ['form1', 'form2', 'forms', 'sdq', 'mi'];
+  const STUDENT_WRITABLE_FIELDS = ['form1', 'form2', 'forms', 'sdq', 'mi', 'fees'];   // v72: fees = ค่าเทอมที่โรงเรียนแจ้ง (feeReview = ผู้ดูแลเท่านั้น)
   function payloadFor(s) {
     const c = cleanForCloud(s);
     if (!studentMode) return c;
