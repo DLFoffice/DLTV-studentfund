@@ -24,11 +24,35 @@
   const ST = { none: ['ยังไม่แจ้ง', 'none'], draft: ['ร่าง (ยังไม่ส่ง)', 'draft'], pending: ['รอตรวจ', 'pending'], full: ['อนุมัติเต็มจำนวน', 'full'], partial: ['อนุมัติบางส่วน', 'partial'], rejected: ['ไม่อนุมัติ', 'rejected'] };
   const isStaff = () => !window.STUDENT_MODE;
   const activeTerm = () => (window.Term && Term.active) ? Term.active() : '';
-  const tlabel = t => (window.Term && Term.label) ? Term.label(t) : t;
+  // ชื่อภาคเรียนไม่ต่อท้ายชั้น (ระดับชั้นของค่าเทอมแสดงแยก — ผู้ดูแลกำหนดได้)
+  const tlabel = t => ((window.Term && Term.label) ? Term.label(t) : String(t || '')).replace(/\s*\([^)]*\)\s*$/, '');
   const num = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isFinite(n) ? n : 0; };
   const baht = n => (Math.round(num(n) * 100) / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const gradeOf = s => { try { const g = window.currentGradeOf ? currentGradeOf(s) : ''; return (g && typeof g === 'object') ? (g.grade || '') : (g || ''); } catch (e) { return ''; } };
   const who = () => { try { return (firebase.auth().currentUser || {}).email || ''; } catch (e) { return ''; } };
+  /* v74: รอบแจ้งค่าเทอม (ผู้ดูแลกำหนด) — settings/feeRound { term, grade, open } */
+  const GRADES = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6', 'ปวช.1', 'ปวช.2', 'ปวช.3', 'อุดมศึกษา ปี 1', 'อุดมศึกษา ปี 2', 'อุดมศึกษา ปี 3', 'อุดมศึกษา ปี 4'];
+  const LS_ROUND = 'dltv.feeRound';
+  let round = (() => { try { return Object.assign({ term: '', grade: '', open: true }, JSON.parse(localStorage.getItem(LS_ROUND) || '{}')); } catch (e) { return { term: '', grade: '', open: true }; } })();
+  const roundTerm = () => (round.term && window.Term && Term.isValid(round.term)) ? round.term : activeTerm();
+  const fsx = () => { try { return (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) ? firebase.firestore() : null; } catch (e) { return null; } };
+  async function loadRound() {
+    const db = fsx(); if (!db) return;
+    try { const d = await db.collection('settings').doc('feeRound').get(); if (d.exists) { round = Object.assign({ term: '', grade: '', open: true }, d.data()); try { localStorage.setItem(LS_ROUND, JSON.stringify(round)); } catch (e) {} } } catch (e) {}
+  }
+  async function saveRound(r) {
+    round = Object.assign({}, round, r, { at: new Date().toISOString(), by: who() });
+    try { localStorage.setItem(LS_ROUND, JSON.stringify(round)); } catch (e) {}
+    const db = fsx(); if (db) await db.collection('settings').doc('feeRound').set(round, { merge: true });
+  }
+  /** ระดับชั้นของรายการค่าเทอม: ผู้ดูแลกำหนดรายคน → ระดับชั้นของรอบ → ตามภาคเรียน */
+  function gradeFor(s, t) {
+    const r = s && s.feeReview && s.feeReview[t];
+    if (r && r.grade) return r.grade;
+    if (t === roundTerm() && round.grade) return round.grade;
+    try { if (typeof gradeFromTerm === 'function' && t) return gradeFromTerm(t); } catch (e) {}
+    return gradeOf(s);
+  }
   const fmtD = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }); };
 
   /* ---------- ข้อมูล ---------- */
@@ -85,7 +109,9 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(addNav, 200)); else setTimeout(addNav, 200);
   window.addEventListener('dltv:students-loaded', () => { addNav(); const t = document.querySelector('#fee-nav .fee-nav-t'); if (t) t.textContent = isStaff() ? 'ค่าเทอม (ตรวจ/เบิก)' : 'แจ้งค่าเทอม'; if (document.getElementById('page-fees')?.classList.contains('active')) render(); });
 
+  let roundLoaded = false;
   function render() {
+    if (!roundLoaded) { roundLoaded = true; loadRound().then(() => { if (document.getElementById('page-fees')?.classList.contains('active')) render(); }); }
     const p = page();
     const nt = document.querySelector('#fee-nav .fee-nav-t'); if (nt) nt.textContent = isStaff() ? 'ค่าเทอม (ตรวจ/เบิก)' : 'แจ้งค่าเทอม';
     if (!isStaff()) { p.innerHTML = userHtml(); return; }
@@ -94,13 +120,13 @@
 
   /* ════════════ ฝั่งโรงเรียน (บัญชีครู) ════════════ */
   function userHtml() {
-    const t = activeTerm(), list = DB.students || [];
+    const t = roundTerm(), list = DB.students || [];
     if (!list.length) return `<div class="fe-empty">ยังไม่มีข้อมูลนักเรียนในบัญชีนี้</div>`;
     if (st.idx == null && list.length === 1) st.idx = 0;
     if (st.idx == null) {
       return `<div class="fe-wrap">${introHtml(t)}<div class="fe-pick">${list.map((s, i) => {
         const k = status(s, t), f = feeOf(s, t);
-        return `<button type="button" class="fe-pcard" data-fe-open="${i}"><b>${E(s.name || '-')}</b><span>${E(s.school_m1 || '')} · ${E(gradeOf(s))}</span>
+        return `<button type="button" class="fe-pcard" data-fe-open="${i}"><b>${E(s.name || '-')}</b><span>${E(s.school_m1 || '')} · ${E(gradeFor(s, t))}</span>
           <span class="fe-chip ${ST[k][1]}">${ST[k][0]}</span>${f ? `<span class="fe-sum">แจ้ง ${baht(requested(f))} บาท</span>` : ''}</button>`;
       }).join('')}</div></div>`;
     }
@@ -108,11 +134,18 @@
   }
   function introHtml(t) {
     return `<section class="fe-hero"><div><h2>แจ้งค่าเทอม ${E(tlabel(t))}</h2>
+      ${round.grade ? `<p class="fe-hero-g">ระดับชั้น ${E(round.grade)}</p>` : ''}
       <p>กรอกค่าใช้จ่ายที่สถานศึกษาเรียกเก็บจริง <b>แยกตามรายการ</b> ระบบรวมยอดให้อัตโนมัติ แนบใบแจ้งหนี้/ใบเสร็จ (ถ้ามี) แล้วกด <b>ส่งข้อมูลให้มูลนิธิฯ</b> · มูลนิธิฯ จะตรวจและแจ้งยอดที่เบิกได้ในหน้านี้</p></div></section>`;
   }
   function editorHtml(s, idx, t) {
+    // ยกสำเนาสมุดบัญชีจากภาคก่อนมาแสดง/ใช้ต่อ ถ้าภาคนี้ยังไม่แนบ
+    const pf = prevBankFiles(s, t);
+    if (pf.length && !((feeOf(s, t) || {}).files || []).some(x => x.kind === 'bank') && !(revOf(s, t) || {}).reviewedAt) {
+      s.fees = s.fees || {}; s.fees[t] = s.fees[t] || {}; s.fees[t].files = (s.fees[t].files || []).concat(pf);
+    }
     const f = feeOf(s, t) || {}, r = revOf(s, t), k = status(s, t);
-    const locked = !!(r && r.reviewedAt);
+    const closed = !round.open && !(r && r.reviewedAt);
+    const locked = !!(r && r.reviewedAt) || closed;
     const map = {}; (f.items || []).forEach(it => { map[it.id] = it; });
     const custom = (f.items || []).filter(it => it.custom);
     const row = (id, label, it, isCustom) => {
@@ -127,20 +160,33 @@
     };
     const showAp = !!(r && r.reviewedAt);
     const files = Array.isArray(f.files) ? f.files : [];
+    const bank = f.bank || prevBank(s, t) || {};
+    const fileList = kind => files.map((x, i) => ({ x, i })).filter(o => (o.x.kind || 'invoice') === kind)
+      .map(({ x, i }) => `<span class="fe-file"><button type="button" class="fe-link" data-fe-view="${i}">📎 ${E(x.name)}</button>${x.fromTerm ? `<small class="fe-dim">(จาก${E(tlabel(x.fromTerm))})</small>` : ''}${locked ? '' : `<button type="button" class="fe-x" data-fe-rmfile="${i}" aria-label="ลบไฟล์">✕</button>`}</span>`).join('') || '<span class="fe-dim">ยังไม่มีไฟล์</span>';
+    const bf = (k, label, ph) => `<label class="fe-f"><span>${label} <b class="req">*</b></span><input class="fe-in" data-fe-bank="${k}" value="${E(bank[k] || '')}" placeholder="${ph}" ${locked ? 'disabled' : ''} ${k === 'accNo' ? 'inputmode="numeric"' : ''}></label>`;
     return `<section class="fe-card" data-fe-idx="${idx}">
-      <header class="fe-head"><div><h3>${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeOf(s))} · ${E(tlabel(t))}</p></div>
+      <header class="fe-head"><div><h3>${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeFor(s, t))} · ${E(tlabel(t))}</p></div>
         <span class="fe-chip ${ST[k][1]}">${ST[k][0]}</span></header>
-      ${locked ? `<div class="fe-note ok">มูลนิธิฯ ตรวจแล้วเมื่อ ${E(fmtD(r.reviewedAt))} — <b>ยอดที่เบิกได้ ${baht(approvedTotal(s, t))} บาท</b>${r.note ? `<br>หมายเหตุจากมูลนิธิฯ: ${E(r.note)}` : ''}<br><small>ต้องการแก้ไขข้อมูล ติดต่อเจ้าหน้าที่มูลนิธิฯ</small></div>`
-        : f.submittedAt ? `<div class="fe-note">ส่งข้อมูลแล้วเมื่อ ${E(fmtD(f.submittedAt))} — รอมูลนิธิฯ ตรวจ (ยังแก้ไขและส่งใหม่ได้)</div>` : ''}
+      ${closed ? `<div class="fe-note warn">มูลนิธิฯ ปิดรับการแจ้งค่าเทอมรอบนี้แล้ว — ดูข้อมูลได้อย่างเดียว</div>` : ''}
+      ${locked && !closed ? `<div class="fe-note ok">มูลนิธิฯ ตรวจแล้วเมื่อ ${E(fmtD(r.reviewedAt))} — <b>ยอดที่เบิกได้ ${baht(approvedTotal(s, t))} บาท</b>${r.note ? `<br>หมายเหตุจากมูลนิธิฯ: ${E(r.note)}` : ''}<br><small>ต้องการแก้ไขข้อมูล ติดต่อเจ้าหน้าที่มูลนิธิฯ</small></div>`
+        : closed ? '' : f.submittedAt ? `<div class="fe-note">ส่งข้อมูลแล้วเมื่อ ${E(fmtD(f.submittedAt))} — รอมูลนิธิฯ ตรวจ (ยังแก้ไขและส่งใหม่ได้)</div>` : ''}
       <div class="fe-tw"><table class="fe-t"><thead><tr><th>รายการ</th><th class="n">จำนวนเงิน (บาท)</th><th>หมายเหตุ</th>${showAp ? '<th class="n">เบิกได้</th>' : ''}${locked ? '' : '<th></th>'}</tr></thead>
         <tbody>${CATS.map(c => row(c.id, c.label, map[c.id], false)).join('')}${custom.map(it => row(it.id, it.label, it, true)).join('')}</tbody>
         <tfoot><tr><th>รวมทั้งสิ้น</th><th class="n" id="fe-total">${baht(requested(f))}</th><th></th>${showAp ? `<th class="n fe-ap">${baht(approvedTotal(s, t))}</th>` : ''}${locked ? '' : '<th></th>'}</tr></tfoot></table></div>
       ${locked ? '' : `<button type="button" class="fe-add" data-fe-addrow>+ เพิ่มรายการอื่น</button>`}
+      <section class="fe-bank">
+        <h4>🏦 บัญชีธนาคารของสถานศึกษา (สำหรับโอนเงินค่าเทอม)</h4>
+        ${!f.bank && bank.accNo ? `<p class="fe-dim">ระบบเติมข้อมูลบัญชีจากภาคเรียนก่อนให้แล้ว — ตรวจให้ถูกต้อง</p>` : ''}
+        <div class="fe-bgrid">${bf('bankName', 'ธนาคาร', 'เช่น ธ.กรุงไทย')}${bf('branch', 'สาขา', 'เช่น สาขาโกสุมพิสัย').replace(' <b class="req">*</b>', '')}${bf('accName', 'ชื่อบัญชี', 'ชื่อบัญชีตามสมุดบัญชี')}${bf('accNo', 'เลขที่บัญชี', 'ตัวเลข 10–12 หลัก')}</div>
+        <div class="fe-f"><span>สำเนาหน้าสมุดบัญชีธนาคาร <b class="req">*</b></span>
+          <div class="fe-files">${fileList('bank')}</div>
+          ${locked ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="bank" hidden>⬆ แนบสำเนาสมุดบัญชี (PDF/รูป ≤10MB)</label>`}</div>
+      </section>
       <div class="fe-grid">
         <label class="fe-f"><span>หมายเหตุถึงมูลนิธิฯ</span><textarea class="fe-in" rows="2" data-fe-gnote ${locked ? 'disabled' : ''}>${E(f.note || '')}</textarea></label>
         <div class="fe-f"><span>ใบแจ้งค่าเทอม / ใบเสร็จ (ถ้ามี)</span>
-          <div class="fe-files">${files.map((x, i) => `<span class="fe-file"><button type="button" class="fe-link" data-fe-view="${i}">📎 ${E(x.name)}</button>${locked ? '' : `<button type="button" class="fe-x" data-fe-rmfile="${i}" aria-label="ลบไฟล์">✕</button>`}</span>`).join('') || '<span class="fe-dim">ยังไม่มีไฟล์</span>'}</div>
-          ${locked ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file hidden>⬆ แนบไฟล์ (PDF/รูป ≤10MB)</label>`}</div>
+          <div class="fe-files">${fileList('invoice')}</div>
+          ${locked ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="invoice" hidden>⬆ แนบไฟล์ (PDF/รูป ≤10MB)</label>`}</div>
       </div>
       ${locked ? '' : `<div class="fe-acts"><button type="button" class="btn btn-outline" data-fe-save>💾 บันทึกร่าง</button><button type="button" class="btn btn-primary" data-fe-submit>📤 ${f.submittedAt ? 'ส่งข้อมูลอีกครั้ง' : 'ส่งข้อมูลให้มูลนิธิฯ'}</button></div>`}
     </section>`;
@@ -159,8 +205,20 @@
     items.forEach(it => { if (!it.custom) delete it.custom; });
     f.items = items;
     const g = card.querySelector('[data-fe-gnote]'); f.note = g ? g.value.trim() : '';
+    const bk = {}; card.querySelectorAll('[data-fe-bank]').forEach(i => { bk[i.getAttribute('data-fe-bank')] = i.value.trim(); });
+    if (Object.values(bk).some(Boolean)) f.bank = bk;
+    // ใช้ไฟล์สมุดบัญชีจากภาคก่อนได้ ถ้าภาคนี้ยังไม่แนบ
+    f.files = Array.isArray(f.files) ? f.files : [];
+    if (!f.files.some(x => x.kind === 'bank')) { const pf = prevBankFiles(s, t); if (pf.length) f.files = f.files.concat(pf); }
     f.updatedAt = new Date().toISOString(); f.by = who();
     return f;
+  }
+  /** ข้อมูลบัญชี/ไฟล์สมุดบัญชีจากภาคเรียนล่าสุดก่อนหน้า (โรงเรียนเดิมใช้บัญชีเดิม) */
+  function prevTerms(s, t) { return Object.keys(s.fees || {}).filter(x => x !== t && window.Term && Term.isValid(x) && Term.cmp(x, t) < 0).sort(Term.cmp).reverse(); }
+  function prevBank(s, t) { const x = prevTerms(s, t).find(k => s.fees[k] && s.fees[k].bank && s.fees[k].bank.accNo); return x ? Object.assign({}, s.fees[x].bank) : null; }
+  function prevBankFiles(s, t) {
+    for (const k of prevTerms(s, t)) { const fs = ((s.fees[k] || {}).files || []).filter(x => x.kind === 'bank'); if (fs.length) return fs.map(x => Object.assign({}, x, { fromTerm: x.fromTerm || k })); }
+    return [];
   }
   function liveTotal(card) {
     let n = 0; card.querySelectorAll('[data-fe-amt]').forEach(i => { n += num(i.value); });
@@ -169,8 +227,13 @@
 
   /* ════════════ ฝั่งผู้ดูแล ════════════ */
   function termsWithData() {
-    const set = new Set([activeTerm()]);
+    const set = new Set([activeTerm(), roundTerm()]);
     (DB.students || []).forEach(s => { if (s.fees) Object.keys(s.fees).forEach(t => set.add(t)); });
+    return [...set].filter(t => window.Term && Term.isValid(t)).sort(Term.cmp).reverse();
+  }
+  function roundTermOptions() {
+    const set = new Set(termsWithData()); let x = activeTerm();
+    for (let i = 0; i < 3 && window.Term && Term.next; i++) { x = Term.next(x); if (x) set.add(x); }
     return [...set].filter(t => window.Term && Term.isValid(t)).sort(Term.cmp).reverse();
   }
   function rows(t) {
@@ -180,7 +243,7 @@
     });
   }
   function adminHtml() {
-    const t = st.term || activeTerm(), all = rows(t);
+    const t = st.term || roundTerm(), all = rows(t);
     const sent = all.filter(r => !['none', 'draft'].includes(r.k));
     const tot = { req: sent.reduce((a, r) => a + r.req, 0), ap: all.reduce((a, r) => a + r.ap, 0) };
     const cnt = k => all.filter(r => r.k === k).length;
@@ -191,8 +254,18 @@
     return `<div class="fe-wrap">
       <section class="fe-top">
         <div><h2>ค่าเทอมนักเรียนทุน</h2>
-          <label class="fe-termsel"><span>ภาคเรียน</span><select data-fe-term>${termsWithData().map(x => `<option value="${E(x)}" ${x === t ? 'selected' : ''}>${E(tlabel(x))}${x === activeTerm() ? ' (ปัจจุบัน)' : ''}</option>`).join('')}</select></label></div>
+          <label class="fe-termsel"><span>ภาคเรียน</span><select data-fe-term>${termsWithData().map(x => `<option value="${E(x)}" ${x === t ? 'selected' : ''}>${E(tlabel(x))}${x === roundTerm() ? ' (รอบที่เปิด)' : x === activeTerm() ? ' (ปัจจุบัน)' : ''}</option>`).join('')}</select></label></div>
         <div class="fe-exp"><button type="button" class="btn btn-outline" data-fe-xlsx>📊 ส่งออก Excel</button><button type="button" class="btn btn-outline" data-fe-pdf>🖨 รายงาน PDF</button></div>
+      </section>
+      <section class="fe-round">
+        <div class="fe-round-t"><b>📌 รอบแจ้งค่าเทอมของโรงเรียน</b><span class="fe-chip ${round.open ? 'full' : 'rejected'}">${round.open ? 'เปิดรับ' : 'ปิดรับ'}</span>
+          <span class="fe-dim">โรงเรียนจะแจ้งค่าเทอมของ <b>${E(tlabel(roundTerm()))}</b>${round.grade ? ` · ระดับชั้น <b>${E(round.grade)}</b>` : ''}</span></div>
+        <div class="fe-round-f">
+          <label><span>ภาคเรียน</span><select data-fe-rterm>${roundTermOptions().map(x => `<option value="${E(x)}" ${x === roundTerm() ? 'selected' : ''}>${E(tlabel(x))}${x === activeTerm() ? ' (ปัจจุบัน)' : ''}</option>`).join('')}</select></label>
+          <label><span>ระดับชั้น</span><select data-fe-rgrade><option value="">ตามภาคเรียน (อัตโนมัติ)</option>${GRADES.map(g => `<option ${g === round.grade ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
+          <label><span>สถานะ</span><select data-fe-ropen><option value="1" ${round.open ? 'selected' : ''}>เปิดรับการแจ้ง</option><option value="0" ${!round.open ? 'selected' : ''}>ปิดรับการแจ้ง</option></select></label>
+          <button type="button" class="btn btn-primary btn-sm" data-fe-rsave>บันทึกรอบ</button>
+        </div>
       </section>
       <section class="fe-kpis">
         <div class="fe-kpi"><span>แจ้งแล้ว</span><b>${sent.length}<small>/${all.length} คน</small></b></div>
@@ -206,7 +279,7 @@
         <div class="fe-tw"><table class="fe-t fe-list"><thead><tr><th>ลำดับ</th><th>นักเรียน</th><th>ชั้น</th><th class="n">ยอดที่แจ้ง</th><th class="n">เบิกได้</th><th>สถานะ</th><th></th></tr></thead>
           <tbody>${list.map(r => `<tr>
             <td>${E(r.s.no ?? '-')}</td><td><b>${E(r.s.name || '-')}</b><div class="fe-dim">${E(r.s.school_m1 || '')}${r.s.province ? ' · ' + E(r.s.province) : ''}</div></td>
-            <td>${E(gradeOf(r.s))}</td><td class="n">${r.f && r.req ? baht(r.req) : '–'}</td><td class="n fe-ap">${['full', 'partial', 'rejected'].includes(r.k) ? baht(r.ap) : '–'}</td>
+            <td>${E(gradeFor(r.s, t))}</td><td class="n">${r.f && r.req ? baht(r.req) : '–'}</td><td class="n fe-ap">${['full', 'partial', 'rejected'].includes(r.k) ? baht(r.ap) : '–'}</td>
             <td><span class="fe-chip ${ST[r.k][1]}">${ST[r.k][0]}</span>${r.f && r.f.submittedAt ? `<div class="fe-dim">แจ้ง ${E(fmtD(r.f.submittedAt))}</div>` : ''}</td>
             <td class="act">${r.f && itemsOf(r.f).length ? `<button type="button" class="btn btn-sm ${r.k === 'pending' ? 'btn-primary' : 'btn-outline'}" data-fe-review="${r.i}">${r.k === 'pending' ? 'ตรวจ/กำหนดยอด' : 'ดู/แก้ไข'}</button>` : ''}</td></tr>`).join('')
             || '<tr><td colspan="7" class="fe-empty">ไม่มีรายการ</td></tr>'}</tbody></table></div>
@@ -219,14 +292,17 @@
     const ap = id => (r.approved && r.approved[id] != null) ? r.approved[id] : '';
     const files = Array.isArray(f.files) ? f.files : [];
     return `<div class="fe-modal" data-fe-close-bg><div class="fe-mbox" role="dialog" aria-modal="true" aria-label="ตรวจค่าเทอม" data-fe-ridx="${idx}">
-      <header class="fe-head"><div><h3>ตรวจค่าเทอม — ${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeOf(s))} · ${E(tlabel(t))}</p></div>
+      <header class="fe-head"><div><h3>ตรวจค่าเทอม — ${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeFor(s, t))} · ${E(tlabel(t))}</p></div>
         <button type="button" class="fe-x big" data-fe-close aria-label="ปิด">✕</button></header>
       <div class="fe-tw"><table class="fe-t"><thead><tr><th>รายการที่โรงเรียนแจ้ง</th><th class="n">แจ้ง (บาท)</th><th class="n">เบิกได้ (บาท)</th><th>หมายเหตุโรงเรียน</th></tr></thead>
         <tbody>${items.map(it => `<tr><td>${E(it.label)}</td><td class="n">${baht(it.amount)}</td>
           <td class="n"><input class="fe-in fe-amt" inputmode="decimal" data-fe-ap="${E(it.id)}" data-req="${num(it.amount)}" value="${E(ap(it.id))}" placeholder="${baht(it.amount)}"></td><td class="fe-dim">${E(it.note || '')}</td></tr>`).join('')}</tbody>
         <tfoot><tr><th>รวม</th><th class="n">${baht(requested(f))}</th><th class="n" id="fe-aptotal">${baht(items.reduce((a, it) => a + num(ap(it.id)), 0))}</th><th></th></tr></tfoot></table></div>
       ${f.note ? `<div class="fe-note">หมายเหตุจากโรงเรียน: ${E(f.note)}</div>` : ''}
-      ${files.length ? `<div class="fe-files">${files.map((x, i) => `<button type="button" class="fe-link" data-fe-rview="${i}">📎 ${E(x.name)}</button>`).join('')}</div>` : ''}
+      <div class="fe-bankv">${f.bank && f.bank.accNo ? `<b>🏦 บัญชีสำหรับโอน:</b> ${E(f.bank.bankName || '-')}${f.bank.branch ? ' สาขา' + E(f.bank.branch) : ''} · ชื่อบัญชี <b>${E(f.bank.accName || '-')}</b> · เลขที่ <b class="mono">${E(f.bank.accNo)}</b>`
+        : '<span class="fe-dim">⚠️ โรงเรียนยังไม่ได้กรอกบัญชีธนาคาร</span>'}</div>
+      ${files.length ? `<div class="fe-files">${files.map((x, i) => `<button type="button" class="fe-link" data-fe-rview="${i}">${x.kind === 'bank' ? '🏦 สมุดบัญชี' : '📎 ใบแจ้ง/ใบเสร็จ'}: ${E(x.name)}</button>`).join('')}</div>` : ''}
+      <label class="fe-f fe-rg"><span>ระดับชั้น (ในเอกสารค่าเทอมนี้)</span><select class="fe-in" data-fe-grade><option value="">${E(gradeFor(s, t))} (อัตโนมัติ)</option>${GRADES.map(g => `<option ${r.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
       <div class="fe-quick"><button type="button" class="btn btn-sm btn-outline" data-fe-fill>เบิกได้เต็มจำนวนทุกรายการ</button><button type="button" class="btn btn-sm btn-outline" data-fe-clear>ล้างยอดเบิก</button></div>
       <label class="fe-f"><span>หมายเหตุถึงโรงเรียน (เช่น เหตุผลที่ปรับลด)</span><textarea class="fe-in" rows="2" data-fe-rnote>${E(r.note || '')}</textarea></label>
       ${r.reviewedAt ? `<p class="fe-dim">ตรวจล่าสุด ${E(fmtD(r.reviewedAt))} โดย ${E(r.reviewedBy || '-')}</p>` : ''}
@@ -241,20 +317,27 @@
   function readReview(box) {
     const approved = {}; let n = 0;
     box.querySelectorAll('[data-fe-ap]').forEach(i => { const v = i.value.trim(); if (v !== '') { approved[i.getAttribute('data-fe-ap')] = String(num(v)); n += num(v); } });
-    return { approved, total: n, note: (box.querySelector('[data-fe-rnote]') || {}).value || '' };
+    return { approved, total: n, note: (box.querySelector('[data-fe-rnote]') || {}).value || '', grade: (box.querySelector('[data-fe-grade]') || {}).value || '' };
   }
 
   /* ---------- เหตุการณ์ ---------- */
   async function onClick(e) {
-    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview]');
+    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave]');
     if (!t0) { if (e.target.hasAttribute && e.target.hasAttribute('data-fe-close-bg')) { st.review = null; render(); } return; }
-    const d = t0.dataset, t = isStaff() ? (st.term || activeTerm()) : activeTerm();
+    const d = t0.dataset, t = isStaff() ? (st.term || roundTerm()) : roundTerm();
     if (d.feOpen != null) { st.idx = +d.feOpen; render(); return; }
     if (d.feList != null) { st.idx = null; render(); return; }
     if (d.feFilter) { st.filter = d.feFilter; render(); return; }
     if (d.feReview != null) { st.review = +d.feReview; render(); return; }
     if (d.feClose != null) { st.review = null; render(); return; }
     if (d.feXlsx != null) { exportXlsx(t); return; }
+    if (d.feRsave != null) {
+      const pg = t0.closest('.fe-round');
+      const r = { term: pg.querySelector('[data-fe-rterm]').value, grade: pg.querySelector('[data-fe-rgrade]').value, open: pg.querySelector('[data-fe-ropen]').value === '1' };
+      if (!(await uiAsk(`ให้โรงเรียนแจ้งค่าเทอมของ ${tlabel(r.term)}${r.grade ? ' ระดับชั้น ' + r.grade : ''} · ${r.open ? 'เปิดรับ' : 'ปิดรับ'}การแจ้ง?`, { title: 'บันทึกรอบแจ้งค่าเทอม', confirmText: 'บันทึก' }))) return;
+      try { await saveRound(r); st.term = ''; render(); } catch (er) { UIDialog.alert({ tone: 'danger', title: 'บันทึกไม่สำเร็จ', message: er.message || String(er) }); }
+      return;
+    }
     if (d.fePdf != null) { printReport(t); return; }
     const card = t0.closest('.fe-card[data-fe-idx]');
     if (card) {
@@ -266,7 +349,7 @@
         const x = (feeOf(s, t).files || [])[+d.feRmfile]; if (!x) return;
         if (!(await uiAsk(`ลบไฟล์ ${x.name}?`, { tone: 'danger', title: 'ลบไฟล์แนบ', confirmText: 'ลบ' }))) return;
         collect(card, s, t); s.fees[t].files.splice(+d.feRmfile, 1);
-        try { if (window.DriveStore && DriveStore.ready()) await DriveStore.remove(s, x.fileId); } catch (er) {}
+        try { if (!x.fromTerm && window.DriveStore && DriveStore.ready()) await DriveStore.remove(s, x.fileId); } catch (er) {}
         await persist(); render(); return;
       }
       if (d.feSave != null || d.feSubmit != null) {
@@ -275,6 +358,13 @@
           if (!itemsOf(f).length || requested(f) <= 0) { UIDialog.alert({ tone: 'warning', title: 'ยังไม่มีจำนวนเงิน', message: 'กรอกจำนวนเงินอย่างน้อย 1 รายการก่อนส่ง' }); return; }
           const bad = f.items.filter(it => it.custom && num(it.amount) > 0 && !it.label);
           if (bad.length) { UIDialog.alert({ tone: 'warning', title: 'ระบุชื่อรายการ', message: 'รายการที่เพิ่มเองต้องระบุชื่อรายการ' }); return; }
+          const b = f.bank || {};
+          if (!b.bankName || !b.accName || !b.accNo) { UIDialog.alert({ tone: 'warning', title: 'กรอกบัญชีธนาคาร', message: 'กรอกธนาคาร ชื่อบัญชี และเลขที่บัญชีของสถานศึกษา สำหรับโอนเงินค่าเทอม' }); return; }
+          if (!/^\d[\d-]{8,18}\d$/.test(b.accNo.replace(/\s/g, ''))) { UIDialog.alert({ tone: 'warning', title: 'เลขที่บัญชีไม่ถูกต้อง', message: 'เลขที่บัญชีควรเป็นตัวเลข 10–12 หลัก' }); return; }
+          if (!f.files.some(x => x.kind === 'bank')) {
+            if (window.DriveStore && DriveStore.ready()) { UIDialog.alert({ tone: 'warning', title: 'แนบสำเนาสมุดบัญชี', message: 'แนบสำเนาหน้าสมุดบัญชีธนาคารของสถานศึกษา เพื่อใช้เป็นเอกสารประกอบการโอนเงิน' }); return; }
+            if (!(await uiAsk('ยังแนบสำเนาสมุดบัญชีไม่ได้ (ระบบแนบไฟล์ไม่พร้อม) — ส่งข้อมูลไปก่อน แล้วส่งสำเนาให้มูลนิธิฯ ภายหลัง?', { tone: 'warning', title: 'ยังไม่มีสำเนาสมุดบัญชี', confirmText: 'ส่งไปก่อน' }))) return;
+          }
           if (!(await uiAsk(`ส่งค่าเทอม ${tlabel(t)} ของ ${s.name} รวม ${baht(requested(f))} บาท ให้มูลนิธิฯ ตรวจ?`, { title: 'ส่งข้อมูลค่าเทอม', confirmText: 'ส่งข้อมูล' }))) return;
           f.submittedAt = new Date().toISOString();
         }
@@ -313,6 +403,7 @@
             { tone: 'warning', title: 'แทนยอดเบิกจ่ายส่วนที่ 1', confirmText: 'แทนยอดเดิม' }))) return;
         s.feeReview = s.feeReview || {};
         s.feeReview[t] = { approved: rej ? {} : rv.approved, rejected: rej || undefined, note: rv.note.trim(), reviewedAt: new Date().toISOString(), reviewedBy: who() };
+        if (rv.grade) s.feeReview[t].grade = rv.grade;
         if (!rej) delete s.feeReview[t].rejected;
         const pay = syncPayment(s, t);
         const close = UIDialog.busy ? UIDialog.busy('กำลังบันทึก…') : () => {};
@@ -349,18 +440,20 @@
     if (e.target.matches('[data-fe-q]')) { st.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.querySelector('[data-fe-q]'); if (q) { q.focus(); q.setSelectionRange(pos, pos); } }
   }
   async function onChange(e) {
-    if (e.target.matches('[data-fe-term]')) { st.term = e.target.value === activeTerm() ? '' : e.target.value; st.review = null; render(); return; }
+    if (e.target.matches('[data-fe-term]')) { st.term = e.target.value === roundTerm() ? '' : e.target.value; st.review = null; render(); return; }
     if (e.target.matches('[data-fe-file]')) {
       const file = e.target.files && e.target.files[0]; if (!file) return;
-      const card = e.target.closest('.fe-card[data-fe-idx]'), idx = +card.dataset.feIdx, s = DB.students[idx], t = activeTerm();
+      const card = e.target.closest('.fe-card[data-fe-idx]'), idx = +card.dataset.feIdx, s = DB.students[idx], t = roundTerm();
+      const kind = e.target.getAttribute('data-fe-file') === 'bank' ? 'bank' : 'invoice';
       if (file.size > 10 * 1024 * 1024) { UIDialog.alert({ tone: 'warning', title: 'ไฟล์ใหญ่เกินไป', message: 'ไฟล์ละไม่เกิน 10 MB' }); return; }
       if (!window.DriveStore || !DriveStore.ready()) { UIDialog.alert({ tone: 'warning', title: 'แนบไฟล์ไม่ได้', message: window.DriveStore ? DriveStore.why() : 'ระบบแนบไฟล์ยังไม่พร้อม' }); return; }
       const f = collect(card, s, t);
       const close = UIDialog.busy ? UIDialog.busy('กำลังอัปโหลดไฟล์…', file.name) : () => {};
       try {
         const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
-        const r = await DriveStore.upload(s, { term: t, kind: 'fee', blob: file, mimeType: file.type, fileName: `ค่าเทอม-${String(t).replace('/', '-')}.${ext}`, originalName: file.name });
-        f.files = (Array.isArray(f.files) ? f.files : []).concat({ name: file.name, fileId: r.fileId, url: r.url, type: file.type, size: file.size, uploadedAt: new Date().toISOString(), by: who() });
+        if (kind === 'bank') f.files = (f.files || []).filter(x => !(x.kind === 'bank' && x.fromTerm));   // แทนไฟล์ที่ยกมาจากภาคก่อน
+        const r = await DriveStore.upload(s, { term: t, kind: kind === 'bank' ? 'feeBank' : 'fee', blob: file, mimeType: file.type, fileName: `${kind === 'bank' ? 'สมุดบัญชีโรงเรียน' : 'ค่าเทอม'}-${String(t).replace('/', '-')}.${ext}`, originalName: file.name });
+        f.files = (Array.isArray(f.files) ? f.files : []).concat({ kind, name: file.name, fileId: r.fileId, url: r.url, type: file.type, size: file.size, uploadedAt: new Date().toISOString(), by: who() });
         await persist(); close(); render();
       } catch (er) { close(); UIDialog.alert({ tone: 'danger', title: 'อัปโหลดไม่สำเร็จ', message: er.message || String(er) }); }
     }
@@ -380,8 +473,9 @@
   function dataFor(t) {
     const all = rows(t).filter(r => r.f && itemsOf(r.f).length);
     const summary = all.map(r => ({
-      'ลำดับ': num(r.s.no) || r.s.no || '', 'ชื่อ-สกุล': r.s.name || '', 'โรงเรียน': r.s.school_m1 || '', 'จังหวัด': r.s.province || '', 'ระดับชั้น': gradeOf(r.s),
+      'ลำดับ': num(r.s.no) || r.s.no || '', 'ชื่อ-สกุล': r.s.name || '', 'โรงเรียน': r.s.school_m1 || '', 'จังหวัด': r.s.province || '', 'ระดับชั้น': gradeFor(r.s, t),
       'ยอดที่แจ้ง (บาท)': r.req, 'ยอดเบิกได้ (บาท)': ['full', 'partial', 'rejected'].includes(r.k) ? r.ap : '', 'ส่วนต่าง (บาท)': ['full', 'partial', 'rejected'].includes(r.k) ? r.req - r.ap : '',
+      'ธนาคาร': (r.f.bank || {}).bankName || '', 'สาขา': (r.f.bank || {}).branch || '', 'ชื่อบัญชี': (r.f.bank || {}).accName || '', 'เลขที่บัญชี': (r.f.bank || {}).accNo || '',
       'สถานะ': ST[r.k][0], 'วันที่แจ้ง': fmtD(r.f.submittedAt), 'วันที่ตรวจ': fmtD((revOf(r.s, t) || {}).reviewedAt), 'หมายเหตุโรงเรียน': r.f.note || '', 'หมายเหตุมูลนิธิฯ': (revOf(r.s, t) || {}).note || '' }));
     const items = [];
     all.forEach(r => { const rv = revOf(r.s, t); itemsOf(r.f).forEach(it => items.push({
@@ -406,7 +500,7 @@
         ws['!cols'] = widths.map(w => ({ wch: w }));
         X.utils.book_append_sheet(wb, ws, name);
       };
-      add(d.summary, 'สรุปรายคน', ['ยอดที่แจ้ง (บาท)', 'ยอดเบิกได้ (บาท)', 'ส่วนต่าง (บาท)'], [7, 26, 28, 14, 9, 15, 15, 14, 16, 12, 12, 26, 26]);
+      add(d.summary, 'สรุปรายคน', ['ยอดที่แจ้ง (บาท)', 'ยอดเบิกได้ (บาท)', 'ส่วนต่าง (บาท)'], [7, 26, 28, 14, 9, 15, 15, 14, 16, 18, 28, 16, 16, 12, 12, 26, 26]);
       add(d.items, 'แยกรายการ', ['ยอดที่แจ้ง (บาท)', 'ยอดเบิกได้ (บาท)'], [7, 26, 28, 36, 15, 15, 26]);
       add(d.byCat, 'สรุปตามหมวด', ['จำนวนนักเรียน', 'ยอดที่แจ้งรวม (บาท)', 'ยอดเบิกได้รวม (บาท)'], [36, 14, 20, 20]);
       X.writeFile(wb, `ค่าเทอมนักเรียนทุน_${String(t).replace('/', '-')}.xlsx`);
@@ -424,8 +518,19 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ค่าเทอมนักเรียนทุน_${String(t).replace('/', '-')}.csv`;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
-  function printWin(title, body) {
+  // โลโก้ฝังเป็น data URI (หน้าพิมพ์เป็น about:blank — ไม่ต้องพึ่งการโหลดไฟล์)
+  let logos = null;
+  async function getLogos() {
+    if (logos) return logos;
+    const toData = async u => { try { const b = await (await fetch(u)).blob(); return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(''); fr.readAsDataURL(b); }); } catch (e) { return ''; } };
+    const [a, b] = await Promise.all([toData('assets/mi/foundation-logo.png'), toData('assets/mi/dltv-logo.png')]);
+    return (logos = { found: a, dltv: b });
+  }
+  async function printWin(title, body) {
     const w = window.open('', '_blank'); if (!w) { UIDialog.alert({ tone: 'warning', title: 'เปิดหน้าพิมพ์ไม่ได้', message: 'อนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วลองอีกครั้ง' }); return; }
+    w.document.write('<p style="font-family:sans-serif;padding:24px">กำลังเตรียมเอกสาร…</p>');
+    const L = await getLogos();
+    w.document.open();
     w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${E(title)}</title>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
       <style>@page{size:A4;margin:14mm}body{font-family:Sarabun,sans-serif;color:#111;font-size:13px;margin:0}
@@ -433,9 +538,14 @@
       table{width:100%;border-collapse:collapse;margin:8px 0}th,td{border:1px solid #999;padding:5px 7px;vertical-align:top}th{background:#eef1fb}
       td.n,th.n{text-align:right;white-space:nowrap}tfoot th{background:#f6f7fb}.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;margin:8px 0}
       .sig{display:flex;justify-content:space-around;margin-top:46px;text-align:center}.sig div{width:40%}.note{margin:8px 0;padding:6px 8px;border:1px dashed #aaa}
-      .foot{margin-top:14px;color:#666;font-size:11px;text-align:right}@media print{.noprint{display:none}}</style></head>
-      <body>${body}<p class="foot">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-      <script>document.fonts&&document.fonts.ready.then(()=>setTimeout(()=>print(),300))<\/script></body></html>`);
+      .foot{margin-top:14px;color:#666;font-size:11px;text-align:right}@media print{.noprint{display:none}}
+      .lh{display:flex;align-items:center;gap:12px;padding-bottom:8px;margin-bottom:10px;border-bottom:2px solid #2b3990}
+      .lh img{height:64px;width:auto}.lh .lt{flex:1;text-align:center}.lh .lt b{display:block;font-size:15px;color:#2b3990}.lh .lt span{font-size:12px;color:#444}
+      .lh img.r{height:46px}.bank{margin:8px 0;padding:6px 8px;border:1px solid #c9d2f0;background:#f6f8ff}</style></head>
+      <body><div class="lh">${L.found ? `<img src="${L.found}" alt="">` : ''}
+        <div class="lt"><b>มูลนิธิการศึกษาทางไกลผ่านดาวเทียม</b><span>ในพระบรมราชูปถัมภ์</span></div>
+        ${L.dltv ? `<img class="r" src="${L.dltv}" alt="">` : ''}</div>${body}<p class="foot">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+      <script>Promise.all([document.fonts?document.fonts.ready:0].concat([...document.images].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})))).then(()=>setTimeout(()=>print(),300))<\/script></body></html>`);
     w.document.close();
   }
   function printReport(t) {
@@ -443,7 +553,7 @@
     if (!d.all.length) { UIDialog.alert({ tone: 'info', title: 'ยังไม่มีข้อมูล', message: `ยังไม่มีโรงเรียนแจ้งค่าเทอมใน${tlabel(t)}` }); return; }
     const sum = (a, k) => a.reduce((x, r) => x + num(r[k]), 0);
     printWin('รายงานค่าเทอม ' + tlabel(t), `
-      <h1>รายงานค่าเทอมนักเรียนทุนการศึกษา</h1><p class="sub">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์ · ${E(tlabel(t))}</p>
+      <h1>รายงานค่าเทอมนักเรียนทุนการศึกษา</h1><p class="sub">${E(tlabel(t))}${t === roundTerm() && round.grade ? ' · ระดับชั้น ' + E(round.grade) : ''}</p>
       <table><thead><tr><th>ลำดับ</th><th>ชื่อ-สกุล</th><th>โรงเรียน</th><th>ชั้น</th><th class="n">ยอดที่แจ้ง</th><th class="n">เบิกได้</th><th>สถานะ</th></tr></thead>
       <tbody>${d.summary.map(r => `<tr><td>${E(r['ลำดับ'])}</td><td>${E(r['ชื่อ-สกุล'])}</td><td>${E(r['โรงเรียน'])}</td><td>${E(r['ระดับชั้น'])}</td>
         <td class="n">${baht(r['ยอดที่แจ้ง (บาท)'])}</td><td class="n">${r['ยอดเบิกได้ (บาท)'] === '' ? '–' : baht(r['ยอดเบิกได้ (บาท)'])}</td><td>${E(r['สถานะ'])}</td></tr>`).join('')}</tbody>
@@ -458,17 +568,18 @@
     const ap = it => rv ? rv.approved[it.id] : (saved.approved || {})[it.id];
     const apSum = items.reduce((a, it) => a + num(ap(it)), 0);
     printWin('ใบสรุปค่าเทอม ' + (s.name || ''), `
-      <h1>ใบสรุปค่าเทอมนักเรียนทุนการศึกษา</h1><p class="sub">มูลนิธิการศึกษาทางไกลผ่านดาวเทียม ในพระบรมราชูปถัมภ์ · ${E(tlabel(t))}</p>
+      <h1>ใบสรุปค่าเทอมนักเรียนทุนการศึกษา</h1><p class="sub">${E(tlabel(t))}</p>
       <div class="kv"><div><b>ชื่อ-สกุล:</b> ${E(s.name || '-')}</div><div><b>ลำดับผู้รับทุน:</b> ${E(s.no ?? '-')}</div>
-        <div><b>โรงเรียน:</b> ${E(s.school_m1 || '-')}</div><div><b>ระดับชั้น:</b> ${E(gradeOf(s) || '-')}</div>
+        <div><b>โรงเรียน:</b> ${E(s.school_m1 || '-')}</div><div><b>ระดับชั้น:</b> ${E((rv && rv.grade) || gradeFor(s, t) || '-')}</div>
         <div><b>วันที่โรงเรียนแจ้ง:</b> ${E(fmtD(f.submittedAt) || '-')}</div><div><b>จังหวัด:</b> ${E(s.province || '-')}</div></div>
       <table><thead><tr><th style="width:44px">ที่</th><th>รายการ</th><th class="n">ยอดที่แจ้ง (บาท)</th><th class="n">เบิกได้ (บาท)</th><th>หมายเหตุ</th></tr></thead>
       <tbody>${items.map((it, i) => `<tr><td>${i + 1}</td><td>${E(it.label)}</td><td class="n">${baht(it.amount)}</td><td class="n">${ap(it) == null || ap(it) === '' ? '–' : baht(ap(it))}</td><td>${E(it.note || '')}</td></tr>`).join('')}</tbody>
       <tfoot><tr><th colspan="2">รวมทั้งสิ้น</th><th class="n">${baht(requested(f))}</th><th class="n">${baht(apSum)}</th><th></th></tr></tfoot></table>
+      ${f.bank && f.bank.accNo ? `<div class="bank"><b>บัญชีสถานศึกษาสำหรับโอนเงิน:</b> ${E(f.bank.bankName || '')}${f.bank.branch ? ' สาขา' + E(f.bank.branch) : ''} · ชื่อบัญชี ${E(f.bank.accName || '')} · เลขที่บัญชี <b>${E(f.bank.accNo)}</b></div>` : ''}
       ${f.note ? `<div class="note"><b>หมายเหตุจากโรงเรียน:</b> ${E(f.note)}</div>` : ''}
       ${(rv ? rv.note : saved.note) ? `<div class="note"><b>หมายเหตุจากมูลนิธิฯ:</b> ${E(rv ? rv.note : saved.note)}</div>` : ''}
       <div class="sig"><div>ลงชื่อ ................................................<br>(................................................)<br>ผู้ตรวจสอบ</div><div>ลงชื่อ ................................................<br>(................................................)<br>ผู้อนุมัติ</div></div>`);
   }
 
-  window.TuitionFees = { render, status, requested, approvedTotal, CATS, exportXlsx, printReport, syncPayment };
+  window.TuitionFees = { render, status, requested, approvedTotal, CATS, exportXlsx, printReport, syncPayment, round: () => round, gradeFor };
 })();

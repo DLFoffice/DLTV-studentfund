@@ -3298,3 +3298,19 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .fe-mbox{width:min(820px,100%);background:#fff;border-radius:20px;padding:20px;box-shadow:0 30px 70px rgba(15,23,42,.35)}
 .fe-quick{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 @media print{.fe-modal,.fe-exp,.fe-acts{display:none!important}}
+/* v74 — รอบแจ้งค่าเทอม · บัญชีธนาคารโรงเรียน */
+.fe-bank{margin-top:16px;padding:14px 16px;border-radius:14px;background:#F8FAFF;border:1px solid #DCE5FF}
+.fe-bank h4{margin:0 0 8px;font-size:15px;color:var(--blue-dk,#16309E)}
+.fe-bgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
+@media (max-width:900px){.fe-bgrid{grid-template-columns:1fr 1fr}}@media (max-width:520px){.fe-bgrid{grid-template-columns:1fr}}
+.fe-f .req{color:#D92D20}
+.fe-note.warn{background:#FFF8E6;border-color:#FDE7A9;color:#8A5A00}
+.fe-round{background:#fff;border:1px solid #E2E8F0;border-left:5px solid var(--blue,#1E3FD1);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+.fe-round-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fe-round-f{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.fe-round-f label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#64748B}
+.fe-round-f select{font:inherit;font-size:14px;padding:7px 10px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;min-width:190px}
+.fe-bankv{margin:0 0 10px;padding:10px 14px;border-radius:12px;background:#F8FAFF;border:1px solid #DCE5FF;font-size:13.5px}
+.fe-bankv .mono{font-family:Consolas,Menlo,monospace;letter-spacing:.5px}
+.fe-rg{max-width:320px;margin-top:10px}
+.fe-hero .fe-hero-g{display:inline-block;margin:0 0 8px;padding:2px 12px;border-radius:999px;background:rgba(255,255,255,.18);font-weight:600}

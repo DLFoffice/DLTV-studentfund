@@ -1140,3 +1140,10 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 `js/51-tuition-fees.js` (`syncPayment`), `manual.md`, `index.html` (`?v=20261124b`)
 • บันทึกยอดเบิก/ไม่อนุมัติ → `semPayments[term=T].p1` = ยอดเบิกได้รวม, `item1` = "ค่าเทอม (รายการ ยอด · …)" (`feeSync:true`)
 • ไม่มีภาคเรียน T → สร้างใหม่ (p2 = 0) · มี p1 ที่กรอกเอง → ยืนยันก่อนแทน · p2 ไม่เปลี่ยน · ส่งต่อ Google Sheet ด้วย `saveStudentToSheet`
+
+### v74 — ค่าเทอม: รอบ/ระดับชั้นโดยผู้ดูแล · บัญชีธนาคารโรงเรียน · โลโก้ในเอกสาร
+`js/51-tuition-fees.js`, `css/style.css`, `manual.md`, `index.html` (`?v=20261124d`)
+• `settings/feeRound {term, grade, open}` — ผู้ดูแลเลือกภาคเรียนที่ให้โรงเรียนแจ้ง (อิสระจากภาคเรียนปัจจุบัน), ระดับชั้นในเอกสาร, เปิด/ปิดรับ
+• ระดับชั้นรายคน: `feeReview[t].grade` (หน้าตรวจ) → รอบ → ตามภาคเรียน (`gradeFor`) · ชื่อภาคเรียนในหน้าค่าเทอมไม่ต่อท้ายชั้น
+• โรงเรียน: `fees[t].bank {bankName, branch, accName, accNo}` + ไฟล์ `kind:'bank'` (บังคับเมื่อส่ง) · เติมจากภาคก่อนอัตโนมัติ (`fromTerm`)
+• Excel เพิ่มคอลัมน์บัญชี · PDF (รายงาน/ใบสรุป) มีหัวกระดาษโลโก้มูลนิธิฯ + DLTV (ฝัง data URI) และบัญชีสำหรับโอน
