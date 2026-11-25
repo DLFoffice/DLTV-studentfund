@@ -4,7 +4,7 @@
    ============================================================ */
 // ↓↓ วาง "Web app URL" ที่ได้จาก Apps Script → Deploy (ขึ้นต้น https://script.google.com/macros/s/ และลงท้าย /exec)
 //    ไม่ใช่ลิงก์โฟลเดอร์ Google Drive — ลิงก์โฟลเดอร์ตั้งไว้แล้วใน gas/DriveFiles.gs (ROOT_FOLDER_ID)
-window.DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgKUzq2HSF8StlTzAqKtgG5yDt002_lB3_IjypSb4gVRf9SQS8pWLQSMVHSgRA8ky6/exec';
+window.DRIVE_SCRIPT_URL = '';
 
 (function () {
   'use strict';

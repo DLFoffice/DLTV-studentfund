@@ -1141,6 +1141,13 @@ http://localhost เท่านั้น (มี .gitignore กันไว้�
 • บันทึกยอดเบิก/ไม่อนุมัติ → `semPayments[term=T].p1` = ยอดเบิกได้รวม, `item1` = "ค่าเทอม (รายการ ยอด · …)" (`feeSync:true`)
 • ไม่มีภาคเรียน T → สร้างใหม่ (p2 = 0) · มี p1 ที่กรอกเอง → ยืนยันก่อนแทน · p2 ไม่เปลี่ยน · ส่งต่อ Google Sheet ด้วย `saveStudentToSheet`
 
+### v75 — ค่าเทอม (ผู้ดูแล): คลิกรายชื่อเข้าหน้าได้ · รูปนักเรียน · หน้าตรวจใหม่พร้อมตัวอย่างเอกสาร
+`js/51-tuition-fees.js`, `css/style.css`, `manual.md`, `index.html` (`?v=20261125a`)
+• ทั้งแถวในรายชื่อกดได้ (`tr.fe-row[data-fe-review]`, Enter/Space) + รูปจาก `photoEl()` · คนที่ยังไม่แจ้งก็เปิดดูได้ (empty state)
+• `reviewHtml` (modal) → `detailHtml` เต็มหน้า: hero (รูป/สถานะ/KPI แจ้ง-เบิกได้-ส่วนต่าง สดตามที่พิมพ์), ก่อนหน้า/ถัดไป, บัตรบัญชี + คัดลอก, แกลเลอรีเอกสาร
+• `loadPreviews()` ดึงไฟล์ด้วย `DriveStore.get` → object URL (แคชตาม fileId) · รูป → `<img>` + lightbox `.fe-lb` · PDF → `<iframe>`
+• แก้บั๊ก: ช่องยอดเบิกเคยมีแค่ placeholder = ยอดแจ้ง → บันทึกได้ 0 บาท/“อนุมัติบางส่วน” · ตอนนี้ถ้ายังไม่ตรวจ `value` = ยอดแจ้ง, placeholder "0"
+
 ### v74 — ค่าเทอม: รอบ/ระดับชั้นโดยผู้ดูแล · บัญชีธนาคารโรงเรียน · โลโก้ในเอกสาร
 `js/51-tuition-fees.js`, `css/style.css`, `manual.md`, `index.html` (`?v=20261124d`)
 • `settings/feeRound {term, grade, open}` — ผู้ดูแลเลือกภาคเรียนที่ให้โรงเรียนแจ้ง (อิสระจากภาคเรียนปัจจุบัน), ระดับชั้นในเอกสาร, เปิด/ปิดรับ

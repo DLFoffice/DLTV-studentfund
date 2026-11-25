@@ -3314,3 +3314,74 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .fe-bankv .mono{font-family:Consolas,Menlo,monospace;letter-spacing:.5px}
 .fe-rg{max-width:320px;margin-top:10px}
 .fe-hero .fe-hero-g{display:inline-block;margin:0 0 8px;padding:2px 12px;border-radius:999px;background:rgba(255,255,255,.18);font-weight:600}
+
+/* ===== v75 ค่าเทอม: รายชื่อกดได้ + รูปนักเรียน + หน้ารายละเอียด/ตรวจ ===== */
+.fe-row{cursor:pointer;transition:background .15s}
+.fe-row:hover,.fe-row:focus-visible{background:#f5f8ff;outline:none}
+.fe-row:focus-visible{box-shadow:inset 3px 0 0 #2563eb}
+.fe-who{display:flex;align-items:center;gap:10px;min-width:0}
+.fe-av{flex:0 0 auto;width:40px;height:40px;border-radius:50%;overflow:hidden;background:#e8eefc;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff,0 0 0 3px #dbe4f5}
+.fe-av .fe-av-img{width:100%;height:100%;object-fit:cover;display:block}
+.fe-av .fe-av-fb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#3b5bdb;font-size:.9rem}
+.fe-av.big{width:96px;height:96px;box-shadow:0 0 0 4px #fff,0 8px 24px rgba(30,64,175,.25)}
+.fe-av.big .fe-av-fb{font-size:2rem}
+.fe-go{font-size:.85rem;font-weight:600;color:#475569;white-space:nowrap;padding:5px 10px;border-radius:999px;background:#f1f5f9}
+.fe-go.hot{background:#2563eb;color:#fff}
+.fe-row:hover .fe-go:not(.hot){background:#e0e7ff;color:#1e40af}
+
+.fe-detail{display:flex;flex-direction:column;gap:16px}
+.fe-dnav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fe-back{border:0;background:#fff;border-radius:999px;padding:8px 16px;font-weight:700;color:#1e3a8a;box-shadow:0 1px 3px rgba(15,23,42,.12);cursor:pointer;font:inherit}
+.fe-back:hover{background:#eef2ff}
+.fe-dnav-r{margin-left:auto;display:flex;gap:6px}
+.fe-dhero{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:22px 24px;border-radius:22px;color:#fff;
+  background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(135deg,#1e3a8a,#2563eb 60%,#0ea5e9)}
+.fe-dhero-t{flex:1 1 260px;min-width:0}
+.fe-dhero h2{margin:6px 0 2px;font-size:1.45rem;color:#fff}
+.fe-dhero p{margin:2px 0;opacity:.95}
+.fe-dhero .fe-dim{color:rgba(255,255,255,.8)}
+.fe-dhero .fe-chip{box-shadow:0 0 0 2px rgba(255,255,255,.5)}
+.fe-dstats{display:grid;grid-template-columns:repeat(3,minmax(96px,1fr));gap:8px;flex:1 1 320px}
+.fe-dstats>div{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:10px 12px;backdrop-filter:blur(4px)}
+.fe-dstats span{display:block;font-size:.8rem;opacity:.85}
+.fe-dstats b{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.fe-dstats .ok{background:rgba(16,185,129,.28)}
+.fe-dstats .cut{background:rgba(245,158,11,.32)}
+.fe-dgrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:960px){.fe-dgrid{grid-template-columns:minmax(0,1fr)}}
+.fe-dgrid>*{min-width:0}
+@media (max-width:560px){.fe-dhero{padding:18px}.fe-dstats b{font-size:1.05rem}.fe-bankcard-no{font-size:1.25rem}.fe-doc-view{height:200px}.fe-dnav-r{margin-left:0}}
+.fe-h{margin:0 0 12px;font-size:1.05rem;display:flex;align-items:baseline;gap:8px}
+.fe-detail .fe-card{margin:0}
+.fe-amt.pre{background:#f0fdf4;border-color:#86efac}
+.fe-side{display:flex;flex-direction:column;gap:16px}
+.fe-bankcard{position:relative;overflow:hidden;border-radius:20px;padding:18px 20px;color:#fff;min-height:150px;
+  background:linear-gradient(135deg,#0f172a,#334155);box-shadow:0 12px 30px rgba(15,23,42,.25)}
+.fe-bankcard::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07)}
+.fe-bankcard.empty{background:linear-gradient(135deg,#78350f,#b45309)}
+.fe-bankcard-top{display:flex;justify-content:space-between;font-size:.85rem;opacity:.85}
+.fe-bankcard-no{font-size:1.6rem;letter-spacing:.12em;font-weight:700;margin:14px 0 6px;font-variant-numeric:tabular-nums}
+.fe-bankcard-name{font-weight:600}
+.fe-bankcard-b{opacity:.8;font-size:.9rem}
+.fe-copy{position:relative;z-index:1;margin-top:10px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:4px 12px;font:inherit;font-size:.8rem;cursor:pointer}
+.fe-copy:hover{background:rgba(255,255,255,.22)}
+.fe-docs{display:grid;grid-template-columns:1fr;gap:12px}
+.fe-doc{margin:0;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#f8fafc}
+.fe-doc.bank{border-color:#bfdbfe}
+.fe-doc-view{height:260px;display:flex;align-items:center;justify-content:center;background:repeating-conic-gradient(#f1f5f9 0 25%,#fff 0 50%) 0 0/16px 16px}
+.fe-doc-view img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in;transition:transform .2s}
+.fe-doc-view img:hover{transform:scale(1.02)}
+.fe-doc-view iframe{width:100%;height:100%;border:0;background:#fff}
+.fe-doc-load{display:flex;flex-direction:column;align-items:center;gap:6px;color:#64748b;font-size:.85rem;text-align:center;padding:12px}
+.fe-doc-load:first-letter{font-size:2rem}
+.fe-doc figcaption{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-top:1px solid #e2e8f0;font-size:.85rem}
+.fe-doc-tag{flex:0 0 auto;font-weight:600;color:#1e40af}
+.fe-doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569}
+.fe-link{border:0;background:none;color:#2563eb;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.fe-emptyc{text-align:center;padding:40px 20px}
+.fe-empty-ic{font-size:2.6rem}
+.fe-lb{position:fixed;inset:0;z-index:2000;background:rgba(2,6,23,.85);display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;animation:feFade .15s}
+.fe-lb img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.fe-lb button{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:1.1rem;cursor:pointer}
+@keyframes feFade{from{opacity:0}to{opacity:1}}
+@media print{.fe-dnav,.fe-quick,.fe-copy{display:none!important}}

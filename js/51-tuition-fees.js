@@ -86,6 +86,13 @@
       const ref = document.getElementById('page-formtrack');
       (ref ? ref.parentNode : document.querySelector('.main')).appendChild(p);
       p.addEventListener('click', onClick); p.addEventListener('input', onInput); p.addEventListener('change', onChange);
+      p.addEventListener('keydown', e => {
+        const r = e.target.closest && e.target.closest('tr[data-fe-review]');
+        if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); r.click(); }
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && st.review != null && p.isConnected && p.offsetParent && !document.querySelector('.fe-lb,.uid-backdrop,.lb-overlay,.lightbox.open')) { st.review = null; render(); }
+      });
     }
     return p;
   }
@@ -116,6 +123,7 @@
     const nt = document.querySelector('#fee-nav .fee-nav-t'); if (nt) nt.textContent = isStaff() ? 'ค่าเทอม (ตรวจ/เบิก)' : 'แจ้งค่าเทอม';
     if (!isStaff()) { p.innerHTML = userHtml(); return; }
     p.innerHTML = adminHtml();
+    if (st.review != null) setTimeout(loadPreviews, 0);
   }
 
   /* ════════════ ฝั่งโรงเรียน (บัญชีครู) ════════════ */
@@ -244,6 +252,7 @@
   }
   function adminHtml() {
     const t = st.term || roundTerm(), all = rows(t);
+    if (st.review != null && DB.students[st.review]) return detailHtml(DB.students[st.review], st.review, t, all);
     const sent = all.filter(r => !['none', 'draft'].includes(r.k));
     const tot = { req: sent.reduce((a, r) => a + r.req, 0), ap: all.reduce((a, r) => a + r.ap, 0) };
     const cnt = k => all.filter(r => r.k === k).length;
@@ -277,42 +286,106 @@
         <div class="fe-bar">${chip('all', 'ทั้งหมด', all.length)}${chip('pending', 'รอตรวจ', cnt('pending'))}${chip('done', 'ตรวจแล้ว', cnt('full') + cnt('partial') + cnt('rejected'))}${chip('none', 'ยังไม่แจ้ง/ร่าง', cnt('none') + cnt('draft'))}
           <input class="fe-in fe-q" data-fe-q placeholder="ค้นหาชื่อ โรงเรียน จังหวัด หรือลำดับ" value="${E(st.q)}"></div>
         <div class="fe-tw"><table class="fe-t fe-list"><thead><tr><th>ลำดับ</th><th>นักเรียน</th><th>ชั้น</th><th class="n">ยอดที่แจ้ง</th><th class="n">เบิกได้</th><th>สถานะ</th><th></th></tr></thead>
-          <tbody>${list.map(r => `<tr>
-            <td>${E(r.s.no ?? '-')}</td><td><b>${E(r.s.name || '-')}</b><div class="fe-dim">${E(r.s.school_m1 || '')}${r.s.province ? ' · ' + E(r.s.province) : ''}</div></td>
+          <tbody>${list.map(r => `<tr class="fe-row" data-fe-review="${r.i}" tabindex="0" role="button" aria-label="เปิดค่าเทอมของ ${E(r.s.name || '')}">
+            <td>${E(r.s.no ?? '-')}</td><td><div class="fe-who">${avatar(r.s)}<div><b>${E(r.s.name || '-')}</b><div class="fe-dim">${E(r.s.school_m1 || '')}${r.s.province ? ' · ' + E(r.s.province) : ''}</div></div></div></td>
             <td>${E(gradeFor(r.s, t))}</td><td class="n">${r.f && r.req ? baht(r.req) : '–'}</td><td class="n fe-ap">${['full', 'partial', 'rejected'].includes(r.k) ? baht(r.ap) : '–'}</td>
             <td><span class="fe-chip ${ST[r.k][1]}">${ST[r.k][0]}</span>${r.f && r.f.submittedAt ? `<div class="fe-dim">แจ้ง ${E(fmtD(r.f.submittedAt))}</div>` : ''}</td>
-            <td class="act">${r.f && itemsOf(r.f).length ? `<button type="button" class="btn btn-sm ${r.k === 'pending' ? 'btn-primary' : 'btn-outline'}" data-fe-review="${r.i}">${r.k === 'pending' ? 'ตรวจ/กำหนดยอด' : 'ดู/แก้ไข'}</button>` : ''}</td></tr>`).join('')
+            <td class="act"><span class="fe-go ${r.k === 'pending' ? 'hot' : ''}">${r.k === 'pending' ? 'ตรวจ/กำหนดยอด' : r.f && itemsOf(r.f).length ? 'ดู/แก้ไข' : 'ดูข้อมูล'} ›</span></td></tr>`).join('')
             || '<tr><td colspan="7" class="fe-empty">ไม่มีรายการ</td></tr>'}</tbody></table></div>
       </section>
-      ${st.review != null ? reviewHtml(DB.students[st.review], st.review, t) : ''}
     </div>`;
   }
-  function reviewHtml(s, idx, t) {
-    const f = feeOf(s, t) || {}, r = revOf(s, t) || {}, items = itemsOf(f);
-    const ap = id => (r.approved && r.approved[id] != null) ? r.approved[id] : '';
+  const avatar = (s, big) => (typeof photoEl === 'function') ? `<span class="fe-av${big ? ' big' : ''}">${photoEl(s, 'fe-av-img', 'fe-av-fb')}</span>` : '';
+  /* ---------- หน้ารายละเอียด/ตรวจ (เต็มหน้า) ---------- */
+  function detailHtml(s, idx, t, all) {
+    const f = feeOf(s, t) || {}, r = revOf(s, t) || {}, items = itemsOf(f), k = status(s, t);
+    const reviewed = !!r.reviewedAt;
+    // ยังไม่ตรวจ → เติมยอดเบิก = ยอดที่แจ้ง ให้ปรับลดเฉพาะรายการที่ต้องการ
+    const ap = id => (r.approved && r.approved[id] != null) ? r.approved[id] : (reviewed ? '' : (items.find(x => x.id === id) || {}).amount || '');
     const files = Array.isArray(f.files) ? f.files : [];
-    return `<div class="fe-modal" data-fe-close-bg><div class="fe-mbox" role="dialog" aria-modal="true" aria-label="ตรวจค่าเทอม" data-fe-ridx="${idx}">
-      <header class="fe-head"><div><h3>ตรวจค่าเทอม — ${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeFor(s, t))} · ${E(tlabel(t))}</p></div>
-        <button type="button" class="fe-x big" data-fe-close aria-label="ปิด">✕</button></header>
-      <div class="fe-tw"><table class="fe-t"><thead><tr><th>รายการที่โรงเรียนแจ้ง</th><th class="n">แจ้ง (บาท)</th><th class="n">เบิกได้ (บาท)</th><th>หมายเหตุโรงเรียน</th></tr></thead>
-        <tbody>${items.map(it => `<tr><td>${E(it.label)}</td><td class="n">${baht(it.amount)}</td>
-          <td class="n"><input class="fe-in fe-amt" inputmode="decimal" data-fe-ap="${E(it.id)}" data-req="${num(it.amount)}" value="${E(ap(it.id))}" placeholder="${baht(it.amount)}"></td><td class="fe-dim">${E(it.note || '')}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><th>รวม</th><th class="n">${baht(requested(f))}</th><th class="n" id="fe-aptotal">${baht(items.reduce((a, it) => a + num(ap(it.id)), 0))}</th><th></th></tr></tfoot></table></div>
-      ${f.note ? `<div class="fe-note">หมายเหตุจากโรงเรียน: ${E(f.note)}</div>` : ''}
-      <div class="fe-bankv">${f.bank && f.bank.accNo ? `<b>🏦 บัญชีสำหรับโอน:</b> ${E(f.bank.bankName || '-')}${f.bank.branch ? ' สาขา' + E(f.bank.branch) : ''} · ชื่อบัญชี <b>${E(f.bank.accName || '-')}</b> · เลขที่ <b class="mono">${E(f.bank.accNo)}</b>`
-        : '<span class="fe-dim">⚠️ โรงเรียนยังไม่ได้กรอกบัญชีธนาคาร</span>'}</div>
-      ${files.length ? `<div class="fe-files">${files.map((x, i) => `<button type="button" class="fe-link" data-fe-rview="${i}">${x.kind === 'bank' ? '🏦 สมุดบัญชี' : '📎 ใบแจ้ง/ใบเสร็จ'}: ${E(x.name)}</button>`).join('')}</div>` : ''}
-      <label class="fe-f fe-rg"><span>ระดับชั้น (ในเอกสารค่าเทอมนี้)</span><select class="fe-in" data-fe-grade><option value="">${E(gradeFor(s, t))} (อัตโนมัติ)</option>${GRADES.map(g => `<option ${r.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
-      <div class="fe-quick"><button type="button" class="btn btn-sm btn-outline" data-fe-fill>เบิกได้เต็มจำนวนทุกรายการ</button><button type="button" class="btn btn-sm btn-outline" data-fe-clear>ล้างยอดเบิก</button></div>
-      <label class="fe-f"><span>หมายเหตุถึงโรงเรียน (เช่น เหตุผลที่ปรับลด)</span><textarea class="fe-in" rows="2" data-fe-rnote>${E(r.note || '')}</textarea></label>
-      ${r.reviewedAt ? `<p class="fe-dim">ตรวจล่าสุด ${E(fmtD(r.reviewedAt))} โดย ${E(r.reviewedBy || '-')}</p>` : ''}
-      <p class="fe-dim">💡 กด "บันทึกยอดเบิก" แล้ว ยอดเบิกได้รวมจะถูกบันทึกเป็น <b>รายการเบิกจ่ายภาคเรียน ${E(tlabel(t))} ส่วนที่ 1 (ค่าบำรุงการศึกษา)</b> ของนักเรียนอัตโนมัติ (ส่วนที่ 2 ไม่เปลี่ยน)</p>
-      <div class="fe-acts">
-        ${r.reviewedAt ? `<button type="button" class="btn btn-outline" data-fe-unlock title="ยกเลิกผลการตรวจ ให้โรงเรียนแก้ไขข้อมูลได้อีกครั้ง">↩ เปิดให้โรงเรียนแก้ไข</button>` : ''}
-        <button type="button" class="btn btn-outline" data-fe-slip>🖨 ใบสรุป (PDF)</button>
-        <button type="button" class="btn btn-danger" data-fe-reject>ไม่อนุมัติ</button>
-        <button type="button" class="btn btn-primary" data-fe-approve>✅ บันทึกยอดเบิก</button>
-      </div></div></div>`;
+    const pos = all.findIndex(x => x.i === idx), prev = all[pos - 1], next = all[pos + 1];
+    const apNow = items.reduce((a, it) => a + num(ap(it.id)), 0), req = requested(f);
+    const bank = f.bank || prevBank(s, t);
+    const doc = (x, i) => {
+      const isImg = /^image\//.test(x.type || '') || /\.(jpe?g|png|gif|webp|heic)$/i.test(x.name || '');
+      const isPdf = /pdf/i.test(x.type || '') || /\.pdf$/i.test(x.name || '');
+      return `<figure class="fe-doc ${x.kind === 'bank' ? 'bank' : ''}" data-fe-prev="${i}" data-kind="${isImg ? 'img' : isPdf ? 'pdf' : 'file'}">
+        <div class="fe-doc-view"><div class="fe-doc-load">${isImg ? '🖼' : isPdf ? '📄' : '📎'}<span>กำลังโหลดตัวอย่าง…</span></div></div>
+        <figcaption><span class="fe-doc-tag">${x.kind === 'bank' ? '🏦 สมุดบัญชี' : '🧾 ใบแจ้ง/ใบเสร็จ'}</span><span class="fe-doc-name" title="${E(x.name)}">${E(x.name)}</span>
+          <button type="button" class="fe-link" data-fe-rview="${i}">เปิดเต็ม ↗</button></figcaption></figure>`;
+    };
+    return `<div class="fe-wrap fe-detail" data-fe-ridx="${idx}">
+      <nav class="fe-dnav"><button type="button" class="fe-back" data-fe-close>← กลับรายชื่อ</button>
+        <span class="fe-dim">${pos + 1} / ${all.length} คน · ${E(tlabel(t))}</span>
+        <span class="fe-dnav-r"><button type="button" class="btn btn-sm btn-outline" ${prev ? `data-fe-review="${prev.i}"` : 'disabled'}>‹ ก่อนหน้า</button><button type="button" class="btn btn-sm btn-outline" ${next ? `data-fe-review="${next.i}"` : 'disabled'}>ถัดไป ›</button></span></nav>
+      <section class="fe-dhero">
+        ${avatar(s, true)}
+        <div class="fe-dhero-t"><span class="fe-chip ${ST[k][1]}">${ST[k][0]}</span><h2>${E(s.name || '-')}</h2>
+          <p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')}${s.province ? ' · จ.' + E(s.province) : ''}</p>
+          <p class="fe-dim">${E(gradeFor(s, t))} · ${E(tlabel(t))}${f.submittedAt ? ' · โรงเรียนแจ้งเมื่อ ' + E(fmtD(f.submittedAt)) : ''}${reviewed ? ' · ตรวจเมื่อ ' + E(fmtD(r.reviewedAt)) + (r.reviewedBy ? ' โดย ' + E(r.reviewedBy) : '') : ''}</p></div>
+        <div class="fe-dstats"><div><span>ยอดที่แจ้ง</span><b>${baht(req)}</b></div><div class="ok"><span>เบิกได้</span><b id="fe-aptotal2">${baht(apNow)}</b></div><div class="${req - apNow > 0.001 ? 'cut' : ''}"><span>ส่วนต่าง</span><b id="fe-apdiff">${baht(req - apNow)}</b></div></div>
+      </section>
+      ${!items.length ? `<section class="fe-card fe-emptyc"><div class="fe-empty-ic">🗂</div><h3>${k === 'draft' ? 'โรงเรียนบันทึกร่างไว้ แต่ยังไม่ได้ส่ง' : 'โรงเรียนยังไม่ได้แจ้งค่าเทอม'}</h3><p class="fe-dim">${E(tlabel(t))} · เมื่อโรงเรียนกด "ส่งข้อมูลให้มูลนิธิฯ" รายการจะแสดงที่นี่</p></section>` : `
+      <div class="fe-dgrid">
+        <section class="fe-card">
+          <h3 class="fe-h">💰 รายการค่าเทอมและยอดเบิก</h3>
+          <div class="fe-tw"><table class="fe-t"><thead><tr><th>รายการที่โรงเรียนแจ้ง</th><th class="n">แจ้ง (บาท)</th><th class="n">เบิกได้ (บาท)</th></tr></thead>
+            <tbody>${items.map(it => `<tr><td>${E(it.label)}${it.note ? `<div class="fe-dim">📝 ${E(it.note)}</div>` : ''}</td><td class="n">${baht(it.amount)}</td>
+              <td class="n"><input class="fe-in fe-amt ${reviewed || ap(it.id) === '' ? '' : 'pre'}" inputmode="decimal" data-fe-ap="${E(it.id)}" data-req="${num(it.amount)}" value="${E(ap(it.id))}" placeholder="0"></td></tr>`).join('')}</tbody>
+            <tfoot><tr><th>รวม</th><th class="n">${baht(req)}</th><th class="n fe-ap" id="fe-aptotal">${baht(apNow)}</th></tr></tfoot></table></div>
+          ${reviewed ? '' : `<p class="fe-dim">ระบบเติมยอดเบิกเท่ายอดที่แจ้งไว้ให้ — แก้เฉพาะรายการที่ต้องปรับลด แล้วกด "บันทึกยอดเบิก"</p>`}
+          <div class="fe-quick"><button type="button" class="btn btn-sm btn-outline" data-fe-fill>เบิกได้เต็มจำนวนทุกรายการ</button><button type="button" class="btn btn-sm btn-outline" data-fe-clear>ล้างยอดเบิก</button></div>
+          ${f.note ? `<div class="fe-note">💬 หมายเหตุจากโรงเรียน: ${E(f.note)}</div>` : ''}
+          <div class="fe-two">
+            <label class="fe-f"><span>ระดับชั้น (ในเอกสารค่าเทอมนี้)</span><select class="fe-in" data-fe-grade><option value="">${E(gradeFor(s, t))} (อัตโนมัติ)</option>${GRADES.map(g => `<option ${r.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
+            <label class="fe-f"><span>หมายเหตุถึงโรงเรียน (เช่น เหตุผลที่ปรับลด)</span><textarea class="fe-in" rows="2" data-fe-rnote>${E(r.note || '')}</textarea></label>
+          </div>
+          <p class="fe-dim">💡 บันทึกแล้ว ยอดเบิกได้รวมจะเป็น <b>รายการเบิกจ่าย ${E(tlabel(t))} ส่วนที่ 1 (ค่าบำรุงการศึกษา)</b> ของนักเรียนอัตโนมัติ</p>
+          <div class="fe-acts">
+            ${reviewed ? `<button type="button" class="btn btn-outline" data-fe-unlock title="ยกเลิกผลการตรวจ ให้โรงเรียนแก้ไขข้อมูลได้อีกครั้ง">↩ เปิดให้โรงเรียนแก้ไข</button>` : ''}
+            <button type="button" class="btn btn-outline" data-fe-slip>🖨 ใบสรุป (PDF)</button>
+            <button type="button" class="btn btn-danger" data-fe-reject>ไม่อนุมัติ</button>
+            <button type="button" class="btn btn-primary" data-fe-approve>✅ บันทึกยอดเบิก</button>
+          </div>
+        </section>
+        <aside class="fe-side">
+          <section class="fe-bankcard ${bank && bank.accNo ? '' : 'empty'}">
+            <div class="fe-bankcard-top"><span>🏦 บัญชีสำหรับโอนเงิน</span>${bank && bank.accNo && !f.bank ? '<small>(จากภาคก่อน)</small>' : ''}</div>
+            ${bank && bank.accNo ? `<div class="fe-bankcard-no">${E(bank.accNo)}</div><div class="fe-bankcard-name">${E(bank.accName || '-')}</div>
+              <div class="fe-bankcard-b">${E(bank.bankName || '-')}${bank.branch ? ' · สาขา' + E(bank.branch) : ''}</div>
+              <button type="button" class="fe-copy" data-fe-copy="${E(bank.accNo)}">คัดลอกเลขบัญชี</button>` : '<div class="fe-bankcard-name">⚠️ โรงเรียนยังไม่ได้กรอกบัญชีธนาคาร</div>'}
+          </section>
+          <section class="fe-card">
+            <h3 class="fe-h">📎 เอกสารแนบ <small class="fe-dim">${files.length} ไฟล์</small></h3>
+            ${files.length ? `<div class="fe-docs">${files.map(doc).join('')}</div>` : '<p class="fe-dim">ไม่มีไฟล์แนบ</p>'}
+          </section>
+        </aside>
+      </div>`}
+    </div>`;
+  }
+  /* ตัวอย่างเอกสาร: โหลดไฟล์จาก Drive มาแสดงในหน้า (รูป → ภาพ · PDF → ตัวอย่างหน้าแรก) */
+  const blobCache = new Map();
+  async function loadPreviews() {
+    const box = document.querySelector('.fe-detail'); if (!box) return;
+    const s = DB.students[+box.dataset.feRidx], t = st.term || roundTerm(), files = (feeOf(s, t) || {}).files || [];
+    for (const el of box.querySelectorAll('[data-fe-prev]')) {
+      const x = files[+el.dataset.fePrev], view = el.querySelector('.fe-doc-view'); if (!x || !view) continue;
+      const fail = msg => { view.innerHTML = `<div class="fe-doc-load">⚠️<span>${E(msg)}</span></div>`; };
+      if (!window.DriveStore || !DriveStore.ready()) { fail('ดูตัวอย่างไม่ได้ — ' + (window.DriveStore ? DriveStore.why() : 'ระบบไฟล์ยังไม่พร้อม')); continue; }
+      try {
+        let u = blobCache.get(x.fileId);
+        if (!u) { const g = await DriveStore.get(s, x.fileId); u = { url: URL.createObjectURL(g.blob), type: g.type || x.type || '' }; blobCache.set(x.fileId, u); }
+        if (!el.isConnected) return;
+        if (/^image\//.test(u.type)) view.innerHTML = `<img src="${u.url}" alt="${E(x.name)}" data-fe-zoom="${u.url}" title="คลิกเพื่อขยาย">`;
+        else if (/pdf/.test(u.type)) view.innerHTML = `<iframe src="${u.url}#toolbar=0&view=FitH" title="${E(x.name)}" loading="lazy"></iframe>`;
+        else view.innerHTML = `<div class="fe-doc-load">📎<span>ไฟล์ ${E(u.type || '')} — กด "เปิดเต็ม"</span></div>`;
+      } catch (e) { fail('โหลดไม่สำเร็จ: ' + (e.message || e)); }
+    }
+  }
+  function zoom(src) {
+    const o = document.createElement('div'); o.className = 'fe-lb'; o.innerHTML = `<img src="${src}" alt=""><button type="button" aria-label="ปิด">✕</button>`;
+    const close = () => { o.remove(); document.removeEventListener('keydown', esc); }; const esc = e => { if (e.key === 'Escape') close(); };
+    o.addEventListener('click', close); document.addEventListener('keydown', esc); document.body.appendChild(o);
   }
   function readReview(box) {
     const approved = {}; let n = 0;
@@ -322,13 +395,15 @@
 
   /* ---------- เหตุการณ์ ---------- */
   async function onClick(e) {
-    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave]');
-    if (!t0) { if (e.target.hasAttribute && e.target.hasAttribute('data-fe-close-bg')) { st.review = null; render(); } return; }
+    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave],[data-fe-zoom],[data-fe-copy]');
+    if (!t0) return;
     const d = t0.dataset, t = isStaff() ? (st.term || roundTerm()) : roundTerm();
     if (d.feOpen != null) { st.idx = +d.feOpen; render(); return; }
     if (d.feList != null) { st.idx = null; render(); return; }
     if (d.feFilter) { st.filter = d.feFilter; render(); return; }
-    if (d.feReview != null) { st.review = +d.feReview; render(); return; }
+    if (d.feReview != null) { if (e.target.closest('.fe-av') && e.target.closest('img')) return; st.review = +d.feReview; render(); try { page().scrollIntoView({ block: 'start' }); window.scrollTo({ top: 0 }); } catch (er) {} return; }
+    if (d.feZoom) { zoom(d.feZoom); return; }
+    if (d.feCopy) { try { await navigator.clipboard.writeText(d.feCopy); t0.textContent = '✓ คัดลอกแล้ว'; setTimeout(() => { t0.textContent = 'คัดลอกเลขบัญชี'; }, 1500); } catch (er) {} return; }
     if (d.feClose != null) { st.review = null; render(); return; }
     if (d.feXlsx != null) { exportXlsx(t); return; }
     if (d.feRsave != null) {
@@ -433,7 +508,12 @@
     p.feeSync = true; p.feeSyncedAt = new Date().toISOString();
     return p;
   }
-  function apTotal(box) { let n = 0; box.querySelectorAll('[data-fe-ap]').forEach(i => { n += num(i.value); }); const el = box.querySelector('#fe-aptotal'); if (el) el.textContent = baht(n); }
+  function apTotal(box) {
+    let n = 0, q = 0; box.querySelectorAll('[data-fe-ap]').forEach(i => { n += num(i.value); q += num(i.dataset.req); i.classList.remove('pre'); });
+    const set = (id, v) => { const el = box.querySelector('#' + id); if (el) el.textContent = baht(v); };
+    set('fe-aptotal', n); set('fe-aptotal2', n); set('fe-apdiff', q - n);
+    const dd = box.querySelector('#fe-apdiff'); if (dd) dd.parentElement.classList.toggle('cut', q - n > 0.001);
+  }
   function onInput(e) {
     if (e.target.matches('[data-fe-amt]') && e.target.closest('.fe-card[data-fe-idx]')) liveTotal(e.target.closest('.fe-card'));
     if (e.target.matches('[data-fe-ap]')) apTotal(e.target.closest('[data-fe-ridx]'));
