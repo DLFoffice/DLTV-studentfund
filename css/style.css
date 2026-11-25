@@ -3387,3 +3387,15 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 @media print{.fe-dnav,.fe-quick,.fe-copy{display:none!important}}
 .fe-link.del{color:#dc2626;padding-left:8px;border-left:1px solid #e2e8f0}
 .fe-link.del:hover{text-decoration:underline}
+/* v75c ขอแก้ไขค่าเทอม */
+.fe-lock{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding:14px 16px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa}
+.fe-lock>div:nth-child(2){flex:1 1 280px}
+.fe-lock-ic{font-size:1.6rem}
+.fe-lock p{margin:4px 0 0;color:#7c2d12;font-size:.9rem}
+.fe-lock .fe-lock-sent{color:#1d4ed8;font-weight:600}
+.fe-chip.fe-req{background:#fef3c7;color:#92400e;margin-left:4px}
+.fe-reqbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:14px;background:#fef3c7;border:1px solid #fcd34d;color:#78350f}
+.fe-ask{position:fixed;inset:0;z-index:1500;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.fe-ask-box{width:min(480px,100%);background:#fff;border-radius:18px;padding:20px;box-shadow:0 30px 70px rgba(15,23,42,.35)}
+.fe-ask-box h3{margin:0 0 6px}
+.fe-ask-box textarea{width:100%;box-sizing:border-box;margin:10px 0}

@@ -167,10 +167,12 @@
       </tr>`;
     };
     const showAp = !!(r && r.reviewedAt);
+    const canAttach = !closed;   // v75c: ตรวจแล้วยังแนบเอกสารเพิ่มได้ (ไม่เปลี่ยนยอด)
+    const req = f.editRequest;
     const files = Array.isArray(f.files) ? f.files : [];
     const bank = f.bank || prevBank(s, t) || {};
     const fileList = kind => files.map((x, i) => ({ x, i })).filter(o => (o.x.kind || 'invoice') === kind)
-      .map(({ x, i }) => `<span class="fe-file"><button type="button" class="fe-link" data-fe-view="${i}">📎 ${E(x.name)}</button>${x.fromTerm ? `<small class="fe-dim">(จาก${E(tlabel(x.fromTerm))})</small>` : ''}${locked ? '' : `<button type="button" class="fe-x" data-fe-rmfile="${i}" aria-label="ลบไฟล์">✕</button>`}</span>`).join('') || '<span class="fe-dim">ยังไม่มีไฟล์</span>';
+      .map(({ x, i }) => `<span class="fe-file"><button type="button" class="fe-link" data-fe-view="${i}">📎 ${E(x.name)}</button>${x.fromTerm ? `<small class="fe-dim">(จาก${E(tlabel(x.fromTerm))})</small>` : ''}${locked && !(canAttach && x.uploadedAt && r && x.uploadedAt > r.reviewedAt) ? '' : `<button type="button" class="fe-x" data-fe-rmfile="${i}" aria-label="ลบไฟล์">✕</button>`}</span>`).join('') || '<span class="fe-dim">ยังไม่มีไฟล์</span>';
     const bf = (k, label, ph) => `<label class="fe-f"><span>${label} <b class="req">*</b></span><input class="fe-in" data-fe-bank="${k}" value="${E(bank[k] || '')}" placeholder="${ph}" ${locked ? 'disabled' : ''} ${k === 'accNo' ? 'inputmode="numeric"' : ''}></label>`;
     return `<section class="fe-card" data-fe-idx="${idx}">
       <header class="fe-head"><div><h3>${E(s.name || '-')}</h3><p>ลำดับ ${E(s.no ?? '-')} · ${E(s.school_m1 || '-')} · ${E(gradeFor(s, t))} · ${E(tlabel(t))}</p></div>
@@ -188,14 +190,21 @@
         <div class="fe-bgrid">${bf('bankName', 'ธนาคาร', 'เช่น ธ.กรุงไทย')}${bf('branch', 'สาขา', 'เช่น สาขาโกสุมพิสัย').replace(' <b class="req">*</b>', '')}${bf('accName', 'ชื่อบัญชี', 'ชื่อบัญชีตามสมุดบัญชี')}${bf('accNo', 'เลขที่บัญชี', 'ตัวเลข 10–12 หลัก')}</div>
         <div class="fe-f"><span>สำเนาหน้าสมุดบัญชีธนาคาร <b class="req">*</b></span>
           <div class="fe-files">${fileList('bank')}</div>
-          ${locked ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="bank" hidden>⬆ แนบสำเนาสมุดบัญชี (PDF/รูป ≤10MB)</label>`}</div>
+          ${!canAttach ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="bank" hidden>⬆ แนบสำเนาสมุดบัญชี (PDF/รูป ≤10MB)</label>`}</div>
       </section>
       <div class="fe-grid">
         <label class="fe-f"><span>หมายเหตุถึงมูลนิธิฯ</span><textarea class="fe-in" rows="2" data-fe-gnote ${locked ? 'disabled' : ''}>${E(f.note || '')}</textarea></label>
         <div class="fe-f"><span>ใบแจ้งค่าเทอม / ใบเสร็จ (ถ้ามี)</span>
           <div class="fe-files">${fileList('invoice')}</div>
-          ${locked ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="invoice" hidden>⬆ แนบไฟล์ (PDF/รูป ≤10MB)</label>`}</div>
+          ${!canAttach ? '' : `<label class="fe-up"><input type="file" accept="application/pdf,image/*" data-fe-file="invoice" hidden>⬆ แนบไฟล์ (PDF/รูป ≤10MB)</label>`}</div>
       </div>
+      ${locked && !closed ? `<div class="fe-lock">
+          <div class="fe-lock-ic">🔒</div>
+          <div><b>แก้ไขรายการ/บัญชีไม่ได้ เพราะมูลนิธิฯ ตรวจและกำหนดยอดเบิกแล้ว</b>
+            <p>ยังแนบเอกสารเพิ่มได้ (เช่น สำเนาสมุดบัญชี ใบเสร็จ) · ถ้าต้องแก้ไขจำนวนเงินหรือบัญชี กด "ขอแก้ไขข้อมูล" แล้วมูลนิธิฯ จะเปิดให้แก้ไข</p>
+            ${req && req.at ? `<p class="fe-lock-sent">✋ ส่งคำขอแก้ไขแล้วเมื่อ ${E(fmtD(req.at))}${req.reason ? ` — “${E(req.reason)}”` : ''} · รอมูลนิธิฯ เปิดให้แก้ไข</p>` : ''}</div>
+          <button type="button" class="btn ${req && req.at ? 'btn-outline' : 'btn-primary'}" data-fe-askedit>${req && req.at ? 'ส่งคำขออีกครั้ง' : '✋ ขอแก้ไขข้อมูล'}</button>
+        </div>` : ''}
       ${locked ? '' : `<div class="fe-acts"><button type="button" class="btn btn-outline" data-fe-save>💾 บันทึกร่าง</button><button type="button" class="btn btn-primary" data-fe-submit>📤 ${f.submittedAt ? 'ส่งข้อมูลอีกครั้ง' : 'ส่งข้อมูลให้มูลนิธิฯ'}</button></div>`}
     </section>`;
   }
@@ -244,6 +253,7 @@
     for (let i = 0; i < 3 && window.Term && Term.next; i++) { x = Term.next(x); if (x) set.add(x); }
     return [...set].filter(t => window.Term && Term.isValid(t)).sort(Term.cmp).reverse();
   }
+  const isReq = r => !!(r.f && r.f.editRequest && (revOf(r.s, st.term || roundTerm()) || {}).reviewedAt);
   function rows(t) {
     return (DB.students || []).map((s, i) => {
       const f = feeOf(s, t), k = status(s, t);
@@ -257,7 +267,7 @@
     const tot = { req: sent.reduce((a, r) => a + r.req, 0), ap: all.reduce((a, r) => a + r.ap, 0) };
     const cnt = k => all.filter(r => r.k === k).length;
     const q = st.q.trim().toLowerCase();
-    let list = all.filter(r => st.filter === 'all' ? true : st.filter === 'done' ? ['full', 'partial', 'rejected'].includes(r.k) : st.filter === 'none' ? ['none', 'draft'].includes(r.k) : r.k === st.filter);
+    let list = all.filter(r => st.filter === 'all' ? true : st.filter === 'req' ? isReq(r) : st.filter === 'done' ? ['full', 'partial', 'rejected'].includes(r.k) : st.filter === 'none' ? ['none', 'draft'].includes(r.k) : r.k === st.filter);
     if (q) list = list.filter(r => [r.s.name, r.s.school_m1, r.s.province, r.s.no].join(' ').toLowerCase().includes(q));
     const chip = (k, l, n) => `<button type="button" class="fe-fchip ${st.filter === k ? 'on' : ''}" data-fe-filter="${k}">${l} <b>${n}</b></button>`;
     return `<div class="fe-wrap">
@@ -283,13 +293,13 @@
         <div class="fe-kpi warn"><span>รอตรวจ</span><b>${cnt('pending')}<small> คน</small></b></div>
       </section>
       <section class="fe-card">
-        <div class="fe-bar">${chip('all', 'ทั้งหมด', all.length)}${chip('pending', 'รอตรวจ', cnt('pending'))}${chip('done', 'ตรวจแล้ว', cnt('full') + cnt('partial') + cnt('rejected'))}${chip('none', 'ยังไม่แจ้ง/ร่าง', cnt('none') + cnt('draft'))}
+        <div class="fe-bar">${chip('all', 'ทั้งหมด', all.length)}${chip('pending', 'รอตรวจ', cnt('pending'))}${chip('done', 'ตรวจแล้ว', cnt('full') + cnt('partial') + cnt('rejected'))}${chip('none', 'ยังไม่แจ้ง/ร่าง', cnt('none') + cnt('draft'))}${(n => n ? chip('req', '✋ ขอแก้ไข', n) : '')(all.filter(isReq).length)}
           <input class="fe-in fe-q" data-fe-q placeholder="ค้นหาชื่อ โรงเรียน จังหวัด หรือลำดับ" value="${E(st.q)}"></div>
         <div class="fe-tw"><table class="fe-t fe-list"><thead><tr><th>ลำดับ</th><th>นักเรียน</th><th>ชั้น</th><th class="n">ยอดที่แจ้ง</th><th class="n">เบิกได้</th><th>สถานะ</th><th></th></tr></thead>
           <tbody>${list.map(r => `<tr class="fe-row" data-fe-review="${r.i}" tabindex="0" role="button" aria-label="เปิดค่าเทอมของ ${E(r.s.name || '')}">
             <td>${E(r.s.no ?? '-')}</td><td><div class="fe-who">${avatar(r.s)}<div><b>${E(r.s.name || '-')}</b><div class="fe-dim">${E(r.s.school_m1 || '')}${r.s.province ? ' · ' + E(r.s.province) : ''}</div></div></div></td>
             <td>${E(gradeFor(r.s, t))}</td><td class="n">${r.f && r.req ? baht(r.req) : '–'}</td><td class="n fe-ap">${['full', 'partial', 'rejected'].includes(r.k) ? baht(r.ap) : '–'}</td>
-            <td><span class="fe-chip ${ST[r.k][1]}">${ST[r.k][0]}</span>${r.f && r.f.submittedAt ? `<div class="fe-dim">แจ้ง ${E(fmtD(r.f.submittedAt))}</div>` : ''}</td>
+            <td><span class="fe-chip ${ST[r.k][1]}">${ST[r.k][0]}</span>${r.f && r.f.editRequest && revOf(r.s, t) && revOf(r.s, t).reviewedAt ? '<span class="fe-chip fe-req">✋ ขอแก้ไข</span>' : ''}${r.f && r.f.submittedAt ? `<div class="fe-dim">แจ้ง ${E(fmtD(r.f.submittedAt))}</div>` : ''}</td>
             <td class="act"><span class="fe-go ${r.k === 'pending' ? 'hot' : ''}">${r.k === 'pending' ? 'ตรวจ/กำหนดยอด' : r.f && itemsOf(r.f).length ? 'ดู/แก้ไข' : 'ดูข้อมูล'} ›</span></td></tr>`).join('')
             || '<tr><td colspan="7" class="fe-empty">ไม่มีรายการ</td></tr>'}</tbody></table></div>
       </section>
@@ -326,6 +336,8 @@
           <p class="fe-dim">${E(gradeFor(s, t))} · ${E(tlabel(t))}${f.submittedAt ? ' · โรงเรียนแจ้งเมื่อ ' + E(fmtD(f.submittedAt)) : ''}${reviewed ? ' · ตรวจเมื่อ ' + E(fmtD(r.reviewedAt)) + (r.reviewedBy ? ' โดย ' + E(r.reviewedBy) : '') : ''}</p></div>
         <div class="fe-dstats"><div><span>ยอดที่แจ้ง</span><b>${baht(req)}</b></div><div class="ok"><span>เบิกได้</span><b id="fe-aptotal2">${baht(apNow)}</b></div><div class="${req - apNow > 0.001 ? 'cut' : ''}"><span>ส่วนต่าง</span><b id="fe-apdiff">${baht(req - apNow)}</b></div></div>
       </section>
+      ${f.editRequest && reviewed ? `<section class="fe-reqbar"><div>✋ <b>โรงเรียนขอแก้ไขข้อมูล</b> เมื่อ ${E(fmtD(f.editRequest.at))}${f.editRequest.reason ? ` — “${E(f.editRequest.reason)}”` : ''}</div>
+        <button type="button" class="btn btn-primary" data-fe-unlock>↩ เปิดให้โรงเรียนแก้ไข</button></section>` : ''}
       ${!items.length ? `<section class="fe-card fe-emptyc"><div class="fe-empty-ic">🗂</div><h3>${k === 'draft' ? 'โรงเรียนบันทึกร่างไว้ แต่ยังไม่ได้ส่ง' : 'โรงเรียนยังไม่ได้แจ้งค่าเทอม'}</h3><p class="fe-dim">${E(tlabel(t))} · เมื่อโรงเรียนกด "ส่งข้อมูลให้มูลนิธิฯ" รายการจะแสดงที่นี่</p></section>` : `
       <div class="fe-dgrid">
         <section class="fe-card">
@@ -383,6 +395,18 @@
       } catch (e) { fail('โหลดไม่สำเร็จ: ' + (e.message || e)); }
     }
   }
+  function askReason() {
+    return new Promise(res => {
+      const o = document.createElement('div'); o.className = 'fe-ask';
+      o.innerHTML = `<div class="fe-ask-box" role="dialog" aria-modal="true"><h3>✋ ขอแก้ไขข้อมูลค่าเทอม</h3>
+        <p class="fe-dim">บอกมูลนิธิฯ ว่าต้องการแก้ไขอะไร (เช่น จำนวนเงินค่าหนังสือผิด เปลี่ยนบัญชีธนาคาร)</p>
+        <textarea class="fe-in" rows="3" maxlength="300" placeholder="รายละเอียดที่ต้องการแก้ไข"></textarea>
+        <div class="fe-acts"><button type="button" class="btn btn-outline" data-x>ยกเลิก</button><button type="button" class="btn btn-primary" data-ok>ส่งคำขอ</button></div></div>`;
+      const done = v => { o.remove(); res(v); };
+      o.addEventListener('click', e => { if (e.target === o || e.target.hasAttribute('data-x')) done(null); else if (e.target.hasAttribute('data-ok')) done(o.querySelector('textarea').value.trim()); });
+      document.body.appendChild(o); setTimeout(() => o.querySelector('textarea').focus(), 30);
+    });
+  }
   function zoom(src) {
     const o = document.createElement('div'); o.className = 'fe-lb'; o.innerHTML = `<img src="${src}" alt=""><button type="button" aria-label="ปิด">✕</button>`;
     const close = () => { o.remove(); document.removeEventListener('keydown', esc); }; const esc = e => { if (e.key === 'Escape') close(); };
@@ -396,7 +420,7 @@
 
   /* ---------- เหตุการณ์ ---------- */
   async function onClick(e) {
-    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave],[data-fe-zoom],[data-fe-copy],[data-fe-rdel]');
+    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave],[data-fe-zoom],[data-fe-copy],[data-fe-rdel],[data-fe-askedit]');
     if (!t0) return;
     const d = t0.dataset, t = isStaff() ? (st.term || roundTerm()) : roundTerm();
     if (d.feOpen != null) { st.idx = +d.feOpen; render(); return; }
@@ -418,13 +442,20 @@
     const card = t0.closest('.fe-card[data-fe-idx]');
     if (card) {
       const idx = +card.dataset.feIdx, s = DB.students[idx];
+      if (d.feAskedit != null) {
+        const reason = await askReason();
+        if (reason == null) return;
+        s.fees[t].editRequest = { at: new Date().toISOString(), by: who(), reason: reason.slice(0, 300) };
+        try { await persist(); } catch (er) { UIDialog.alert({ tone: 'danger', title: 'ส่งไม่สำเร็จ', message: er.message || String(er) }); return; }
+        render(); UIDialog.alert({ tone: 'success', title: 'ส่งคำขอแล้ว', message: 'มูลนิธิฯ จะเห็นคำขอในหน้าตรวจ และเปิดให้แก้ไขข้อมูล' }); return;
+      }
       if (d.feAddrow != null) { collect(card, s, t); s.fees[t].items.push({ id: 'c' + Date.now().toString(36), label: '', amount: '', note: '', custom: true }); render(); return; }
       if (d.feDel) { collect(card, s, t); s.fees[t].items = s.fees[t].items.filter(it => it.id !== d.feDel); render(); return; }
       if (d.feView != null) { const x = (feeOf(s, t).files || [])[+d.feView]; if (x && window.DriveStore) DriveStore.open(s, x.fileId, x.name); return; }
       if (d.feRmfile != null) {
         const x = (feeOf(s, t).files || [])[+d.feRmfile]; if (!x) return;
         if (!(await uiAsk(`ลบไฟล์ ${x.name}?`, { tone: 'danger', title: 'ลบไฟล์แนบ', confirmText: 'ลบ' }))) return;
-        collect(card, s, t); s.fees[t].files.splice(+d.feRmfile, 1);
+        if (!((revOf(s, t) || {}).reviewedAt)) collect(card, s, t); s.fees[t].files.splice(+d.feRmfile, 1);
         try { if (!x.fromTerm && window.DriveStore && DriveStore.ready()) await DriveStore.remove(s, x.fileId); } catch (er) {}
         await persist(); render(); return;
       }
@@ -475,6 +506,7 @@
       if (d.feUnlock != null) {
         if (!(await uiAsk('ยกเลิกผลการตรวจ และเปิดให้โรงเรียนแก้ไขข้อมูลค่าเทอมได้อีกครั้ง?', { title: 'เปิดให้แก้ไข', confirmText: 'เปิดให้แก้ไข' }))) return;
         const r = s.feeReview && s.feeReview[t]; if (r) { delete r.reviewedAt; delete r.rejected; }
+        if (s.fees && s.fees[t]) delete s.fees[t].editRequest;
         await persist(); render(); return;
       }
       if (d.feApprove != null || d.feReject != null) {
@@ -542,7 +574,7 @@
       const kind = e.target.getAttribute('data-fe-file') === 'bank' ? 'bank' : 'invoice';
       if (file.size > 10 * 1024 * 1024) { UIDialog.alert({ tone: 'warning', title: 'ไฟล์ใหญ่เกินไป', message: 'ไฟล์ละไม่เกิน 10 MB' }); return; }
       if (!window.DriveStore || !DriveStore.ready()) { UIDialog.alert({ tone: 'warning', title: 'แนบไฟล์ไม่ได้', message: window.DriveStore ? DriveStore.why() : 'ระบบแนบไฟล์ยังไม่พร้อม' }); return; }
-      const f = collect(card, s, t);
+      const rv0 = revOf(s, t), f = (rv0 && rv0.reviewedAt) ? (s.fees[t] = s.fees[t] || {}) : collect(card, s, t);
       const close = UIDialog.busy ? UIDialog.busy('กำลังอัปโหลดไฟล์…', file.name) : () => {};
       try {
         const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
