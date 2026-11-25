@@ -21,7 +21,7 @@
     { id: 'dorm', label: 'ค่าหอพัก / ที่พัก' },
     { id: 'travel', label: 'ค่าเดินทาง' },
   ];
-  const ST = { none: ['ยังไม่แจ้ง', 'none'], draft: ['ร่าง (ยังไม่ส่ง)', 'draft'], pending: ['รอตรวจ', 'pending'], full: ['อนุมัติเต็มจำนวน', 'full'], partial: ['อนุมัติบางส่วน', 'partial'], rejected: ['ไม่อนุมัติ', 'rejected'] };
+  const ST = { none: ['ยังไม่แจ้ง', 'none'], draft: ['ร่าง (ยังไม่ส่ง)', 'draft'], pending: ['รอตรวจ', 'pending'], full: ['อนุมัติเต็มจำนวน', 'full'], partial: ['อนุมัติบางส่วน', 'partial'], rejected: ['ไม่อนุมัติ', 'rejected'], nofee: ['ไม่เก็บค่าเทอม', 'nofee'] };
   const isStaff = () => !window.STUDENT_MODE;
   const activeTerm = () => (window.Term && Term.active) ? Term.active() : '';
   // ชื่อภาคเรียนไม่ต่อท้ายชั้น (ระดับชั้นของค่าเทอมแสดงแยก — ผู้ดูแลกำหนดได้)
@@ -66,6 +66,7 @@
   }
   function status(s, t) {
     const f = feeOf(s, t), r = revOf(s, t);
+    if (f && f.noFee && f.submittedAt && !itemsOf(f).length) return 'nofee';   // v75d: โรงเรียนแจ้งว่าไม่เก็บค่าเทอม
     if (!f || !itemsOf(f).length) return 'none';
     if (!f.submittedAt) return 'draft';
     if (!r || !r.reviewedAt) return 'pending';
@@ -179,7 +180,8 @@
         <span class="fe-chip ${ST[k][1]}">${ST[k][0]}</span></header>
       ${closed ? `<div class="fe-note warn">มูลนิธิฯ ปิดรับการแจ้งค่าเทอมรอบนี้แล้ว — ดูข้อมูลได้อย่างเดียว</div>` : ''}
       ${locked && !closed ? `<div class="fe-note ok">มูลนิธิฯ ตรวจแล้วเมื่อ ${E(fmtD(r.reviewedAt))} — <b>ยอดที่เบิกได้ ${baht(approvedTotal(s, t))} บาท</b>${r.note ? `<br>หมายเหตุจากมูลนิธิฯ: ${E(r.note)}` : ''}<br><small>ต้องการแก้ไขข้อมูล ติดต่อเจ้าหน้าที่มูลนิธิฯ</small></div>`
-        : closed ? '' : f.submittedAt ? `<div class="fe-note">ส่งข้อมูลแล้วเมื่อ ${E(fmtD(f.submittedAt))} — รอมูลนิธิฯ ตรวจ (ยังแก้ไขและส่งใหม่ได้)</div>` : ''}
+        : closed ? '' : k === 'nofee' ? `<div class="fe-note ok">แจ้งมูลนิธิฯ แล้วเมื่อ ${E(fmtD(f.submittedAt))} ว่า <b>ภาคเรียนนี้ไม่เก็บค่าเทอม</b> (ยอด 0 บาท) — ถ้ามีค่าใช้จ่ายภายหลัง กรอกจำนวนเงินแล้วกดส่งใหม่ได้</div>`
+        : f.submittedAt ? `<div class="fe-note">ส่งข้อมูลแล้วเมื่อ ${E(fmtD(f.submittedAt))} — รอมูลนิธิฯ ตรวจ (ยังแก้ไขและส่งใหม่ได้)</div>` : ''}
       <div class="fe-tw"><table class="fe-t"><thead><tr><th>รายการ</th><th class="n">จำนวนเงิน (บาท)</th><th>หมายเหตุ</th>${showAp ? '<th class="n">เบิกได้</th>' : ''}${locked ? '' : '<th></th>'}</tr></thead>
         <tbody>${CATS.map(c => row(c.id, c.label, map[c.id], false)).join('')}${custom.map(it => row(it.id, it.label, it, true)).join('')}</tbody>
         <tfoot><tr><th>รวมทั้งสิ้น</th><th class="n" id="fe-total">${baht(requested(f))}</th><th></th>${showAp ? `<th class="n fe-ap">${baht(approvedTotal(s, t))}</th>` : ''}${locked ? '' : '<th></th>'}</tr></tfoot></table></div>
@@ -205,6 +207,7 @@
             ${req && req.at ? `<p class="fe-lock-sent">✋ ส่งคำขอแก้ไขแล้วเมื่อ ${E(fmtD(req.at))}${req.reason ? ` — “${E(req.reason)}”` : ''} · รอมูลนิธิฯ เปิดให้แก้ไข</p>` : ''}</div>
           <button type="button" class="btn ${req && req.at ? 'btn-outline' : 'btn-primary'}" data-fe-askedit>${req && req.at ? 'ส่งคำขออีกครั้ง' : '✋ ขอแก้ไขข้อมูล'}</button>
         </div>` : ''}
+      ${locked || k === 'nofee' ? '' : `<p class="fe-dim fe-nofee-hint">💡 ถ้าสถานศึกษา <b>ไม่เก็บค่าเทอม</b> ภาคเรียนนี้ ให้เว้นจำนวนเงินเป็น 0 แล้วกดส่งข้อมูล — ระบบจะถามยืนยัน และไม่ต้องกรอกบัญชีธนาคาร</p>`}
       ${locked ? '' : `<div class="fe-acts"><button type="button" class="btn btn-outline" data-fe-save>💾 บันทึกร่าง</button><button type="button" class="btn btn-primary" data-fe-submit>📤 ${f.submittedAt ? 'ส่งข้อมูลอีกครั้ง' : 'ส่งข้อมูลให้มูลนิธิฯ'}</button></div>`}
     </section>`;
   }
@@ -221,6 +224,7 @@
     });
     items.forEach(it => { if (!it.custom) delete it.custom; });
     f.items = items;
+    if (f.noFee && itemsOf(f).length) { delete f.noFee; delete f.submittedAt; }   // v75d: มีจำนวนเงินแล้ว → ต้องกดส่งให้ตรวจใหม่
     const g = card.querySelector('[data-fe-gnote]'); f.note = g ? g.value.trim() : '';
     const bk = {}; card.querySelectorAll('[data-fe-bank]').forEach(i => { bk[i.getAttribute('data-fe-bank')] = i.value.trim(); });
     if (Object.values(bk).some(Boolean)) f.bank = bk;
@@ -293,7 +297,7 @@
         <div class="fe-kpi warn"><span>รอตรวจ</span><b>${cnt('pending')}<small> คน</small></b></div>
       </section>
       <section class="fe-card">
-        <div class="fe-bar">${chip('all', 'ทั้งหมด', all.length)}${chip('pending', 'รอตรวจ', cnt('pending'))}${chip('done', 'ตรวจแล้ว', cnt('full') + cnt('partial') + cnt('rejected'))}${chip('none', 'ยังไม่แจ้ง/ร่าง', cnt('none') + cnt('draft'))}${(n => n ? chip('req', '✋ ขอแก้ไข', n) : '')(all.filter(isReq).length)}
+        <div class="fe-bar">${chip('all', 'ทั้งหมด', all.length)}${chip('pending', 'รอตรวจ', cnt('pending'))}${chip('done', 'ตรวจแล้ว', cnt('full') + cnt('partial') + cnt('rejected'))}${chip('none', 'ยังไม่แจ้ง/ร่าง', cnt('none') + cnt('draft'))}${cnt('nofee') ? chip('nofee', 'ไม่เก็บค่าเทอม', cnt('nofee')) : ''}${(n => n ? chip('req', '✋ ขอแก้ไข', n) : '')(all.filter(isReq).length)}
           <input class="fe-in fe-q" data-fe-q placeholder="ค้นหาชื่อ โรงเรียน จังหวัด หรือลำดับ" value="${E(st.q)}"></div>
         <div class="fe-tw"><table class="fe-t fe-list"><thead><tr><th>ลำดับ</th><th>นักเรียน</th><th>ชั้น</th><th class="n">ยอดที่แจ้ง</th><th class="n">เบิกได้</th><th>สถานะ</th><th></th></tr></thead>
           <tbody>${list.map(r => `<tr class="fe-row" data-fe-review="${r.i}" tabindex="0" role="button" aria-label="เปิดค่าเทอมของ ${E(r.s.name || '')}">
@@ -338,7 +342,7 @@
       </section>
       ${f.editRequest && reviewed ? `<section class="fe-reqbar"><div>✋ <b>โรงเรียนขอแก้ไขข้อมูล</b> เมื่อ ${E(fmtD(f.editRequest.at))}${f.editRequest.reason ? ` — “${E(f.editRequest.reason)}”` : ''}</div>
         <button type="button" class="btn btn-primary" data-fe-unlock>↩ เปิดให้โรงเรียนแก้ไข</button></section>` : ''}
-      ${!items.length ? `<section class="fe-card fe-emptyc"><div class="fe-empty-ic">🗂</div><h3>${k === 'draft' ? 'โรงเรียนบันทึกร่างไว้ แต่ยังไม่ได้ส่ง' : 'โรงเรียนยังไม่ได้แจ้งค่าเทอม'}</h3><p class="fe-dim">${E(tlabel(t))} · เมื่อโรงเรียนกด "ส่งข้อมูลให้มูลนิธิฯ" รายการจะแสดงที่นี่</p></section>` : `
+      ${!items.length ? `<section class="fe-card fe-emptyc"><div class="fe-empty-ic">🗂</div><h3>${k === 'nofee' ? 'โรงเรียนแจ้งว่า “ไม่เก็บค่าเทอม”' : k === 'draft' ? 'โรงเรียนบันทึกร่างไว้ แต่ยังไม่ได้ส่ง' : 'โรงเรียนยังไม่ได้แจ้งค่าเทอม'}</h3><p class="fe-dim">${E(tlabel(t))} · ${k === 'nofee' ? `แจ้งเมื่อ ${E(fmtD(f.submittedAt))} — ยอด 0 บาท ไม่ต้องตรวจ/โอนเงิน${f.note ? `<br>💬 ${E(f.note)}` : ''}` : 'เมื่อโรงเรียนกด "ส่งข้อมูลให้มูลนิธิฯ" รายการจะแสดงที่นี่'}</p></section>` : `
       <div class="fe-dgrid">
         <section class="fe-card">
           <h3 class="fe-h">💰 รายการค่าเทอมและยอดเบิก</h3>
@@ -462,7 +466,13 @@
       if (d.feSave != null || d.feSubmit != null) {
         const f = collect(card, s, t);
         if (d.feSubmit != null) {
-          if (!itemsOf(f).length || requested(f) <= 0) { UIDialog.alert({ tone: 'warning', title: 'ยังไม่มีจำนวนเงิน', message: 'กรอกจำนวนเงินอย่างน้อย 1 รายการก่อนส่ง' }); return; }
+          const zero = !itemsOf(f).length || requested(f) <= 0;
+          if (zero) {
+            if (!(await uiAsk(`ยืนยันว่า ${tlabel(t)} สถานศึกษา "ไม่เก็บค่าเทอม" ของ ${s.name}?\n(ยอด 0 บาท — ไม่ต้องกรอกบัญชีธนาคาร)`, { title: 'แจ้งว่าไม่เก็บค่าเทอม', confirmText: 'ยืนยัน ไม่เก็บค่าเทอม' }))) return;
+            f.noFee = true; f.submittedAt = new Date().toISOString();
+          } else delete f.noFee;
+        }
+        if (d.feSubmit != null && !f.noFee) {
           const bad = f.items.filter(it => it.custom && num(it.amount) > 0 && !it.label);
           if (bad.length) { UIDialog.alert({ tone: 'warning', title: 'ระบุชื่อรายการ', message: 'รายการที่เพิ่มเองต้องระบุชื่อรายการ' }); return; }
           const b = f.bank || {};
@@ -478,7 +488,7 @@
         const close = UIDialog.busy ? UIDialog.busy('กำลังบันทึก…') : () => {};
         try { await persist(); close(); } catch (er) { close(); UIDialog.alert({ tone: 'danger', title: 'บันทึกไม่สำเร็จ', message: er.message || String(er) }); return; }
         render();
-        if (d.feSubmit != null) UIDialog.alert({ tone: 'success', title: 'ส่งข้อมูลแล้ว', message: 'มูลนิธิฯ จะตรวจและแจ้งยอดที่เบิกได้ในหน้านี้' });
+        if (d.feSubmit != null) UIDialog.alert({ tone: 'success', title: 'ส่งข้อมูลแล้ว', message: f.noFee ? 'แจ้งมูลนิธิฯ แล้วว่าภาคเรียนนี้ไม่เก็บค่าเทอม (ถ้ามีค่าใช้จ่ายภายหลัง กรอกจำนวนเงินแล้วส่งใหม่ได้)' : 'มูลนิธิฯ จะตรวจและแจ้งยอดที่เบิกได้ในหน้านี้' });
         return;
       }
     }
@@ -598,7 +608,7 @@
     });
   }
   function dataFor(t) {
-    const all = rows(t).filter(r => r.f && itemsOf(r.f).length);
+    const all = rows(t).filter(r => r.f && (itemsOf(r.f).length || r.k === 'nofee'));
     const summary = all.map(r => ({
       'ลำดับ': num(r.s.no) || r.s.no || '', 'ชื่อ-สกุล': r.s.name || '', 'โรงเรียน': r.s.school_m1 || '', 'จังหวัด': r.s.province || '', 'ระดับชั้น': gradeFor(r.s, t),
       'ยอดที่แจ้ง (บาท)': r.req, 'ยอดเบิกได้ (บาท)': ['full', 'partial', 'rejected'].includes(r.k) ? r.ap : '', 'ส่วนต่าง (บาท)': ['full', 'partial', 'rejected'].includes(r.k) ? r.req - r.ap : '',

@@ -3399,3 +3399,5 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .fe-ask-box{width:min(480px,100%);background:#fff;border-radius:18px;padding:20px;box-shadow:0 30px 70px rgba(15,23,42,.35)}
 .fe-ask-box h3{margin:0 0 6px}
 .fe-ask-box textarea{width:100%;box-sizing:border-box;margin:10px 0}
+.fe-chip.nofee{background:#F0F9FF;color:#0369A1}
+.fe-nofee-hint{margin:14px 0 0}
