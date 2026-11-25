@@ -312,7 +312,8 @@
       return `<figure class="fe-doc ${x.kind === 'bank' ? 'bank' : ''}" data-fe-prev="${i}" data-kind="${isImg ? 'img' : isPdf ? 'pdf' : 'file'}">
         <div class="fe-doc-view"><div class="fe-doc-load">${isImg ? '🖼' : isPdf ? '📄' : '📎'}<span>กำลังโหลดตัวอย่าง…</span></div></div>
         <figcaption><span class="fe-doc-tag">${x.kind === 'bank' ? '🏦 สมุดบัญชี' : '🧾 ใบแจ้ง/ใบเสร็จ'}</span><span class="fe-doc-name" title="${E(x.name)}">${E(x.name)}</span>
-          <button type="button" class="fe-link" data-fe-rview="${i}">เปิดเต็ม ↗</button></figcaption></figure>`;
+          <button type="button" class="fe-link" data-fe-rview="${i}">เปิดเต็ม ↗</button>
+          <button type="button" class="fe-link del" data-fe-rdel="${i}" title="ลบไฟล์นี้" aria-label="ลบไฟล์ ${E(x.name)}">🗑 ลบ</button></figcaption></figure>`;
     };
     return `<div class="fe-wrap fe-detail" data-fe-ridx="${idx}">
       <nav class="fe-dnav"><button type="button" class="fe-back" data-fe-close>← กลับรายชื่อ</button>
@@ -395,7 +396,7 @@
 
   /* ---------- เหตุการณ์ ---------- */
   async function onClick(e) {
-    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave],[data-fe-zoom],[data-fe-copy]');
+    const t0 = e.target.closest('[data-fe-open],[data-fe-list],[data-fe-addrow],[data-fe-del],[data-fe-save],[data-fe-submit],[data-fe-view],[data-fe-rmfile],[data-fe-filter],[data-fe-review],[data-fe-close],[data-fe-fill],[data-fe-clear],[data-fe-approve],[data-fe-reject],[data-fe-unlock],[data-fe-slip],[data-fe-xlsx],[data-fe-pdf],[data-fe-rview],[data-fe-rsave],[data-fe-zoom],[data-fe-copy],[data-fe-rdel]');
     if (!t0) return;
     const d = t0.dataset, t = isStaff() ? (st.term || roundTerm()) : roundTerm();
     if (d.feOpen != null) { st.idx = +d.feOpen; render(); return; }
@@ -454,6 +455,20 @@
     if (box) {
       const idx = +box.dataset.feRidx, s = DB.students[idx];
       if (d.feRview != null) { const x = (feeOf(s, t).files || [])[+d.feRview]; if (x && window.DriveStore) DriveStore.open(s, x.fileId, x.name); return; }
+      if (d.feRdel != null) {
+        const f = feeOf(s, t), x = (f && f.files || [])[+d.feRdel]; if (!x) return;
+        const kind = x.kind === 'bank' ? 'สำเนาสมุดบัญชี' : 'ใบแจ้งหนี้/ใบเสร็จ';
+        if (!(await uiAsk(`ลบ${kind} "${x.name}" ของ ${s.name}?${x.fromTerm ? '\n(ไฟล์นี้ใช้ต่อจากภาคเรียนก่อน — ลบออกจากภาคเรียนนี้เท่านั้น)' : '\nไฟล์จะถูกลบออกจากที่เก็บไฟล์ด้วย และกู้คืนไม่ได้'}`, { tone: 'danger', title: 'ลบเอกสารแนบ', confirmText: 'ลบไฟล์' }))) return;
+        const close = UIDialog.busy ? UIDialog.busy('กำลังลบ…') : () => {};
+        try {
+          const shared = Object.keys(s.fees || {}).some(k => k !== t && ((s.fees[k] || {}).files || []).some(y => y.fileId === x.fileId));
+          if (!x.fromTerm && !shared && window.DriveStore && DriveStore.ready()) { try { await DriveStore.remove(s, x.fileId); } catch (er) { console.warn('drive remove', er); } }
+          f.files.splice(+d.feRdel, 1);
+          const u = blobCache.get(x.fileId); if (u) { URL.revokeObjectURL(u.url); blobCache.delete(x.fileId); }
+          await persist(); close();
+        } catch (er) { close(); UIDialog.alert({ tone: 'danger', title: 'ลบไม่สำเร็จ', message: er.message || String(er) }); return; }
+        render(); return;
+      }
       if (d.feFill != null) { box.querySelectorAll('[data-fe-ap]').forEach(i => { i.value = i.dataset.req; }); apTotal(box); return; }
       if (d.feClear != null) { box.querySelectorAll('[data-fe-ap]').forEach(i => { i.value = ''; }); apTotal(box); return; }
       if (d.feSlip != null) { printSlip(s, t, readReview(box)); return; }

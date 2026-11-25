@@ -3385,3 +3385,5 @@ button.at-chip{border:none;font:inherit;font-size:12px;font-weight:600;cursor:po
 .fe-lb button{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:1.1rem;cursor:pointer}
 @keyframes feFade{from{opacity:0}to{opacity:1}}
 @media print{.fe-dnav,.fe-quick,.fe-copy{display:none!important}}
+.fe-link.del{color:#dc2626;padding-left:8px;border-left:1px solid #e2e8f0}
+.fe-link.del:hover{text-decoration:underline}
